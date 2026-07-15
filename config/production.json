@@ -17,6 +17,23 @@
   "ai": {
     "provider": "mock",
     "endpoint": "http://127.0.0.1:8080",
-    "defaultModelId": "mock-general"
+    "defaultModelId": "mock-general",
+    "inference": {
+      "temperature": 0.7,
+      "maxTokens": 256,
+      "topP": 0.9,
+      "topK": 40,
+      "repeatPenalty": 1.1
+    },
+    "hardware": {
+      "acceleration": "cpu",
+      "threads": 0,
+      "gpuLayers": 0,
+      "contextSize": 4096
+    },
+    "llamaCpp": {
+      "manageServer": false,
+      "binary": "llama-server"
+    }
   }
 }

@@ -46,6 +46,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0020](./0020-error-handling-framework.md)              | Error handling framework                | Accepted |
 | [0021](./0021-phase1-core-runtime-integration-tests.md) | Phase 1 core runtime integration tests  | Accepted |
 | [0022](./0022-ai-runtime-foundation.md)                 | AI runtime foundation                   | Accepted |
+| [0023](./0023-llamacpp-integration.md)                  | llama.cpp integration                   | Accepted |
 
 ## Naming
 

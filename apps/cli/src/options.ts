@@ -46,6 +46,7 @@ export function usage(): string {
     "  atlas help",
     "  atlas status",
     "  atlas ai status",
+    '  atlas ai ask "hello"',
     "  atlas history",
     "  atlas history --status failed --limit 5",
     "  atlas echo hello",

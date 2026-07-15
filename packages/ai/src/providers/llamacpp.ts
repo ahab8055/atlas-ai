@@ -1,8 +1,25 @@
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 import type { InferenceProvider } from "../provider.js";
 import { AiRuntimeError } from "../errors.js";
+import {
+  requireValidGguf,
+  resolveGgufPath,
+  validateGgufFile,
+} from "../gguf.js";
+import {
+  DEFAULT_CPU_HARDWARE,
+  mergeHardwareProfile,
+  resolveGpuLayers,
+  type HardwareProfile,
+} from "../hardware.js";
+import {
+  DEFAULT_INFERENCE_PARAMS,
+  inferenceParamsToApiBody,
+  mergeInferenceParams,
+  type InferenceParams,
+} from "../inference-params.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -10,21 +27,41 @@ import type {
   RuntimeHealth,
   StreamChunk,
 } from "../types.js";
+import {
+  buildLlamaServerArgs,
+  LlamaServerProcess,
+  parseEndpoint,
+} from "./llama-server-process.js";
 
 export interface LlamaCppProviderOptions {
   /** Base URL for llama-server (OpenAI-compatible). */
   baseUrl?: string;
-  /** Directory of local GGUF files (metadata listing). */
+  /** Directory of local GGUF files. */
   modelsDir?: string;
+  /** Default sampling parameters. */
+  inference?: Partial<InferenceParams>;
+  /** CPU/GPU profile (default CPU, gpuLayers=0). */
+  hardware?: Partial<HardwareProfile>;
+  /**
+   * When true, `load()` spawns `llama-server` with the resolved GGUF
+   * (CPU uses `-ngl 0`). When false, expects an already-running server.
+   */
+  manageServer?: boolean;
+  /** Binary name or path for managed mode (default `llama-server`). */
+  binary?: string;
+  /** Extra args passed to llama-server when managed. */
+  extraArgs?: string[];
   /** Inject fetch for tests. */
   fetch?: typeof fetch;
   /** Request timeout ms for health/generate. */
   timeoutMs?: number;
+  /** Inject process manager for tests. */
+  serverProcess?: LlamaServerProcess;
 }
 
 /**
- * Communicates with a local llama.cpp `llama-server` over HTTP.
- * Model execution stays outside Atlas core (Architecture/17).
+ * Primary local inference engine — llama.cpp via `llama-server` HTTP.
+ * Follows InferenceProvider; supports GGUF load + configurable parameters.
  */
 export class LlamaCppProvider implements InferenceProvider {
   readonly id = "llamacpp";
@@ -33,6 +70,12 @@ export class LlamaCppProvider implements InferenceProvider {
   private readonly modelsDir?: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
+  private readonly manageServer: boolean;
+  private readonly binary: string;
+  private readonly extraArgs: string[];
+  private readonly server: LlamaServerProcess;
+  private inferenceDefaults: InferenceParams;
+  private hardware: HardwareProfile;
   private active: ModelInfo | undefined;
 
   constructor(options: LlamaCppProviderOptions = {}) {
@@ -43,10 +86,54 @@ export class LlamaCppProvider implements InferenceProvider {
     this.modelsDir = options.modelsDir;
     this.fetchImpl = options.fetch ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 15_000;
+    this.manageServer = options.manageServer ?? false;
+    this.binary = options.binary ?? "llama-server";
+    this.extraArgs = options.extraArgs ?? [];
+    this.server = options.serverProcess ?? new LlamaServerProcess();
+    this.inferenceDefaults = mergeInferenceParams(
+      DEFAULT_INFERENCE_PARAMS,
+      options.inference,
+    );
+    this.hardware = mergeHardwareProfile(
+      DEFAULT_CPU_HARDWARE,
+      options.hardware,
+    );
   }
 
   get endpoint(): string {
     return this.baseUrl;
+  }
+
+  getHardwareProfile(): HardwareProfile {
+    return { ...this.hardware };
+  }
+
+  getInferenceDefaults(): InferenceParams {
+    return mergeInferenceParams(this.inferenceDefaults);
+  }
+
+  setHardwareProfile(patch: Partial<HardwareProfile>): void {
+    this.hardware = mergeHardwareProfile(this.hardware, patch);
+  }
+
+  setInferenceDefaults(patch: Partial<InferenceParams>): void {
+    this.inferenceDefaults = mergeInferenceParams(
+      this.inferenceDefaults,
+      patch,
+    );
+  }
+
+  /** CLI args that would be used for a managed load (CPU → -ngl 0). */
+  buildManagedServerArgs(modelPath: string): string[] {
+    const { host, port } = parseEndpoint(this.baseUrl);
+    return buildLlamaServerArgs({
+      binary: this.binary,
+      modelPath,
+      host,
+      port,
+      hardware: this.hardware,
+      extraArgs: this.extraArgs,
+    });
   }
 
   async health(): Promise<RuntimeHealth> {
@@ -54,7 +141,6 @@ export class LlamaCppProvider implements InferenceProvider {
     try {
       const res = await this.request("/health", { method: "GET" });
       if (!res.ok) {
-        // Some builds expose /v1/models instead of /health.
         const models = await this.request("/v1/models", { method: "GET" });
         if (!models.ok) {
           return {
@@ -67,10 +153,11 @@ export class LlamaCppProvider implements InferenceProvider {
           };
         }
       }
+      const gpuLayers = resolveGpuLayers(this.hardware);
       return {
         ok: true,
         provider: this.id,
-        message: "llama.cpp runtime reachable",
+        message: `llama.cpp ready (${this.hardware.acceleration}, ngl=${gpuLayers})`,
         endpoint: this.baseUrl,
         activeModelId: this.active?.id,
         checkedAt,
@@ -121,23 +208,65 @@ export class LlamaCppProvider implements InferenceProvider {
     }));
   }
 
+  /**
+   * Load a GGUF model: validate file, optionally spawn llama-server (CPU `-ngl 0`),
+   * then select it for generate/stream.
+   */
   async load(modelId: string): Promise<ModelInfo> {
+    const filePath = resolveGgufPath(modelId, this.modelsDir);
+
+    if (existsSync(filePath)) {
+      const validation = requireValidGguf(filePath);
+      if (this.manageServer) {
+        await this.startManagedServer(filePath);
+      } else {
+        const health = await this.health();
+        if (!health.ok) {
+          throw new AiRuntimeError(
+            `GGUF valid at ${filePath}, but llama-server is not reachable at ${this.baseUrl}. Start the server or set ai.llamaCpp.manageServer=true.`,
+            { code: "runtime_unreachable", provider: this.id },
+          );
+        }
+      }
+
+      const id = path.basename(filePath).replace(/\.gguf$/i, "");
+      this.active = {
+        id,
+        name: id,
+        format: "gguf",
+        path: filePath,
+        provider: this.id,
+        status: "loaded",
+        sizeBytes: validation.sizeBytes,
+      };
+      return { ...this.active };
+    }
+
+    // No local file — select a remote model id if the server already hosts it.
     const models = await this.listModels();
-    const found = models.find((m) => m.id === modelId);
-    const model: ModelInfo = found ?? {
-      id: modelId,
-      name: modelId,
-      format: "gguf",
-      provider: this.id,
-      status: "available",
-    };
-    // llama-server typically loads one model at process start; we track selection.
-    this.active = { ...model, status: "loaded" };
+    const normalized = modelId.replace(/\.gguf$/i, "");
+    const found = models.find((m) => m.id === modelId || m.id === normalized);
+    if (!found) {
+      throw new AiRuntimeError(
+        `GGUF model not found: ${modelId} (looked for ${filePath})`,
+        { code: "model_not_found", provider: this.id },
+      );
+    }
+
+    const health = await this.health();
+    if (!health.ok) {
+      throw AiRuntimeError.unreachable(this.id, health.message);
+    }
+
+    this.active = { ...found, status: "loaded" };
     return { ...this.active };
   }
 
   async unload(): Promise<void> {
     this.active = undefined;
+    if (this.manageServer) {
+      await this.server.stop();
+    }
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
@@ -147,16 +276,15 @@ export class LlamaCppProvider implements InferenceProvider {
       throw AiRuntimeError.modelNotLoaded(this.id);
     }
 
+    const params = this.resolveParams(req);
     const res = await this.request("/v1/chat/completions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         model: modelId,
         messages: req.messages,
-        temperature: req.temperature ?? 0.7,
-        max_tokens: req.maxTokens ?? 256,
         stream: false,
-        stop: req.stop,
+        ...inferenceParamsToApiBody(params),
       }),
     });
 
@@ -203,16 +331,15 @@ export class LlamaCppProvider implements InferenceProvider {
       throw AiRuntimeError.modelNotLoaded(this.id);
     }
 
+    const params = this.resolveParams(req);
     const res = await this.request("/v1/chat/completions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         model: modelId,
         messages: req.messages,
-        temperature: req.temperature ?? 0.7,
-        max_tokens: req.maxTokens ?? 256,
         stream: true,
-        stop: req.stop,
+        ...inferenceParamsToApiBody(params),
       }),
     });
 
@@ -272,6 +399,35 @@ export class LlamaCppProvider implements InferenceProvider {
     yield { text: "", done: true, modelId, finishReason };
   }
 
+  private resolveParams(req: GenerateRequest): InferenceParams {
+    return mergeInferenceParams(this.inferenceDefaults, {
+      temperature: req.temperature,
+      maxTokens: req.maxTokens,
+      topP: req.topP,
+      topK: req.topK,
+      repeatPenalty: req.repeatPenalty,
+      stop: req.stop,
+    });
+  }
+
+  private async startManagedServer(modelPath: string): Promise<void> {
+    const { host, port } = parseEndpoint(this.baseUrl);
+    await this.server.start(
+      {
+        binary: this.binary,
+        modelPath,
+        host,
+        port,
+        hardware: this.hardware,
+        extraArgs: this.extraArgs,
+      },
+      async () => {
+        const health = await this.health();
+        return health.ok;
+      },
+    );
+  }
+
   private scanGgufModels(): ModelInfo[] {
     if (!this.modelsDir) {
       return [];
@@ -289,13 +445,14 @@ export class LlamaCppProvider implements InferenceProvider {
             sizeBytes = undefined;
           }
           const id = name.replace(/\.gguf$/i, "");
+          const valid = validateGgufFile(full).ok;
           return {
             id,
             name: id,
             format: "gguf" as const,
             path: full,
             provider: this.id,
-            status: "available" as const,
+            status: (valid ? "available" : "error") as ModelInfo["status"],
             sizeBytes,
           };
         });

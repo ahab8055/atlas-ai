@@ -38,3 +38,33 @@ export {
   LlamaCppProvider,
   type LlamaCppProviderOptions,
 } from "./providers/llamacpp.js";
+
+export {
+  buildLlamaServerArgs,
+  LlamaServerProcess,
+  parseEndpoint,
+  type LlamaServerLaunchOptions,
+} from "./providers/llama-server-process.js";
+
+export {
+  GGUF_MAGIC,
+  requireValidGguf,
+  resolveGgufPath,
+  validateGgufFile,
+  type GgufValidationResult,
+} from "./gguf.js";
+
+export {
+  DEFAULT_CPU_HARDWARE,
+  mergeHardwareProfile,
+  resolveGpuLayers,
+  type AccelerationMode,
+  type HardwareProfile,
+} from "./hardware.js";
+
+export {
+  DEFAULT_INFERENCE_PARAMS,
+  inferenceParamsToApiBody,
+  mergeInferenceParams,
+  type InferenceParams,
+} from "./inference-params.js";

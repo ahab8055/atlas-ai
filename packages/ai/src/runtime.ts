@@ -148,7 +148,15 @@ export function createAiRuntime(
 
   const builtins: InferenceProvider[] = options.providers ?? [
     new MockInferenceProvider(),
-    new LlamaCppProvider({ baseUrl: endpoint, modelsDir }),
+    new LlamaCppProvider({
+      baseUrl: endpoint,
+      modelsDir,
+      inference: options.inference,
+      hardware: options.hardware,
+      manageServer: options.llamaCpp?.manageServer,
+      binary: options.llamaCpp?.binary,
+      extraArgs: options.llamaCpp?.extraArgs,
+    }),
   ];
 
   for (const provider of builtins) {

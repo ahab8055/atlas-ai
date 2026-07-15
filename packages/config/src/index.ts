@@ -1,5 +1,8 @@
 export type {
   AtlasAiConfig,
+  AtlasAiHardwareConfig,
+  AtlasAiInferenceConfig,
+  AtlasAiLlamaCppConfig,
   AtlasAppConfig,
   AtlasConfig,
   AtlasEnvironment,

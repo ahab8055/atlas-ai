@@ -25,6 +25,31 @@ export interface AtlasFeatureFlags {
   telemetry: boolean;
 }
 
+export interface AtlasAiInferenceConfig {
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  topK: number;
+  repeatPenalty: number;
+}
+
+export interface AtlasAiHardwareConfig {
+  /** cpu (default) | gpu — GPU uses gpuLayers when > 0. */
+  acceleration: "cpu" | "gpu";
+  /** llama.cpp `-t`; 0 = auto. */
+  threads: number;
+  /** llama.cpp `-ngl`; 0 = CPU-only. */
+  gpuLayers: number;
+  contextSize: number;
+}
+
+export interface AtlasAiLlamaCppConfig {
+  /** Spawn/stop llama-server from Atlas on load. */
+  manageServer: boolean;
+  /** Binary name or absolute path. */
+  binary: string;
+}
+
 export interface AtlasAiConfig {
   /** Active inference provider id (`mock` | `llamacpp` | custom). */
   provider: string;
@@ -32,6 +57,9 @@ export interface AtlasAiConfig {
   endpoint: string;
   /** Default model id for load/generate. */
   defaultModelId: string;
+  inference: AtlasAiInferenceConfig;
+  hardware: AtlasAiHardwareConfig;
+  llamaCpp: AtlasAiLlamaCppConfig;
 }
 
 /** Non-secret, serializable application settings. */

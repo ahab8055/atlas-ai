@@ -150,6 +150,12 @@ describe("LlamaCppProvider", () => {
       baseUrl: "http://llama.test",
       fetch: async (input, init) => {
         const url = String(input);
+        if (url.endsWith("/health")) {
+          return new Response("ok", { status: 200 });
+        }
+        if (url.endsWith("/v1/models")) {
+          return Response.json({ data: [{ id: "qwen-local" }] });
+        }
         if (url.endsWith("/v1/chat/completions")) {
           const body = JSON.parse(String(init?.body ?? "{}")) as {
             model: string;
@@ -193,11 +199,19 @@ describe("LlamaCppProvider", () => {
 
     const provider = new LlamaCppProvider({
       baseUrl: "http://llama.test",
-      fetch: async () =>
-        new Response(sse, {
+      fetch: async (input) => {
+        const url = String(input);
+        if (url.endsWith("/health")) {
+          return new Response("ok", { status: 200 });
+        }
+        if (url.endsWith("/v1/models")) {
+          return Response.json({ data: [{ id: "m" }] });
+        }
+        return new Response(sse, {
           status: 200,
           headers: { "content-type": "text/event-stream" },
-        }),
+        });
+      },
     });
 
     await provider.load("m");

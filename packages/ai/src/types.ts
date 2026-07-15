@@ -33,6 +33,9 @@ export interface GenerateRequest {
   modelId?: string;
   temperature?: number;
   maxTokens?: number;
+  topP?: number;
+  topK?: number;
+  repeatPenalty?: number;
   stop?: string[];
   /** Correlation for logs. */
   traceId?: string;
@@ -74,8 +77,29 @@ export interface AiRuntimeOptions {
   provider?: string;
   /** llama.cpp / OpenAI-compatible base URL. */
   endpoint?: string;
-  /** Directory to scan for `*.gguf` (metadata only). */
+  /** Directory to scan for `*.gguf`. */
   modelsDir?: string;
   /** Model selected after create when provider supports it. */
   defaultModelId?: string;
+  /** Default sampling parameters (llama.cpp / OpenAI-compatible). */
+  inference?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    topK?: number;
+    repeatPenalty?: number;
+  };
+  /** CPU (default) or GPU acceleration profile. */
+  hardware?: {
+    acceleration?: "cpu" | "gpu";
+    threads?: number;
+    gpuLayers?: number;
+    contextSize?: number;
+  };
+  /** llama.cpp process management. */
+  llamaCpp?: {
+    manageServer?: boolean;
+    binary?: string;
+    extraArgs?: string[];
+  };
 }

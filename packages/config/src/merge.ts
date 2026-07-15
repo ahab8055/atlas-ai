@@ -1,5 +1,8 @@
 import type {
   AtlasAiConfig,
+  AtlasAiHardwareConfig,
+  AtlasAiInferenceConfig,
+  AtlasAiLlamaCppConfig,
   AtlasAppConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
@@ -104,14 +107,84 @@ function mergeFeatures(
   };
 }
 
-function mergeAi(base: AtlasAiConfig, patch: unknown): AtlasAiConfig {
+function asNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    !Number.isNaN(Number(value))
+  ) {
+    return Number(value);
+  }
+  return fallback;
+}
+
+function mergeInference(
+  base: AtlasAiInferenceConfig,
+  patch: unknown,
+): AtlasAiInferenceConfig {
   if (!isRecord(patch)) {
     return { ...base };
+  }
+  return {
+    temperature: asNumber(patch.temperature, base.temperature),
+    maxTokens: asNumber(patch.maxTokens, base.maxTokens),
+    topP: asNumber(patch.topP, base.topP),
+    topK: asNumber(patch.topK, base.topK),
+    repeatPenalty: asNumber(patch.repeatPenalty, base.repeatPenalty),
+  };
+}
+
+function mergeHardware(
+  base: AtlasAiHardwareConfig,
+  patch: unknown,
+): AtlasAiHardwareConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  const acceleration =
+    patch.acceleration === "gpu" || patch.acceleration === "cpu"
+      ? patch.acceleration
+      : base.acceleration;
+  return {
+    acceleration,
+    threads: asNumber(patch.threads, base.threads),
+    gpuLayers: asNumber(patch.gpuLayers, base.gpuLayers),
+    contextSize: asNumber(patch.contextSize, base.contextSize),
+  };
+}
+
+function mergeLlamaCpp(
+  base: AtlasAiLlamaCppConfig,
+  patch: unknown,
+): AtlasAiLlamaCppConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    manageServer: asBoolean(patch.manageServer, base.manageServer),
+    binary: asString(patch.binary, base.binary),
+  };
+}
+
+function mergeAi(base: AtlasAiConfig, patch: unknown): AtlasAiConfig {
+  if (!isRecord(patch)) {
+    return {
+      ...base,
+      inference: { ...base.inference },
+      hardware: { ...base.hardware },
+      llamaCpp: { ...base.llamaCpp },
+    };
   }
   return {
     provider: asString(patch.provider, base.provider),
     endpoint: asString(patch.endpoint, base.endpoint),
     defaultModelId: asString(patch.defaultModelId, base.defaultModelId),
+    inference: mergeInference(base.inference, patch.inference),
+    hardware: mergeHardware(base.hardware, patch.hardware),
+    llamaCpp: mergeLlamaCpp(base.llamaCpp, patch.llamaCpp),
   };
 }
 
@@ -126,7 +199,7 @@ export function mergeAppConfig(
       paths: { ...base.paths },
       server: { ...base.server },
       features: { ...base.features },
-      ai: { ...base.ai },
+      ai: mergeAi(base.ai, undefined),
     };
   }
 
@@ -176,6 +249,42 @@ export function applyEnvOverrides(
       endpoint: envVars.ATLAS_AI_ENDPOINT ?? config.ai.endpoint,
       defaultModelId:
         envVars.ATLAS_AI_DEFAULT_MODEL ?? config.ai.defaultModelId,
+      inference: {
+        temperature:
+          envVars.ATLAS_AI_TEMPERATURE !== undefined
+            ? Number(envVars.ATLAS_AI_TEMPERATURE)
+            : config.ai.inference.temperature,
+        maxTokens:
+          envVars.ATLAS_AI_MAX_TOKENS !== undefined
+            ? Number(envVars.ATLAS_AI_MAX_TOKENS)
+            : config.ai.inference.maxTokens,
+        topP: config.ai.inference.topP,
+        topK: config.ai.inference.topK,
+        repeatPenalty: config.ai.inference.repeatPenalty,
+      },
+      hardware: {
+        acceleration:
+          envVars.ATLAS_AI_ACCELERATION === "gpu" ||
+          envVars.ATLAS_AI_ACCELERATION === "cpu"
+            ? envVars.ATLAS_AI_ACCELERATION
+            : config.ai.hardware.acceleration,
+        threads:
+          envVars.ATLAS_AI_THREADS !== undefined
+            ? Number(envVars.ATLAS_AI_THREADS)
+            : config.ai.hardware.threads,
+        gpuLayers:
+          envVars.ATLAS_AI_GPU_LAYERS !== undefined
+            ? Number(envVars.ATLAS_AI_GPU_LAYERS)
+            : config.ai.hardware.gpuLayers,
+        contextSize: config.ai.hardware.contextSize,
+      },
+      llamaCpp: {
+        manageServer:
+          envVars.ATLAS_AI_MANAGE_SERVER !== undefined
+            ? envVars.ATLAS_AI_MANAGE_SERVER === "true"
+            : config.ai.llamaCpp.manageServer,
+        binary: envVars.ATLAS_AI_LLAMA_BINARY ?? config.ai.llamaCpp.binary,
+      },
     },
   });
 
