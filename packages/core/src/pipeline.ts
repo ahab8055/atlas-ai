@@ -84,12 +84,21 @@ export function runPipeline(
 
   const plan = createPlan(request, intent, context);
   logStage(logger, "PlanCreated", "planning", request.traceId, {
+    planId: plan.id,
+    goal: plan.goal,
+    kind: plan.kind,
     stepCount: plan.steps.length,
     requiresApproval: plan.requiresApproval,
-    tools: plan.steps.map((s) => s.tool).filter(Boolean),
+    steps: plan.steps.map((s) => ({
+      order: s.order,
+      id: s.id,
+      tool: s.tool,
+      capability: s.capability,
+    })),
   });
 
   logStage(logger, "ExecutionStarted", "execution", request.traceId, {
+    planId: plan.id,
     stepCount: plan.steps.length,
   });
   const execution = executePlan(request, plan);
@@ -98,7 +107,7 @@ export function runPipeline(
     steps: execution.steps.map((s) => ({ id: s.stepId, status: s.status })),
   });
 
-  const response = generateResponse(request, intent, execution);
+  const response = generateResponse(request, intent, execution, plan);
   logStage(logger, "ResponseGenerated", "response", request.traceId, {
     intent: response.intent,
     status: response.status,

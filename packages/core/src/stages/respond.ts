@@ -1,5 +1,7 @@
+import { formatPlanSteps } from "../planning/builders.js";
 import type {
   DetectedIntent,
+  ExecutionPlan,
   ExecutionResult,
   NormalizedRequest,
   PipelineResponse,
@@ -12,6 +14,7 @@ export function generateResponse(
   request: NormalizedRequest,
   intent: DetectedIntent,
   execution: ExecutionResult,
+  plan?: ExecutionPlan,
 ): PipelineResponse {
   if (intent.name === "help") {
     return {
@@ -19,13 +22,14 @@ export function generateResponse(
       status: execution.status,
       text: [
         "Atlas AI — available commands & intents:",
-        "  help                         Show this message",
-        "  status | ping                Runtime status",
-        "  echo <text>                  Echo text through the pipeline",
-        "  Open VS Code                 Application Control intent",
-        "  Find my project files        File Search intent",
-        "  Explain this code            Code Analysis intent",
-        "  <unrecognized>               Handled as unknown intent",
+        "  help                                  Show this message",
+        "  status | ping                         Runtime status",
+        "  echo <text>                           Echo text through the pipeline",
+        "  Open VS Code                          Application Control (simple plan)",
+        "  Find my project files                 File Search (simple plan)",
+        "  Explain this code                     Code Analysis (simple plan)",
+        "  Prepare my development environment    Multi-step setup plan",
+        "  <unrecognized>                        Handled as unknown intent",
       ].join("\n"),
     };
   }
@@ -37,24 +41,28 @@ export function generateResponse(
       text: [
         "I could not classify that request yet.",
         `Received: "${request.text}"`,
-        "Try: help · Open VS Code · Find my project files · Explain this code",
+        "Try: help · Open VS Code · Prepare my development environment",
       ].join("\n"),
     };
   }
 
-  if (execution.status === "blocked") {
+  if (execution.status === "blocked" || execution.status === "partial") {
     const reason =
       execution.steps.find((s) => s.error)?.error ??
       "permission approval required";
+    const lines = [
+      `Understood: ${intent.goal}`,
+      `Category: ${intent.category}`,
+      `Parameters: ${formatParams(intent)}`,
+    ];
+    if (plan) {
+      lines.push(`Plan (${plan.kind}): ${plan.goal}`, formatPlanSteps(plan));
+    }
+    lines.push(`Status: ${execution.status}`, `Detail: ${reason}`);
     return {
       intent: intent.name,
       status: execution.status,
-      text: [
-        `Understood: ${intent.goal}`,
-        `Category: ${intent.category}`,
-        `Parameters: ${formatParams(intent)}`,
-        `Blocked: ${reason}`,
-      ].join("\n"),
+      text: lines.join("\n"),
     };
   }
 
@@ -72,6 +80,14 @@ export function generateResponse(
     .filter((s) => s.output)
     .map((s) => s.output)
     .join("\n");
+
+  if (plan?.kind === "multi" && outputs) {
+    return {
+      intent: intent.name,
+      status: execution.status,
+      text: [`Plan complete: ${plan.goal}`, outputs].join("\n"),
+    };
+  }
 
   return {
     intent: intent.name,

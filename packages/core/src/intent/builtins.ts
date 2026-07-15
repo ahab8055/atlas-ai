@@ -156,11 +156,38 @@ const codeAnalyzeIntent: IntentDefinition = {
   },
 };
 
+/**
+ * Multi-step workflow — e.g. "Prepare my development environment."
+ */
+const environmentSetupIntent: IntentDefinition = {
+  name: "environment.setup",
+  category: "workflow",
+  goal: "Prepare development environment",
+  capabilities: ["application.control", "filesystem.read", "terminal.execute"],
+  complexity: "high",
+  priority: 88,
+  match(_normalizedText, originalText) {
+    const match =
+      /^(?:prepare|setup|set\s*up)\s+(?:my\s+)?(?:development|dev)\s+environment\.?$/i.exec(
+        originalText.trim(),
+      );
+    if (!match) {
+      return null;
+    }
+    return capture(
+      0.93,
+      { workflow: "dev-environment" },
+      "Prepare development environment",
+    );
+  },
+};
+
 /** Built-in MVP intent catalog — extend via `IntentRegistry.register`. */
 export const BUILTIN_INTENT_DEFINITIONS: readonly IntentDefinition[] = [
   helpIntent,
   statusIntent,
   echoIntent,
+  environmentSetupIntent,
   fileSearchIntent,
   applicationOpenIntent,
   codeAnalyzeIntent,

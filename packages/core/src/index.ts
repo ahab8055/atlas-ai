@@ -50,7 +50,22 @@ export {
   type PreferenceStore,
 } from "./context/index.js";
 
-export { createPlan } from "./stages/plan.js";
+export {
+  BUILTIN_PLAN_TEMPLATES,
+  createPlan,
+  draftStep,
+  finalizePlan,
+  formatPlanSteps,
+  getDefaultPlanRegistry,
+  orderSteps,
+  PlanRegistry,
+  registerPlanTemplate,
+  type CreatePlanOptions,
+  type PlanInput,
+  type PlanStepDraft,
+  type PlanTemplate,
+} from "./planning/index.js";
+
 export { executePlan } from "./stages/execute.js";
 export { generateResponse } from "./stages/respond.js";
 
@@ -75,6 +90,7 @@ export type {
   PipelineResponse,
   PipelineResult,
   PipelineStageName,
+  PlanKind,
   PlanStep,
   ProjectContext,
   StepResult,

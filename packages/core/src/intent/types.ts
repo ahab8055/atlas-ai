@@ -9,6 +9,7 @@ export type IntentCategory =
   | "application_control"
   | "file_search"
   | "code_analysis"
+  | "workflow"
   | "conversation"
   | "unknown";
 

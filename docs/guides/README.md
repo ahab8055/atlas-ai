@@ -2,20 +2,21 @@
 
 Practical guides for contributing to Atlas AI.
 
-| Guide                                                    | Description                           |
-| -------------------------------------------------------- | ------------------------------------- |
-| [Development-Setup.md](./Development-Setup.md)           | Toolchain, env vars, OS prerequisites |
-| [Configuration.md](./Configuration.md)                   | Config loading, env profiles, secrets |
-| [Logging.md](./Logging.md)                               | Structured logs, levels, error format |
-| [Testing.md](./Testing.md)                               | Vitest, Rust tests, e2e placeholder   |
-| [CI-CD.md](./CI-CD.md)                                   | GitHub Actions PR quality gates       |
-| [Desktop-Shell.md](./Desktop-Shell.md)                   | Tauri shell, IPC, lifecycle           |
-| [Security.md](./Security.md)                             | Permissions, approvals, secrets       |
-| [Request-Pipeline.md](./Request-Pipeline.md)             | Core request stages + CLI adapter     |
-| [Intent-Detection.md](./Intent-Detection.md)             | Intent categories, params, registry   |
-| [Context-Management.md](./Context-Management.md)         | Context sources before execution      |
-| [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits         |
-| [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow     |
+| Guide                                                    | Description                            |
+| -------------------------------------------------------- | -------------------------------------- |
+| [Development-Setup.md](./Development-Setup.md)           | Toolchain, env vars, OS prerequisites  |
+| [Configuration.md](./Configuration.md)                   | Config loading, env profiles, secrets  |
+| [Logging.md](./Logging.md)                               | Structured logs, levels, error format  |
+| [Testing.md](./Testing.md)                               | Vitest, Rust tests, e2e placeholder    |
+| [CI-CD.md](./CI-CD.md)                                   | GitHub Actions PR quality gates        |
+| [Desktop-Shell.md](./Desktop-Shell.md)                   | Tauri shell, IPC, lifecycle            |
+| [Security.md](./Security.md)                             | Permissions, approvals, secrets        |
+| [Request-Pipeline.md](./Request-Pipeline.md)             | Core request stages + CLI adapter      |
+| [Intent-Detection.md](./Intent-Detection.md)             | Intent categories, params, registry    |
+| [Context-Management.md](./Context-Management.md)         | Context sources before execution       |
+| [Task-Planning.md](./Task-Planning.md)                   | Single- and multi-step execution plans |
+| [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits          |
+| [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow      |
 
 ## Conventions
 

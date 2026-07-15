@@ -63,6 +63,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Request Pipeline](docs/guides/Request-Pipeline.md)               | Core stages + CLI            |
 | [Intent Detection](docs/guides/Intent-Detection.md)               | Classify commands + params   |
 | [Context Management](docs/guides/Context-Management.md)           | Context before execution     |
+| [Task Planning](docs/guides/Task-Planning.md)                     | Ordered execution plans      |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 

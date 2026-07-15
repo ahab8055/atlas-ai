@@ -33,6 +33,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0007](./0007-request-processing-pipeline.md)   | Request processing pipeline in core     | Accepted |
 | [0008](./0008-intent-detection-registry.md)     | Intent detection registry               | Accepted |
 | [0009](./0009-context-management.md)            | Context management providers            | Accepted |
+| [0010](./0010-task-planning-engine.md)          | Task planning engine                    | Accepted |
 
 ## Naming
 

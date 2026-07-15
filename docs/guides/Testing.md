@@ -46,12 +46,15 @@ Rules:
 ## Commands
 
 ```bash
-pnpm test            # Vitest single run
-pnpm test:watch      # Vitest watch mode
-pnpm test:coverage   # Vitest + V8 coverage report → coverage/
+pnpm test            # Build workspace packages, then Vitest once
+pnpm test:watch      # Vitest watch (build packages first if dist/ missing)
+pnpm test:coverage   # Build packages + Vitest + V8 coverage → coverage/
 pnpm test:rust       # cargo test for atlas-desktop
 pnpm test:all        # Vitest + Rust
+pnpm packages:build  # config, logging, security, core (needed by Vitest imports)
 ```
+
+Workspace packages export `dist/`. `pnpm test` builds them first so CI and fresh clones resolve `@atlas-ai/logging` / `@atlas-ai/security` correctly.
 
 ---
 

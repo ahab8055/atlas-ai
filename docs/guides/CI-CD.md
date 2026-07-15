@@ -17,11 +17,11 @@ File: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
 
 **Jobs** (all must pass)
 
-| Job               | Checks                                                            |
-| ----------------- | ----------------------------------------------------------------- |
-| **Lint & format** | Prettier, ESLint, rustfmt, Clippy                                 |
-| **Test**          | Vitest, `cargo test`                                              |
-| **Build**         | `pnpm build` (config + logging + desktop frontend), `cargo check` |
+| Job               | Checks                                                    |
+| ----------------- | --------------------------------------------------------- |
+| **Lint & format** | Prettier, ESLint, rustfmt, Clippy                         |
+| **Test**          | Build workspace packages, Vitest, `cargo test`            |
+| **Build**         | `pnpm build` (packages + desktop frontend), `cargo check` |
 
 Failures on any job fail the workflow, so PR merges can be blocked when branch protection is enabled.
 

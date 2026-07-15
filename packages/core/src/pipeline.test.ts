@@ -89,7 +89,7 @@ describe("request processing pipeline", () => {
 
   it("returns a conversational stub for unknown commands", () => {
     const result = handleRequest(
-      { source: "cli", rawInput: "prepare my development environment" },
+      { source: "cli", rawInput: "teleport my coffee mug to mars" },
       {
         logger: createCapturingLogger().logger,
         contextManager: new ContextManager(),
@@ -128,6 +128,26 @@ describe("request processing pipeline", () => {
     );
     expect(code.intent.category).toBe("code_analysis");
     expect(code.intent.parameters.target).toBe("code");
+  });
+
+  it("builds a multi-step plan for preparing the development environment", () => {
+    const result = handleRequest(
+      {
+        source: "cli",
+        rawInput: "Prepare my development environment",
+      },
+      {
+        logger: createCapturingLogger().logger,
+        contextManager: new ContextManager(),
+      },
+    );
+
+    expect(result.intent.name).toBe("environment.setup");
+    expect(result.plan.kind).toBe("multi");
+    expect(result.plan.steps).toHaveLength(4);
+    expect(result.plan.steps.map((s) => s.order)).toEqual([1, 2, 3, 4]);
+    expect(result.response.text).toContain("Open VS Code");
+    expect(result.response.text).toContain("Start backend");
   });
 
   it("loads context before execution and records conversation", () => {

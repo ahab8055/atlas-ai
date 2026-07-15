@@ -53,11 +53,11 @@ describe("intent detection", () => {
   });
 
   it("handles unknown intents gracefully", () => {
-    const intent = detect("prepare my development environment");
+    const intent = detect("teleport my coffee mug to mars");
     expect(intent.known).toBe(false);
     expect(intent.name).toBe("unknown");
     expect(intent.category).toBe("unknown");
-    expect(intent.parameters.text).toBe("prepare my development environment");
+    expect(intent.parameters.text).toBe("teleport my coffee mug to mars");
     expect(intent.confidence).toBeLessThan(0.5);
   });
 

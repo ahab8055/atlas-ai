@@ -44,23 +44,11 @@ export type {
   UserPreferences,
 } from "./context/types.js";
 
+export type { ExecutionPlan, PlanKind, PlanStep } from "./planning/types.js";
+
 import type { DetectedIntent } from "./intent/types.js";
 import type { LoadedContext } from "./context/types.js";
-
-export interface PlanStep {
-  id: string;
-  description: string;
-  /** Optional tool name for execution stage. */
-  tool?: string;
-  args?: Record<string, unknown>;
-  /** Security capability when a tool may touch the system. */
-  capability?: string;
-}
-
-export interface ExecutionPlan {
-  steps: PlanStep[];
-  requiresApproval: boolean;
-}
+import type { ExecutionPlan } from "./planning/types.js";
 
 export type StepStatus = "completed" | "skipped" | "blocked" | "failed";
 
