@@ -1,0 +1,43 @@
+---
+description: Implement features by consulting docs/ first; maps tasks to the correct Atlas AI documentation.
+alwaysApply: true
+---
+
+# Docs-Driven Implementation
+
+Before implementing any feature, change, or architecture decision, **read the relevant docs under `docs/`**. Do not invent stack, APIs, schema, or scope that contradict those documents.
+
+## Workflow
+
+1. **Classify the task** (product scope, stack, architecture area, API/DB, security, roadmap).
+2. **Open the mapped docs** below (read the sections that apply; skim the rest).
+3. **Extract constraints**: requirements, components, data models, APIs, security rules, out-of-scope items.
+4. **Implement** to match those constraints. Prefer existing patterns named in the docs.
+5. **Call out gaps**: if docs are missing or conflict, stop and state the conflict before coding around it.
+
+## Doc map (start here)
+
+| Task type | Primary docs |
+|-----------|----------------|
+| MVP scope / what to build | `docs/MVP-Plan.md`, `docs/Architecture/18-MVP-Feature-Specification.md`, `docs/PRD/10-MVP.md` |
+| Product goals / requirements | `docs/PRD/` (esp. `01`–`09`, `08-Functional-Requirements.md`) |
+| Tech stack / libraries | `docs/Technology-Stack-Architecture.md`, `docs/Architecture/17-Technology-Stack.md` |
+| System / components | `docs/Architecture/01-System-Architecture.md`, `docs/Architecture/02-Component-Architecture.md` |
+| Agents / tools / memory | `docs/Architecture/03-Agent-System-Architecture.md`, `05-Tool-System-Architecture.md`, `04-Memory-Architecture.md` |
+| Local AI / models | `docs/Architecture/09-Local-AI-Architecture.md`, `25-Model-Management-System.md`, `22-AI-Orchestration-Architecture.md` |
+| Data / DB / search / graph | `docs/Architecture/07-Data-Architecture.md`, `20-Database-Schema.md`, `24-Search-and-Retrieval-Architecture.md`, `23-Knowledge-Graph-Architecture.md` |
+| API surface | `docs/Architecture/21-API-Specification.md` |
+| Security / permissions | `docs/Architecture/06-Security-Architecture.md` |
+| Events / workflows / plugins | `docs/Architecture/10-Event-System-Architecture.md`, `13-Workflow-Automation-Architecture.md`, `12-Plugin-System-Architecture.md` |
+| Desktop / voice | `docs/Architecture/11-Desktop-Application-Architecture.md`, `08-Voice-System-Architecture.md` |
+| Deploy / monitor / roadmap | `docs/Architecture/14-Deployment-Architecture.md`, `15-Monitoring-Architecture.md`, `16-Implementation-Roadmap.md`, `19-Development-Plan.md` |
+
+When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.
+
+## Rules of engagement
+
+- Prefer **local-first, security-first, modular** choices defined in the MVP plan.
+- Stay inside **MVP scope** unless the user explicitly asks for post-MVP work.
+- Match **documented API contracts, schema, and component boundaries** when they exist.
+- Do not add dependencies or services that contradict the technology stack docs without asking.
+- When a task spans multiple areas, read all mapped docs for those areas before writing code.

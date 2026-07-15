@@ -1,0 +1,5 @@
+# Atlas AI — Rust toolchain pin (Tauri 2 requires rustc >= 1.77.2)
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "default"

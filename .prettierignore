@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+out
+target
+coverage
+pnpm-lock.yaml
+Cargo.lock
+.data
+models
+*.min.js
+apps/desktop/src-tauri/gen
+apps/desktop/src-tauri/icons

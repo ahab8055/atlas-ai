@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Local runtime data
+.data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Model weights (keep directory via .gitkeep)
+models/**
+!models/.gitkeep
+!models/**/.gitkeep
+
+# Build artifacts
+dist/
+build/
+out/
+target/
+*.tsbuildinfo
+.turbo/
+.cache/
+.vite/
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# Rust
+**/*.rs.bk
+
+# Tauri / Cargo
+apps/desktop/src-tauri/target/
+/target/
+
+# Local tool overrides
+*.local
+.env.local
+.env.*.local
+
+# Optional personal Cursor state (shared rules may still be committed)
+.cursor/*.log
+

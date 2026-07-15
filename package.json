@@ -1,0 +1,48 @@
+{
+  "name": "atlas-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Atlas AI — local-first personal AI assistant",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22 <23",
+    "pnpm": ">=9 <10"
+  },
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "prepare": "husky",
+    "check:env": "bash scripts/check-env.sh",
+    "dev": "bash scripts/with-cargo-path.sh pnpm --filter @atlas-ai/desktop tauri:dev",
+    "dev:web": "pnpm --filter @atlas-ai/desktop dev",
+    "build": "pnpm --filter @atlas-ai/desktop build",
+    "build:desktop": "bash scripts/with-cargo-path.sh pnpm --filter @atlas-ai/desktop tauri:build",
+    "check:rust": "bash scripts/with-cargo-path.sh cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "preview": "pnpm --filter @atlas-ai/desktop preview",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:rust": "bash scripts/with-cargo-path.sh cargo fmt --all",
+    "format:rust:check": "bash scripts/with-cargo-path.sh cargo fmt --all -- --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:rust": "bash scripts/with-cargo-path.sh cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "check:quality": "pnpm format:check && pnpm lint && pnpm format:rust:check && pnpm lint:rust",
+    "check": "pnpm check:quality && pnpm check:rust && pnpm build",
+    "commitlint": "commitlint",
+    "commitlint:last": "commitlint --last --verbose"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.30.1",
+    "eslint": "^9.30.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "prettier": "^3.6.2",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.35.1"
+  }
+}
