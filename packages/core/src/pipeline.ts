@@ -2,6 +2,8 @@ import type { Logger } from "@atlas-ai/logging";
 
 import type { ContextManager } from "./context/manager.js";
 import { getDefaultContextManager } from "./context/manager.js";
+import type { ExecutionController } from "./execution/controller.js";
+import { getDefaultExecutionController } from "./execution/controller.js";
 import { type OrchestrationEvent } from "./events.js";
 import { normalizeRequest } from "./normalize.js";
 import { loadContext } from "./stages/context.js";
@@ -18,6 +20,7 @@ import type {
 export interface PipelineOptions {
   logger: Logger;
   contextManager?: ContextManager;
+  executionController?: ExecutionController;
 }
 
 function logStage(
@@ -49,6 +52,8 @@ export function runPipeline(
 ): PipelineResult {
   const { logger } = options;
   const contextManager = options.contextManager ?? getDefaultContextManager();
+  const executionController =
+    options.executionController ?? getDefaultExecutionController();
   const request = normalizeRequest(incoming);
 
   logStage(logger, "RequestReceived", "normalize", request.traceId, {
@@ -101,9 +106,29 @@ export function runPipeline(
     planId: plan.id,
     stepCount: plan.steps.length,
   });
-  const execution = executePlan(request, plan);
+
+  const execution = executePlan(request, plan, {
+    controller: executionController,
+    onProgress: (task) => {
+      logger.debug("ExecutionProgress", {
+        category: "tool",
+        traceId: request.traceId,
+        context: {
+          taskId: task.id,
+          state: task.state,
+          progress: task.progress,
+          failureCount: task.failures.length,
+        },
+      });
+    },
+  });
+
   logStage(logger, "ExecutionCompleted", "execution", request.traceId, {
+    taskId: execution.taskId,
     status: execution.status,
+    lifecycle: execution.lifecycle,
+    progress: execution.progress,
+    failures: execution.failures,
     steps: execution.steps.map((s) => ({ id: s.stepId, status: s.status })),
   });
 

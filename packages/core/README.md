@@ -9,6 +9,7 @@ Incoming request → normalize → intent → context → plan → execute → r
 - Intent: `src/intent/` — [Intent-Detection.md](../../docs/guides/Intent-Detection.md)
 - Context: `src/context/` — [Context-Management.md](../../docs/guides/Context-Management.md)
 - Planning: `src/planning/` — [Task-Planning.md](../../docs/guides/Task-Planning.md)
+- Execution: `src/execution/` — [Execution-Controller.md](../../docs/guides/Execution-Controller.md)
 
 Input adapters (CLI, desktop, voice) stay outside this package and call `handleRequest`.
 

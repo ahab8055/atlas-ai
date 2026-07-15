@@ -41,6 +41,7 @@ docs/
 | Intent detection        | [guides/Intent-Detection.md](./guides/Intent-Detection.md)                             |
 | Context management      | [guides/Context-Management.md](./guides/Context-Management.md)                         |
 | Task planning           | [guides/Task-Planning.md](./guides/Task-Planning.md)                                   |
+| Execution controller    | [guides/Execution-Controller.md](./guides/Execution-Controller.md)                     |
 
 ## Adding future documents
 

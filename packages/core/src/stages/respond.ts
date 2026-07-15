@@ -46,8 +46,44 @@ export function generateResponse(
     };
   }
 
+  if (execution.status === "failed") {
+    const error =
+      execution.failures[0]?.message ??
+      execution.steps.find((s) => s.error)?.error ??
+      "Unknown failure";
+    const lines = [`Request failed: ${error}`];
+    if (execution.lifecycle) {
+      lines.push(`Lifecycle: ${execution.lifecycle}`);
+    }
+    if (execution.failures.length > 1) {
+      lines.push(
+        ...execution.failures
+          .slice(1)
+          .map((f) => `- ${f.message}${f.stepId ? ` (${f.stepId})` : ""}`),
+      );
+    }
+    return {
+      intent: intent.name,
+      status: execution.status,
+      text: lines.join("\n"),
+    };
+  }
+
+  if (execution.status === "cancelled") {
+    return {
+      intent: intent.name,
+      status: execution.status,
+      text: [
+        "Execution cancelled.",
+        execution.failures[0]?.message ?? "Cancelled by request",
+        `Progress: ${execution.progress.percent}%`,
+      ].join("\n"),
+    };
+  }
+
   if (execution.status === "blocked" || execution.status === "partial") {
     const reason =
+      execution.failures[0]?.message ??
       execution.steps.find((s) => s.error)?.error ??
       "permission approval required";
     const lines = [
@@ -58,21 +94,16 @@ export function generateResponse(
     if (plan) {
       lines.push(`Plan (${plan.kind}): ${plan.goal}`, formatPlanSteps(plan));
     }
-    lines.push(`Status: ${execution.status}`, `Detail: ${reason}`);
+    lines.push(
+      `Lifecycle: ${execution.lifecycle}`,
+      `Status: ${execution.status}`,
+      `Progress: ${execution.progress.completedSteps}/${execution.progress.totalSteps} steps`,
+      `Detail: ${reason}`,
+    );
     return {
       intent: intent.name,
       status: execution.status,
       text: lines.join("\n"),
-    };
-  }
-
-  if (execution.status === "failed") {
-    const error =
-      execution.steps.find((s) => s.error)?.error ?? "Unknown failure";
-    return {
-      intent: intent.name,
-      status: execution.status,
-      text: `Request failed: ${error}`,
     };
   }
 

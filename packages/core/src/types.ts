@@ -46,25 +46,21 @@ export type {
 
 export type { ExecutionPlan, PlanKind, PlanStep } from "./planning/types.js";
 
+export type {
+  ExecutionFailure,
+  ExecutionLifecycleState,
+  ExecutionProgress,
+  ExecutionResult,
+  ExecutionStatus,
+  ExecutionTask,
+  StepResult,
+  StepStatus,
+} from "./execution/types.js";
+
 import type { DetectedIntent } from "./intent/types.js";
 import type { LoadedContext } from "./context/types.js";
 import type { ExecutionPlan } from "./planning/types.js";
-
-export type StepStatus = "completed" | "skipped" | "blocked" | "failed";
-
-export interface StepResult {
-  stepId: string;
-  status: StepStatus;
-  output?: string;
-  error?: string;
-}
-
-export type ExecutionStatus = "completed" | "partial" | "blocked" | "failed";
-
-export interface ExecutionResult {
-  status: ExecutionStatus;
-  steps: StepResult[];
-}
+import type { ExecutionResult, ExecutionStatus } from "./execution/types.js";
 
 export interface PipelineResponse {
   text: string;

@@ -66,7 +66,16 @@ export {
   type PlanTemplate,
 } from "./planning/index.js";
 
-export { executePlan } from "./stages/execute.js";
+export {
+  ExecutionController,
+  executePlan,
+  executeToolStep,
+  getDefaultExecutionController,
+  setDefaultExecutionController,
+  type ExecuteOptions,
+  type ExecutePlanOptions,
+} from "./execution/index.js";
+
 export { generateResponse } from "./stages/respond.js";
 
 export type {
@@ -75,9 +84,13 @@ export type {
   ConversationContext,
   ConversationTurn,
   DetectedIntent,
+  ExecutionFailure,
+  ExecutionLifecycleState,
   ExecutionPlan,
+  ExecutionProgress,
   ExecutionResult,
   ExecutionStatus,
+  ExecutionTask,
   IncomingRequest,
   InputSource,
   IntentCategory,

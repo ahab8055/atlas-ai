@@ -15,6 +15,7 @@ Practical guides for contributing to Atlas AI.
 | [Intent-Detection.md](./Intent-Detection.md)             | Intent categories, params, registry    |
 | [Context-Management.md](./Context-Management.md)         | Context sources before execution       |
 | [Task-Planning.md](./Task-Planning.md)                   | Single- and multi-step execution plans |
+| [Execution-Controller.md](./Execution-Controller.md)     | Lifecycle, progress, failures          |
 | [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits          |
 | [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow      |
 

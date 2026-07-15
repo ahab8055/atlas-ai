@@ -146,6 +146,8 @@ describe("request processing pipeline", () => {
     expect(result.plan.kind).toBe("multi");
     expect(result.plan.steps).toHaveLength(4);
     expect(result.plan.steps.map((s) => s.order)).toEqual([1, 2, 3, 4]);
+    expect(result.execution.lifecycle).toBe("failed");
+    expect(result.execution.failures.length).toBeGreaterThan(0);
     expect(result.response.text).toContain("Open VS Code");
     expect(result.response.text).toContain("Start backend");
   });

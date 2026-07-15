@@ -64,6 +64,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Intent Detection](docs/guides/Intent-Detection.md)               | Classify commands + params   |
 | [Context Management](docs/guides/Context-Management.md)           | Context before execution     |
 | [Task Planning](docs/guides/Task-Planning.md)                     | Ordered execution plans      |
+| [Execution Controller](docs/guides/Execution-Controller.md)       | Lifecycle + progress         |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 
