@@ -1,15 +1,34 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Unit/integration tests are colocated under packages and apps.
+const root = path.dirname(fileURLToPath(import.meta.url));
+
+/** Root `tests/integration` imports workspace packages via aliases (not hoisted to root). */
+const workspaceAlias = {
+  "@atlas-ai/core": path.join(root, "packages/core/dist/index.js"),
+  "@atlas-ai/logging": path.join(root, "packages/logging/dist/index.js"),
+  "@atlas-ai/security": path.join(root, "packages/security/dist/index.js"),
+  "@atlas-ai/tools": path.join(root, "packages/tools/dist/index.js"),
+  "@atlas-ai/database": path.join(root, "packages/database/dist/index.js"),
+  "@atlas-ai/config": path.join(root, "packages/config/dist/index.js"),
+};
+
+// Unit tests are colocated under packages and apps.
+// Cross-package Phase 1 integration: tests/integration.
 // Cross-cutting e2e lives under tests/e2e (Playwright later).
 export default defineConfig({
+  resolve: {
+    alias: workspaceAlias,
+  },
   test: {
-    name: "atlas-unit",
+    name: "atlas",
     environment: "node",
     include: [
       "packages/**/src/**/*.{test,spec}.ts",
       "apps/**/src/**/*.{test,spec}.{ts,tsx}",
       "tests/unit/**/*.{test,spec}.ts",
+      "tests/integration/**/*.{test,spec}.ts",
     ],
     exclude: [
       "**/node_modules/**",

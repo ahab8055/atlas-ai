@@ -31,6 +31,7 @@ atlas-ai/
 ├── tests/
 │   ├── README.md
 │   ├── unit/                  # optional shared unit helpers
+│   ├── integration/           # cross-package Phase 1 core runtime
 │   └── e2e/                   # Playwright (later)
 └── apps/desktop/src-tauri/    # #[cfg(test)] modules
 ```
@@ -38,6 +39,7 @@ atlas-ai/
 Rules:
 
 - Prefer **colocated** `*.test.ts` beside implementation.
+- Use `tests/integration/` for **cross-package** Phase 1 workflows (pipeline ↔ tools ↔ security).
 - Use `tests/e2e/` only for cross-cutting UI flows.
 - Do not commit secrets or live `.env` values into fixtures; use inline `envVars` like config tests.
 
@@ -46,12 +48,13 @@ Rules:
 ## Commands
 
 ```bash
-pnpm test            # Build workspace packages, then Vitest once
-pnpm test:watch      # Vitest watch (build packages first if dist/ missing)
-pnpm test:coverage   # Build packages + Vitest + V8 coverage → coverage/
-pnpm test:rust       # cargo test for atlas-desktop
-pnpm test:all        # Vitest + Rust
-pnpm packages:build  # config, logging, security, core (needed by Vitest imports)
+pnpm test               # Build workspace packages, then Vitest once (unit + integration)
+pnpm test:integration   # Build packages, then Vitest tests/integration only
+pnpm test:watch         # Vitest watch (build packages first if dist/ missing)
+pnpm test:coverage      # Build packages + Vitest + V8 coverage → coverage/
+pnpm test:rust          # cargo test for atlas-desktop
+pnpm test:all           # Vitest + Rust
+pnpm packages:build     # config, logging, security, tools, database, core
 ```
 
 Workspace packages export `dist/`. `pnpm test` builds them first so CI and fresh clones resolve `@atlas-ai/logging` / `@atlas-ai/security` correctly.
@@ -60,12 +63,13 @@ Workspace packages export `dist/`. `pnpm test` builds them first so CI and fresh
 
 ## Example coverage today
 
-| Area                | Example                                              |
-| ------------------- | ---------------------------------------------------- |
-| `@atlas-ai/config`  | `packages/config/src/merge.test.ts`                  |
-| `@atlas-ai/logging` | `packages/logging/src/logger.test.ts`                |
-| Desktop smoke       | `apps/desktop/src/smoke.test.ts`                     |
-| Rust greet helper   | `apps/desktop/src-tauri/src/lib.rs` (`tests` module) |
+| Area                 | Example                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `@atlas-ai/config`   | `packages/config/src/merge.test.ts`                                                                                    |
+| `@atlas-ai/logging`  | `packages/logging/src/logger.test.ts`                                                                                  |
+| Phase 1 core runtime | `tests/integration/phase1-core-runtime.test.ts` — see [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md) |
+| Desktop smoke        | `apps/desktop/src/smoke.test.ts`                                                                                       |
+| Rust greet helper    | `apps/desktop/src-tauri/src/lib.rs` (`tests` module)                                                                   |
 
 ---
 

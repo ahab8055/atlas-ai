@@ -43,10 +43,15 @@
     "test": "pnpm packages:build && vitest run",
     "test:watch": "vitest",
     "test:coverage": "pnpm packages:build && vitest run --coverage",
+    "test:integration": "pnpm packages:build && vitest run tests/integration",
     "test:rust": "bash scripts/with-cargo-path.sh cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml",
     "test:all": "pnpm test && pnpm test:rust"
   },
   "devDependencies": {
+    "@atlas-ai/core": "workspace:*",
+    "@atlas-ai/logging": "workspace:*",
+    "@atlas-ai/security": "workspace:*",
+    "@atlas-ai/tools": "workspace:*",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.30.1",
