@@ -63,9 +63,10 @@ describe("CLI → core runtime", () => {
     const result = executeCommand(runtime, options, "status");
     recordPipelineResult(runtime.database!, result);
 
-    const history = runtime.database!.executionHistory.listRecent(5);
+    const history = runtime.database!.taskHistory.listRecent(5);
     expect(history.length).toBeGreaterThanOrEqual(1);
     expect(history[0]?.intent).toBe("system.status");
+    expect(history[0]?.timestamps.createdAt).toBeTruthy();
     expect(runtime.database!.tools.list().length).toBeGreaterThan(0);
 
     closeCliRuntime(runtime);

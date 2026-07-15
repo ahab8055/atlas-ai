@@ -47,7 +47,22 @@ describe("parseCliArgs", () => {
     expect(debug.quiet).toBe(false);
   });
 
-  it("rejects unknown options", () => {
+  it("forwards command-local flags after the command name", () => {
+    const options = parseCliArgs(
+      ["--quiet", "history", "--limit", "5", "--status", "failed"],
+      {},
+    );
+    expect(options.quiet).toBe(true);
+    expect(options.commandArgs).toEqual([
+      "history",
+      "--limit",
+      "5",
+      "--status",
+      "failed",
+    ]);
+  });
+
+  it("rejects unknown global options before the command", () => {
     expect(() => parseCliArgs(["--nope"], {})).toThrow(/Unknown option/);
   });
 });

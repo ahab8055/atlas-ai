@@ -24,8 +24,18 @@ export {
 } from "./repositories/tools.js";
 export {
   ExecutionHistoryRepository,
+  type ExecutionFailureInput,
   type ExecutionHistoryInput,
+  type ExecutionHistoryQuery,
   type ExecutionHistoryRow,
   type ExecutionStepInput,
   type TaskExecutionRow,
 } from "./repositories/execution-history.js";
+export {
+  TaskHistoryService,
+  type TaskHistoryEntry,
+  type TaskHistoryFailure,
+  type TaskHistoryQuery,
+  type TaskHistoryQueryResult,
+  type TaskHistoryStep,
+} from "./task-history.js";

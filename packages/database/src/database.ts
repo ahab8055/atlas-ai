@@ -9,6 +9,7 @@ import { SystemConfigRepository } from "./repositories/system-config.js";
 import { ToolsRepository } from "./repositories/tools.js";
 import { UserPreferencesRepository } from "./repositories/user-preferences.js";
 import { SCHEMA_VERSION } from "./schema.js";
+import { TaskHistoryService } from "./task-history.js";
 
 /**
  * High-level Atlas database handle — initializes on open, exposes repositories.
@@ -18,6 +19,8 @@ export class AtlasDatabase {
   readonly userPreferences: UserPreferencesRepository;
   readonly tools: ToolsRepository;
   readonly executionHistory: ExecutionHistoryRepository;
+  /** UI-oriented task history tracking (query + display DTOs). */
+  readonly taskHistory: TaskHistoryService;
 
   private constructor(
     readonly db: SqliteDatabase,
@@ -27,6 +30,7 @@ export class AtlasDatabase {
     this.userPreferences = new UserPreferencesRepository(db);
     this.tools = new ToolsRepository(db);
     this.executionHistory = new ExecutionHistoryRepository(db);
+    this.taskHistory = new TaskHistoryService(this.executionHistory);
   }
 
   /** Schema version stamped in `schema_migrations`. */

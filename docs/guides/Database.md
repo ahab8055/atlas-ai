@@ -65,7 +65,13 @@ db.tools.list();
 
 db.executionHistory.record({ taskId: "…", status: "completed", steps: […] });
 db.executionHistory.listRecent(20);
+
+// Preferred for UI / review:
+db.taskHistory.query({ status: "completed", limit: 20 });
+db.taskHistory.getById("exec_…");
 ```
+
+See also [Task-History.md](./Task-History.md).
 
 ---
 

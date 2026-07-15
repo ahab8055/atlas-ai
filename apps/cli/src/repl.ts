@@ -2,6 +2,7 @@ import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 import { exitCodeForResult } from "./display.js";
+import { tryHandleHistoryCommand } from "./history-command.js";
 import type { CliOptions } from "./options.js";
 import { createCliRuntime, runCommand, type CliRuntime } from "./run.js";
 
@@ -45,6 +46,11 @@ export async function runRepl(
       }
       if (isExitLine(trimmed)) {
         break;
+      }
+
+      if (tryHandleHistoryCommand(runtime, trimmed)) {
+        lastCode = process.exitCode === 2 ? 2 : 0;
+        continue;
       }
 
       const result = runCommand(runtime, options, trimmed);

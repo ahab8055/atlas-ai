@@ -67,10 +67,12 @@ ATLAS_CLI_QUIET=1 pnpm atlas status
 
 ### Database
 
-SQLite initializes automatically (default `.data/atlas.sqlite`). Each command syncs tools and records execution history — see [Database.md](./Database.md).
+SQLite initializes automatically (default `.data/atlas.sqlite`). Each command syncs tools and records execution history — see [Database.md](./Database.md) and [Task-History.md](./Task-History.md).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status
+pnpm atlas history
+pnpm atlas history --status blocked --limit 5
 pnpm atlas --no-db status
 ```
 

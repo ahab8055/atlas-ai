@@ -6,6 +6,7 @@
  * `createRequestHandler` / `handleRequest` with `source: "desktop" | "voice"`.
  */
 import { exitCodeForResult } from "./display.js";
+import { tryHandleHistoryCommand } from "./history-command.js";
 import { usage } from "./options.js";
 import { parseCliArgs } from "./parse-args.js";
 import { runRepl } from "./repl.js";
@@ -42,13 +43,21 @@ async function main(): Promise<void> {
   try {
     if (options.interactive) {
       if (hasCommand) {
-        runCommand(runtime, options, options.commandArgs.join(" "));
+        const initial = options.commandArgs.join(" ");
+        if (!tryHandleHistoryCommand(runtime, initial)) {
+          runCommand(runtime, options, initial);
+        }
       }
       process.exitCode = await runRepl(options, runtime);
       return;
     }
 
-    const result = runCommand(runtime, options, options.commandArgs.join(" "));
+    const rawInput = options.commandArgs.join(" ");
+    if (tryHandleHistoryCommand(runtime, rawInput)) {
+      return;
+    }
+
+    const result = runCommand(runtime, options, rawInput);
     process.exitCode = exitCodeForResult(result);
   } finally {
     closeCliRuntime(runtime);

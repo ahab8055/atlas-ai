@@ -21,6 +21,13 @@ export function parseCliArgs(
 
   for (let i = 0; i < tokens.length; i += 1) {
     const token = tokens[i]!;
+
+    // After the command starts, keep remaining tokens (including flags like --limit).
+    if (commandArgs.length > 0) {
+      commandArgs.push(token);
+      continue;
+    }
+
     switch (token) {
       case "-h":
       case "--help":

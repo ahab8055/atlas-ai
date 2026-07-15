@@ -3,6 +3,7 @@ import { dirname, isAbsolute, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { SCHEMA_SQL, SCHEMA_VERSION } from "./schema.js";
+import { applyIncrementalMigrations } from "./migrations.js";
 
 export type SqliteDatabase = DatabaseSync;
 
@@ -39,18 +40,7 @@ function ensureParentDir(dbPath: string): void {
  */
 export function migrate(db: SqliteDatabase): number {
   db.exec(SCHEMA_SQL);
-
-  const row = db
-    .prepare("SELECT MAX(version) AS version FROM schema_migrations")
-    .get() as { version: number | null } | undefined;
-
-  const current = row?.version ?? 0;
-  if (current < SCHEMA_VERSION) {
-    db.prepare(
-      "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",
-    ).run(SCHEMA_VERSION, new Date().toISOString());
-  }
-
+  applyIncrementalMigrations(db);
   return SCHEMA_VERSION;
 }
 

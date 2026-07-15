@@ -45,6 +45,8 @@ export function usage(): string {
     "Examples:",
     "  atlas help",
     "  atlas status",
+    "  atlas history",
+    "  atlas history --status failed --limit 5",
     "  atlas echo hello",
     '  atlas --debug "Open VS Code"',
     "  atlas -i",

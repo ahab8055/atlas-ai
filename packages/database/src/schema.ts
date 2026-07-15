@@ -1,5 +1,5 @@
-/** Current embedded schema version applied by `initializeDatabase`. */
-export const SCHEMA_VERSION = 1;
+/** Current embedded schema version applied by `migrate`. */
+export const SCHEMA_VERSION = 2;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS execution_history (
   lifecycle TEXT,
   progress_json TEXT,
   result_json TEXT,
+  failures_json TEXT,
   started_at TEXT,
   finished_at TEXT,
   created_at TEXT NOT NULL
@@ -76,6 +77,15 @@ CREATE INDEX IF NOT EXISTS idx_user_preferences_user
 
 CREATE INDEX IF NOT EXISTS idx_execution_history_created
   ON execution_history(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_execution_history_status
+  ON execution_history(status);
+
+CREATE INDEX IF NOT EXISTS idx_execution_history_intent
+  ON execution_history(intent);
+
+CREATE INDEX IF NOT EXISTS idx_execution_history_finished
+  ON execution_history(finished_at);
 
 CREATE INDEX IF NOT EXISTS idx_task_executions_execution
   ON task_executions(execution_id);

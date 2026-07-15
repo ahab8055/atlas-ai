@@ -27,7 +27,7 @@ export function recordPipelineResult(
   database: AtlasDatabase,
   result: PipelineResult,
 ): void {
-  database.executionHistory.record({
+  database.taskHistory.record({
     taskId: result.execution.taskId,
     planId: result.plan.id,
     requestId: result.request.id,
@@ -41,7 +41,14 @@ export function recordPipelineResult(
       responseStatus: result.response.status,
       summary: result.response.summary,
       errors: result.response.errors,
+      warnings: result.response.warnings,
     },
+    failures: result.execution.failures.map((failure) => ({
+      stepId: failure.stepId,
+      message: failure.message,
+      code: failure.code,
+      at: failure.at,
+    })),
     startedAt: result.execution.startedAt,
     finishedAt: result.execution.finishedAt,
     steps: result.execution.steps.map((step) => ({

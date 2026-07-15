@@ -114,3 +114,100 @@ describe("AtlasDatabase", () => {
     }
   });
 });
+
+describe("TaskHistoryService", () => {
+  it("records completed tasks with timestamps, results, and failures", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:" });
+    const startedAt = "2026-07-15T12:00:00.000Z";
+    const finishedAt = "2026-07-15T12:00:01.000Z";
+
+    const entry = atlas.taskHistory.record({
+      taskId: "task-history-1",
+      intent: "environment.setup",
+      goal: "Prepare my development environment",
+      status: "blocked",
+      lifecycle: "failed",
+      result: { summary: "Blocked: permissions" },
+      failures: [
+        {
+          stepId: "open-editor",
+          message: "Permission require_confirmation",
+          code: "permission_blocked",
+          at: finishedAt,
+        },
+      ],
+      startedAt,
+      finishedAt,
+      steps: [
+        {
+          step: "open-editor",
+          status: "blocked",
+          error: "Permission require_confirmation",
+        },
+        { step: "start-backend", status: "skipped" },
+      ],
+    });
+
+    expect(entry.timestamps.startedAt).toBe(startedAt);
+    expect(entry.timestamps.finishedAt).toBe(finishedAt);
+    expect(entry.result?.summary).toBe("Blocked: permissions");
+    expect(entry.failures).toHaveLength(1);
+    expect(entry.failures[0]?.code).toBe("permission_blocked");
+    expect(entry.display.hasFailures).toBe(true);
+    expect(entry.display.statusLabel).toBe("Blocked");
+    expect(entry.display.headline).toContain("development environment");
+    expect(entry.steps).toHaveLength(2);
+
+    atlas.close();
+  });
+
+  it("supports querying history for UI / review", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:" });
+
+    atlas.taskHistory.record({
+      taskId: "t1",
+      intent: "system.status",
+      goal: "Status check",
+      status: "completed",
+      finishedAt: "2026-07-15T10:00:00.000Z",
+      steps: [{ step: "status", status: "completed", result: "ok" }],
+    });
+    atlas.taskHistory.record({
+      taskId: "t2",
+      intent: "echo",
+      goal: "Echo text",
+      status: "completed",
+      finishedAt: "2026-07-15T11:00:00.000Z",
+      steps: [{ step: "echo", status: "completed", result: "hi" }],
+    });
+    atlas.taskHistory.record({
+      taskId: "t3",
+      intent: "application.open",
+      goal: "Open VS Code",
+      status: "blocked",
+      finishedAt: "2026-07-15T12:00:00.000Z",
+      failures: [{ message: "needs approval", code: "permission_blocked" }],
+      steps: [{ step: "open", status: "blocked", error: "needs approval" }],
+    });
+
+    const blocked = atlas.taskHistory.query({ status: "blocked" });
+    expect(blocked.total).toBe(1);
+    expect(blocked.items[0]?.intent).toBe("application.open");
+    expect(blocked.items[0]?.display.hasFailures).toBe(true);
+
+    const byIntent = atlas.taskHistory.query({ intent: "echo" });
+    expect(byIntent.total).toBe(1);
+    expect(byIntent.items[0]?.title).toBe("Echo text");
+
+    const recent = atlas.taskHistory.listRecent(2);
+    expect(recent).toHaveLength(2);
+    expect(recent[0]?.taskId).toBe("t3");
+
+    const detail = atlas.taskHistory.getById(recent[0]!.id);
+    expect(detail?.steps[0]?.name).toBe("open");
+    expect(detail?.display.headline).toBeTruthy();
+    expect(detail?.timestamps.createdAt).toBeTruthy();
+
+    atlas.close();
+  });
+});
