@@ -1,23 +1,24 @@
 # Atlas AI desktop application
 
-Tauri 2 + React + TypeScript shell for Atlas AI.
+Tauri 2 + React + TypeScript **foundation shell** for Atlas AI.
+
+See [docs/guides/Desktop-Shell.md](../../docs/guides/Desktop-Shell.md).
 
 ## Commands (from repo root)
 
-| Command              | Description                        |
-| -------------------- | ---------------------------------- |
-| `pnpm dev`           | Start desktop app (`tauri dev`)    |
-| `pnpm dev:web`       | Vite frontend only (no Rust shell) |
-| `pnpm build`         | Build frontend (`tsc` + Vite)      |
-| `pnpm build:desktop` | Production Tauri bundle            |
-| `pnpm check:rust`    | Compile-check Rust backend         |
+| Command              | Description                                |
+| -------------------- | ------------------------------------------ |
+| `pnpm dev`           | Start desktop app (`tauri dev`) — full IPC |
+| `pnpm dev:web`       | Vite frontend only (no Rust shell)         |
+| `pnpm build`         | Build frontend (+ packages)                |
+| `pnpm build:desktop` | Production Tauri bundle                    |
+| `pnpm check:rust`    | Compile-check Rust backend                 |
 
-From this package:
+## IPC (foundation)
 
-```bash
-pnpm tauri:dev
-pnpm build
-pnpm check:rust
-```
+| Command        | Purpose                         |
+| -------------- | ------------------------------- |
+| `get_app_info` | Name, version, foundation phase |
+| `ping`         | Connectivity probe              |
 
-See [docs/guides/Development-Setup.md](../../docs/guides/Development-Setup.md) for toolchain prerequisites.
+Typed wrappers: `src/lib/ipc`.

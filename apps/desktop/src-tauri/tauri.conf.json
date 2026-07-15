@@ -12,11 +12,14 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Atlas AI",
         "width": 1100,
         "height": 720,
         "minWidth": 800,
-        "minHeight": 560
+        "minHeight": 560,
+        "resizable": true,
+        "fullscreen": false
       }
     ],
     "security": {

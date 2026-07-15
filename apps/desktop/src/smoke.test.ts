@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
+import type { AppInfo, PingResponse } from "./lib/ipc/types";
 
-/**
- * Placeholder app-level test so the desktop package is included in the
- * Vitest discovery path. Prefer Testing Library once UI grows.
- */
-describe("desktop package", () => {
-  it("is present in the workspace test graph", () => {
-    expect(true).toBe(true);
+describe("desktop IPC types", () => {
+  it("describes foundation app info shape", () => {
+    const info: AppInfo = {
+      name: "Atlas AI",
+      version: "0.1.0",
+      phase: "foundation",
+      runtime: "tauri",
+    };
+    expect(info.phase).toBe("foundation");
+  });
+
+  it("describes ping response shape", () => {
+    const ping: PingResponse = { ok: true, message: "pong" };
+    expect(ping.ok).toBe(true);
   });
 });

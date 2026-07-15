@@ -35,6 +35,7 @@ docs/
 | Logging / debugging     | [guides/Logging.md](./guides/Logging.md)                                               |
 | Testing                 | [guides/Testing.md](./guides/Testing.md)                                               |
 | CI / CD                 | [guides/CI-CD.md](./guides/CI-CD.md)                                                   |
+| Desktop shell           | [guides/Desktop-Shell.md](./guides/Desktop-Shell.md)                                   |
 
 ## Adding future documents
 

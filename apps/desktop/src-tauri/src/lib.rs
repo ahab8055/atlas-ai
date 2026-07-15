@@ -1,17 +1,10 @@
 //! Atlas AI desktop — Tauri application entry (library target).
 
-use tracing::{error, info, instrument};
+mod commands;
+mod lifecycle;
 
-fn format_greeting(name: &str) -> String {
-    format!("Hello, {name}! Atlas Rust core is ready.")
-}
-
-#[tauri::command]
-#[instrument(fields(category = "application"))]
-fn greet(name: &str) -> String {
-    info!(service = "desktop-core", message = "greet invoked", name);
-    format_greeting(name)
-}
+use commands::system::{get_app_info, ping};
+use tracing::{error, info};
 
 fn init_logging() {
     use tracing_subscriber::EnvFilter;
@@ -37,30 +30,29 @@ pub fn run() {
         "Atlas desktop core starting"
     );
 
-    let result = tauri::Builder::default()
+    let builder_result = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
-        .run(tauri::generate_context!());
+        .setup(|app| lifecycle::on_setup(app))
+        .invoke_handler(tauri::generate_handler![get_app_info, ping])
+        .on_window_event(|window, event| {
+            lifecycle::on_window_event(window.label(), event);
+        })
+        .build(tauri::generate_context!());
 
-    if let Err(error) = result {
-        error!(
-            service = "desktop-core",
-            category = "application",
-            error = %error,
-            "Atlas desktop failed to start"
-        );
-        panic!("error while running Atlas AI: {error}");
-    }
-}
+    let app = match builder_result {
+        Ok(app) => app,
+        Err(error) => {
+            error!(
+                service = "desktop-core",
+                category = "application",
+                error = %error,
+                "Atlas desktop failed to build"
+            );
+            panic!("error while building Atlas AI: {error}");
+        }
+    };
 
-#[cfg(test)]
-mod tests {
-    use super::format_greeting;
-
-    #[test]
-    fn format_greeting_includes_name() {
-        let message = format_greeting("Ada");
-        assert!(message.contains("Ada"));
-        assert!(message.contains("Atlas Rust core is ready"));
-    }
+    app.run(|handle, event| {
+        lifecycle::on_run_event(handle, &event);
+    });
 }

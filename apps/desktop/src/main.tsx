@@ -10,7 +10,7 @@ const log = createLogger({
   category: "application",
 });
 
-log.info("desktop UI mounting");
+log.info("desktop UI bootstrap");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

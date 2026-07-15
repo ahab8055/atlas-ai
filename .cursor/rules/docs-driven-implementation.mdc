@@ -39,6 +39,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Logging / monitoring prep | `docs/guides/Logging.md`, `docs/adr/0004-structured-logging.md`, `packages/logging/`, `docs/Architecture/15-Monitoring-Architecture.md` |
 | Testing | `docs/guides/Testing.md`, `vitest.config.ts`, `tests/` |
 | CI / CD | `docs/guides/CI-CD.md`, `.github/workflows/ci.yml` |
+| Desktop shell | `docs/guides/Desktop-Shell.md`, `docs/Architecture/11-Desktop-Application-Architecture.md`, `apps/desktop/` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.
