@@ -9,7 +9,7 @@ atlas-ai/
 ├── apps/desktop/     # Desktop application (Tauri)
 ├── packages/         # core, agents, tools, memory, database, shared
 ├── models/           # Local AI model weights
-├── docs/             # Product, architecture, and setup docs
+├── docs/             # Product, architecture, guides, ADRs
 ├── scripts/          # Developer tooling
 └── tests/            # Cross-cutting tests
 ```
@@ -18,7 +18,8 @@ atlas-ai/
 
 New contributors should start here:
 
-**[docs/Development-Setup.md](docs/Development-Setup.md)**
+**[docs/guides/Development-Setup.md](docs/guides/Development-Setup.md)**  
+**[docs/README.md](docs/README.md)** — full documentation map
 
 ```bash
 corepack enable
@@ -38,17 +39,20 @@ pnpm dev
 
 ## Version control
 
-See **[docs/Version-Control.md](docs/Version-Control.md)** for branching (`main` + short-lived `feature/*` / `fix/*` / …) and **[docs/Code-Quality-Standards.md](docs/Code-Quality-Standards.md)** for Conventional Commits.
+See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for branching (`main` + short-lived `feature/*` / `fix/*` / …) and **[docs/guides/Code-Quality-Standards.md](docs/guides/Code-Quality-Standards.md)** for Conventional Commits.
 
 ## Documentation
 
-| Doc                                                       | Description                  |
-| --------------------------------------------------------- | ---------------------------- |
-| [MVP Plan](docs/MVP-Plan.md)                              | MVP scope and phases         |
-| [Technology Stack](docs/Technology-Stack-Architecture.md) | Stack decisions              |
-| [Development Setup](docs/Development-Setup.md)            | Local environment            |
-| [Code Quality Standards](docs/Code-Quality-Standards.md)  | Formatting, linting, commits |
-| [Version Control](docs/Version-Control.md)                | Git branching & workflow     |
+| Doc                                                               | Description                  |
+| ----------------------------------------------------------------- | ---------------------------- |
+| [Documentation hub](docs/README.md)                               | Structure & navigation       |
+| [MVP Plan](docs/product/MVP-Plan.md)                              | MVP scope and phases         |
+| [Technology Stack](docs/product/Technology-Stack-Architecture.md) | Stack decisions              |
+| [Development Setup](docs/guides/Development-Setup.md)             | Local environment            |
+| [Code Quality Standards](docs/guides/Code-Quality-Standards.md)   | Formatting, linting, commits |
+| [Version Control](docs/guides/Version-Control.md)                 | Git branching & workflow     |
+| [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
+| [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 
 ## License
 

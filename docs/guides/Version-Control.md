@@ -103,7 +103,7 @@ Examples: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `build`, `ci`, `pe
 
 ## What Git ignores
 
-Configured in root [`.gitignore`](../.gitignore):
+Configured in root [`.gitignore`](../../.gitignore):
 
 - Dependencies (`node_modules/`, `.pnpm-store/`)
 - Secrets & local env (`.env`, not `.env.example`)
@@ -133,4 +133,5 @@ Bypass only with a strong reason (`--no-verify` is discouraged and not used in n
 
 - [Code-Quality-Standards.md](./Code-Quality-Standards.md) — commits, lint, format
 - [Development-Setup.md](./Development-Setup.md) — local toolchain
-- [MVP-Plan.md](./MVP-Plan.md) — Phase 0 foundation
+- [MVP-Plan.md](../product/MVP-Plan.md) — Phase 0 foundation
+- [Documentation hub](../README.md)

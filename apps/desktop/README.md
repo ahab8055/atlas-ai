@@ -20,4 +20,4 @@ pnpm build
 pnpm check:rust
 ```
 
-See [docs/Development-Setup.md](../../docs/Development-Setup.md) for toolchain prerequisites.
+See [docs/guides/Development-Setup.md](../../docs/guides/Development-Setup.md) for toolchain prerequisites.

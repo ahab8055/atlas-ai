@@ -35,7 +35,7 @@ require_cmd() {
   if command -v "$1" >/dev/null 2>&1; then
     ok "$1 found ($(command -v "$1"))"
   else
-    fail "$1 not found — see docs/Development-Setup.md"
+    fail "$1 not found — see docs/guides/Development-Setup.md"
   fi
 }
 
@@ -110,7 +110,7 @@ case "$(uname -s)" in
     if pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
       ok "webkit2gtk-4.1 development library present"
     else
-      warn "webkit2gtk-4.1 not detected — required for Tauri 2 on Linux (see docs/Development-Setup.md)"
+      warn "webkit2gtk-4.1 not detected — required for Tauri 2 on Linux (see docs/guides/Development-Setup.md)"
     fi
     ;;
   MINGW*|MSYS*|CYGWIN*|Windows_NT)

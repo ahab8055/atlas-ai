@@ -22,9 +22,9 @@ if command -v pnpm >/dev/null 2>&1; then
   echo "Installing workspace dependencies with pnpm..."
   pnpm install
 else
-  echo "pnpm not found — skip install. See docs/Development-Setup.md"
+  echo "pnpm not found — skip install. See docs/guides/Development-Setup.md"
 fi
 
 echo
 echo "Next: pnpm check:env"
-echo "Full guide: docs/Development-Setup.md"
+echo "Full guide: docs/guides/Development-Setup.md"

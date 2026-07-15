@@ -184,5 +184,7 @@ Before opening a PR:
 
 - `Development-Setup.md` — toolchain & commands
 - `Version-Control.md` — branching strategy & Git workflow
-- `MVP-Plan.md` — Phase 0 includes code standards
-- `Architecture/17-Technology-Stack.md` — Vitest / Playwright later
+- [`../product/MVP-Plan.md`](../product/MVP-Plan.md) — Phase 0 includes code standards
+- [`../Architecture/17-Technology-Stack.md`](../Architecture/17-Technology-Stack.md) — Vitest / Playwright later
+- [`../adr/`](../adr/) — architecture decisions
+- [`../README.md`](../README.md) — documentation hub

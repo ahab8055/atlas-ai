@@ -16,7 +16,7 @@ Guide for configuring a local development environment so Atlas AI can be built a
 | **Rust**    | **stable** (≥ 1.77.2) | Pinned via `rust-toolchain.toml` (Tauri 2 MSRV)                 |
 | **rustup**  | latest                | Installs / manages Rust                                         |
 
-Stack alignment (see `Technology-Stack-Architecture.md`):
+Stack alignment (see [`../product/Technology-Stack-Architecture.md`](../product/Technology-Stack-Architecture.md)):
 
 - Desktop: **Tauri 2** + **React** + **TypeScript** + **Vite**
 - Native: **Rust**
@@ -146,7 +146,7 @@ atlas-ai/
 │   └── src-tauri/          # Rust backend (Tauri)
 ├── packages/               # core, agents, tools, memory, database, shared
 ├── models/                 # local weights (gitignored contents)
-├── docs/                   # product & architecture docs
+├── docs/                   # product, Architecture, PRD, guides, adr (see docs/README.md)
 ├── scripts/                # setup and environment helpers
 ├── tests/                  # cross-cutting / e2e tests
 ├── Cargo.toml              # Rust workspace root
@@ -213,7 +213,8 @@ Ensure the file exists at the repo root (not only `.env.example`). Apps will wir
 
 ## Related documents
 
-- `MVP-Plan.md` — Phase 0 Foundation Setup
-- `Technology-Stack-Architecture.md` — stack choices
-- `Architecture/17-Technology-Stack.md` — tooling (pnpm, Cargo, GitHub Actions)
-- `Architecture/19-Development-Plan.md` — foundation tasks
+- [`../product/MVP-Plan.md`](../product/MVP-Plan.md) — Phase 0 Foundation Setup
+- [`../product/Technology-Stack-Architecture.md`](../product/Technology-Stack-Architecture.md) — stack choices
+- [`../Architecture/17-Technology-Stack.md`](../Architecture/17-Technology-Stack.md) — tooling (pnpm, Cargo, GitHub Actions)
+- [`../Architecture/19-Development-Plan.md`](../Architecture/19-Development-Plan.md) — foundation tasks
+- [`../README.md`](../README.md) — documentation hub

@@ -7,6 +7,8 @@ alwaysApply: true
 
 Before implementing any feature, change, or architecture decision, **read the relevant docs under `docs/`**. Do not invent stack, APIs, schema, or scope that contradict those documents.
 
+Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record significant decisions under [`docs/adr/`](../../docs/adr/).
+
 ## Workflow
 
 1. **Classify the task** (product scope, stack, architecture area, API/DB, security, roadmap).
@@ -19,9 +21,10 @@ Before implementing any feature, change, or architecture decision, **read the re
 
 | Task type | Primary docs |
 |-----------|----------------|
-| MVP scope / what to build | `docs/MVP-Plan.md`, `docs/Architecture/18-MVP-Feature-Specification.md`, `docs/PRD/10-MVP.md` |
+| Docs navigation / where to add docs | `docs/README.md` |
+| MVP scope / what to build | `docs/product/MVP-Plan.md`, `docs/Architecture/18-MVP-Feature-Specification.md`, `docs/PRD/10-MVP.md` |
 | Product goals / requirements | `docs/PRD/` (esp. `01`–`09`, `08-Functional-Requirements.md`) |
-| Tech stack / libraries | `docs/Technology-Stack-Architecture.md`, `docs/Architecture/17-Technology-Stack.md` |
+| Tech stack / libraries | `docs/product/Technology-Stack-Architecture.md`, `docs/Architecture/17-Technology-Stack.md` |
 | System / components | `docs/Architecture/01-System-Architecture.md`, `docs/Architecture/02-Component-Architecture.md` |
 | Agents / tools / memory | `docs/Architecture/03-Agent-System-Architecture.md`, `05-Tool-System-Architecture.md`, `04-Memory-Architecture.md` |
 | Local AI / models | `docs/Architecture/09-Local-AI-Architecture.md`, `25-Model-Management-System.md`, `22-AI-Orchestration-Architecture.md` |
@@ -31,6 +34,8 @@ Before implementing any feature, change, or architecture decision, **read the re
 | Events / workflows / plugins | `docs/Architecture/10-Event-System-Architecture.md`, `13-Workflow-Automation-Architecture.md`, `12-Plugin-System-Architecture.md` |
 | Desktop / voice | `docs/Architecture/11-Desktop-Application-Architecture.md`, `08-Voice-System-Architecture.md` |
 | Deploy / monitor / roadmap | `docs/Architecture/14-Deployment-Architecture.md`, `15-Monitoring-Architecture.md`, `16-Implementation-Roadmap.md`, `19-Development-Plan.md` |
+| Dev environment / quality / git | `docs/guides/` |
+| Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.
 
