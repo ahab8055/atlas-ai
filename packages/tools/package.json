@@ -1,8 +1,8 @@
 {
-  "name": "@atlas-ai/core",
+  "name": "@atlas-ai/tools",
   "version": "0.1.0",
   "private": true,
-  "description": "Atlas AI core request processing pipeline",
+  "description": "Atlas AI tool registry: metadata, discovery, versioning",
   "type": "module",
   "exports": {
     ".": {
@@ -20,12 +20,9 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@atlas-ai/logging": "workspace:*",
-    "@atlas-ai/security": "workspace:*",
-    "@atlas-ai/tools": "workspace:*"
+    "@atlas-ai/security": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "22",
     "typescript": "~5.8.3"
   }
 }

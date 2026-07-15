@@ -76,6 +76,14 @@ export {
   type ExecutePlanOptions,
 } from "./execution/index.js";
 
+export {
+  getDefaultToolRegistry,
+  listToolMetadata,
+  listTools,
+  registerTool,
+  ToolRegistry,
+} from "@atlas-ai/tools";
+
 export { generateResponse } from "./stages/respond.js";
 
 export type {

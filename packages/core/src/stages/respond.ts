@@ -1,3 +1,5 @@
+import { listToolMetadata } from "@atlas-ai/tools";
+
 import { formatPlanSteps } from "../planning/builders.js";
 import type {
   DetectedIntent,
@@ -17,6 +19,10 @@ export function generateResponse(
   plan?: ExecutionPlan,
 ): PipelineResponse {
   if (intent.name === "help") {
+    const toolNames = listToolMetadata()
+      .map((t) => t.name)
+      .sort()
+      .join(", ");
     return {
       intent: intent.name,
       status: execution.status,
@@ -25,12 +31,26 @@ export function generateResponse(
         "  help                                  Show this message",
         "  status | ping                         Runtime status",
         "  echo <text>                           Echo text through the pipeline",
+        "  tools | list tools                    List registered tools",
         "  Open VS Code                          Application Control (simple plan)",
         "  Find my project files                 File Search (simple plan)",
         "  Explain this code                     Code Analysis (simple plan)",
         "  Prepare my development environment    Multi-step setup plan",
         "  <unrecognized>                        Handled as unknown intent",
+        "",
+        `Registered tools: ${toolNames || "(none)"}`,
       ].join("\n"),
+    };
+  }
+
+  if (intent.name === "tools.list") {
+    const lines = listToolMetadata().map(
+      (t) => `- ${t.name}@${t.version} [${t.risk}] — ${t.description}`,
+    );
+    return {
+      intent: intent.name,
+      status: execution.status,
+      text: [`Atlas tool registry (${lines.length}):`, ...lines].join("\n"),
     };
   }
 

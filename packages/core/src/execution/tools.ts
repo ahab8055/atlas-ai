@@ -1,82 +1,61 @@
+import { getDefaultToolRegistry, type ToolRegistry } from "@atlas-ai/tools";
+
 import type { PlanStep } from "../planning/types.js";
 import type { NormalizedRequest } from "../types.js";
 import type { StepResult } from "./types.js";
 
 /**
- * Built-in tool stubs — replaced by `@atlas-ai/tools` later.
+ * Execute a plan step via the centralized tool registry.
  */
 export function executeToolStep(
   request: NormalizedRequest,
   step: PlanStep,
+  registry: ToolRegistry = getDefaultToolRegistry(),
 ): StepResult {
   try {
-    if (step.tool === "system.info") {
+    if (!step.tool) {
       return {
         stepId: step.id,
         status: "completed",
-        output: `Atlas core OK (source=${request.source})`,
+        output: step.description,
       };
     }
 
-    if (step.tool === "echo") {
+    const input: Record<string, unknown> = {
+      ...(step.args ?? {}),
+    };
+    if (step.tool === "system.info" && input.source === undefined) {
+      input.source = request.source;
+    }
+
+    const result = registry.invoke(step.tool, input, {
+      requestId: request.id,
+      traceId: request.traceId,
+      source: request.source,
+      stepId: step.id,
+    });
+
+    // MVP handlers are sync; keep sync StepResult for the controller.
+    if (result instanceof Promise) {
       return {
         stepId: step.id,
-        status: "completed",
-        output: String(step.args?.text ?? ""),
+        status: "failed",
+        error: `Tool ${step.tool} returned async result; async tools not wired yet`,
       };
     }
 
-    if (step.tool === "application.open") {
-      const application = String(step.args?.application ?? "unknown");
+    if (!result.ok) {
       return {
         stepId: step.id,
-        status: "completed",
-        output: `Application Control: would open "${application}" (launcher not wired yet).`,
-      };
-    }
-
-    if (step.tool === "file.search") {
-      const query = String(step.args?.query ?? "");
-      return {
-        stepId: step.id,
-        status: "completed",
-        output: `File Search: would search for "${query}" (search tool not wired yet).`,
-      };
-    }
-
-    if (step.tool === "code.analyze") {
-      const target = String(step.args?.target ?? "");
-      return {
-        stepId: step.id,
-        status: "completed",
-        output: `Code Analysis: would explain "${target}" (analyzer not wired yet).`,
-      };
-    }
-
-    if (step.tool === "project.open") {
-      const project = String(step.args?.project ?? "project");
-      const path = step.args?.path ? ` at ${String(step.args.path)}` : "";
-      return {
-        stepId: step.id,
-        status: "completed",
-        output: `Project: would open "${project}"${path} (project tool not wired yet).`,
-      };
-    }
-
-    if (step.tool === "process.start") {
-      const name = String(step.args?.name ?? "process");
-      const command = String(step.args?.command ?? "");
-      return {
-        stepId: step.id,
-        status: "completed",
-        output: `Process: would start ${name}${command ? ` (${command})` : ""} (process tool not wired yet).`,
+        status: "failed",
+        error: result.error ?? `Tool ${step.tool} failed`,
       };
     }
 
     return {
       stepId: step.id,
       status: "completed",
-      output: step.description,
+      output: result.message ?? step.description,
     };
   } catch (error) {
     return {

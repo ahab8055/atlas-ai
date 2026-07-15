@@ -27,6 +27,8 @@ if command -v pnpm >/dev/null 2>&1; then
   pnpm logging:build
   echo "Building @atlas-ai/security..."
   pnpm security:build
+  echo "Building @atlas-ai/tools..."
+  pnpm tools:build
   echo "Building @atlas-ai/core..."
   pnpm core:build
   echo "Building @atlas-ai/cli..."

@@ -182,11 +182,35 @@ const environmentSetupIntent: IntentDefinition = {
   },
 };
 
+/**
+ * Tool discovery — e.g. "tools", "list tools".
+ */
+const toolsListIntent: IntentDefinition = {
+  name: "tools.list",
+  category: "system",
+  goal: "List registered tools",
+  capabilities: [],
+  complexity: "low",
+  priority: 85,
+  match(normalizedText) {
+    if (
+      normalizedText === "tools" ||
+      normalizedText === "list tools" ||
+      normalizedText === "show tools" ||
+      normalizedText === "available tools"
+    ) {
+      return capture(0.95, {});
+    }
+    return null;
+  },
+};
+
 /** Built-in MVP intent catalog — extend via `IntentRegistry.register`. */
 export const BUILTIN_INTENT_DEFINITIONS: readonly IntentDefinition[] = [
   helpIntent,
   statusIntent,
   echoIntent,
+  toolsListIntent,
   environmentSetupIntent,
   fileSearchIntent,
   applicationOpenIntent,

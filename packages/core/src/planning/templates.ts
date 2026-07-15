@@ -47,6 +47,18 @@ const echoTemplate: PlanTemplate = {
   },
 };
 
+const toolsListTemplate: PlanTemplate = {
+  intentName: "tools.list",
+  priority: 100,
+  build() {
+    return {
+      goal: "List registered tools",
+      requiresApproval: false,
+      steps: [draftStep("list-tools", "Enumerate tool registry")],
+    };
+  },
+};
+
 const applicationOpenTemplate: PlanTemplate = {
   intentName: "application.open",
   priority: 100,
@@ -175,6 +187,7 @@ export const BUILTIN_PLAN_TEMPLATES: readonly PlanTemplate[] = [
   helpTemplate,
   statusTemplate,
   echoTemplate,
+  toolsListTemplate,
   applicationOpenTemplate,
   fileSearchTemplate,
   codeAnalyzeTemplate,

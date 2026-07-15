@@ -42,6 +42,7 @@ docs/
 | Context management      | [guides/Context-Management.md](./guides/Context-Management.md)                         |
 | Task planning           | [guides/Task-Planning.md](./guides/Task-Planning.md)                                   |
 | Execution controller    | [guides/Execution-Controller.md](./guides/Execution-Controller.md)                     |
+| Tool registry           | [guides/Tool-Registry.md](./guides/Tool-Registry.md)                                   |
 
 ## Adding future documents
 

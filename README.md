@@ -65,6 +65,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Context Management](docs/guides/Context-Management.md)           | Context before execution     |
 | [Task Planning](docs/guides/Task-Planning.md)                     | Ordered execution plans      |
 | [Execution Controller](docs/guides/Execution-Controller.md)       | Lifecycle + progress         |
+| [Tool Registry](docs/guides/Tool-Registry.md)                     | Register & discover tools    |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 

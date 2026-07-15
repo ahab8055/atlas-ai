@@ -46,6 +46,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Context management | `docs/guides/Context-Management.md`, `docs/adr/0009-context-management.md`, `packages/core/src/context/`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `docs/Architecture/04-Memory-Architecture.md` |
 | Task planning | `docs/guides/Task-Planning.md`, `docs/adr/0010-task-planning-engine.md`, `packages/core/src/planning/`, `docs/Architecture/22-AI-Orchestration-Architecture.md` |
 | Execution controller | `docs/guides/Execution-Controller.md`, `docs/adr/0011-execution-controller.md`, `packages/core/src/execution/`, `docs/Architecture/22-AI-Orchestration-Architecture.md` |
+| Tool registry | `docs/guides/Tool-Registry.md`, `docs/adr/0012-tool-registry.md`, `packages/tools/`, `docs/Architecture/05-Tool-System-Architecture.md` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

@@ -170,4 +170,19 @@ describe("request processing pipeline", () => {
       first.context.conversation.turns.length,
     );
   });
+
+  it("lists registered tools through the pipeline", () => {
+    const result = handleRequest(
+      { source: "cli", rawInput: "list tools" },
+      {
+        logger: createCapturingLogger().logger,
+        contextManager: new ContextManager(),
+      },
+    );
+
+    expect(result.intent.name).toBe("tools.list");
+    expect(result.response.text).toContain("system.info");
+    expect(result.response.text).toContain("file.search");
+    expect(result.response.text).toContain("@1.0.0");
+  });
 });
