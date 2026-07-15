@@ -40,6 +40,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0014](./0014-permission-management-foundation.md) | Permission management foundation        | Accepted |
 | [0015](./0015-response-generation-system.md)       | Response generation system              | Accepted |
 | [0016](./0016-event-system-integration.md)         | Event system integration                | Accepted |
+| [0017](./0017-command-line-interface.md)           | Command line interface adapter          | Accepted |
 
 ## Naming
 

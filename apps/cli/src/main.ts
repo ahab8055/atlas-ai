@@ -1,69 +1,60 @@
 #!/usr/bin/env node
 /**
- * CLI adapter: argv → @atlas-ai/core pipeline → stdout.
- * Desktop and voice will call the same handler with a different InputSource.
+ * CLI adapter: terminal → @atlas-ai/core → stdout.
+ *
+ * Desktop and voice replace this adapter by calling the same
+ * `createRequestHandler` / `handleRequest` with `source: "desktop" | "voice"`.
  */
-import { createRequestHandler } from "@atlas-ai/core";
-import {
-  createLogger,
-  formatLogRecord,
-  parseLogLevel,
-  type LogSink,
-} from "@atlas-ai/logging";
+import { usage } from "./options.js";
+import { parseCliArgs } from "./parse-args.js";
+import { runRepl } from "./repl.js";
+import { createCliRuntime, runCommand } from "./run.js";
+import { exitCodeForResult } from "./display.js";
 
-function usage(): string {
-  return [
-    "Usage: atlas <command>",
-    "",
-    "Examples:",
-    "  atlas help",
-    "  atlas status",
-    "  atlas echo hello",
-  ].join("\n");
-}
+async function main(): Promise<void> {
+  let options;
+  try {
+    options = parseCliArgs(process.argv.slice(2));
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
 
-/** Keep stage logs off stdout so the command response stays scriptable. */
-function createStderrSink(): LogSink {
-  return {
-    write(record) {
-      process.stderr.write(`${formatLogRecord(record)}\n`);
-    },
-  };
-}
-
-function main(): void {
-  const args = process.argv.slice(2).filter((arg, index) => {
-    // pnpm sometimes forwards a leading "--" separator.
-    return !(index === 0 && arg === "--");
-  });
-  if (args.length === 0) {
+  if (options.showCliHelp) {
     process.stdout.write(`${usage()}\n`);
     process.exitCode = 0;
     return;
   }
 
-  const rawInput = args.join(" ");
-  const quiet = process.env.ATLAS_CLI_QUIET === "1";
-  const level = parseLogLevel(process.env.ATLAS_LOG_LEVEL);
+  const hasCommand = options.commandArgs.length > 0;
 
-  const logger = createLogger({
-    service: "atlas-cli",
-    level: quiet ? "error" : level,
-    category: "application",
-    sink: createStderrSink(),
-  });
-
-  const handler = createRequestHandler({ logger });
-  const result = handler.handle({
-    source: "cli",
-    rawInput,
-    metadata: { argv: args },
-  });
-
-  process.stdout.write(`${result.response.text}\n`);
-  if (result.response.status !== "completed") {
-    process.exitCode = 1;
+  if (!hasCommand && !options.interactive) {
+    process.stdout.write(`${usage()}\n`);
+    process.exitCode = 0;
+    return;
   }
+
+  const runtime = createCliRuntime(options);
+
+  if (options.interactive) {
+    if (hasCommand) {
+      // Optional: run initial command then enter REPL
+      runCommand(runtime, options, options.commandArgs.join(" "));
+    }
+    process.exitCode = await runRepl(options, runtime);
+    return;
+  }
+
+  const result = runCommand(runtime, options, options.commandArgs.join(" "));
+  process.exitCode = exitCodeForResult(result);
 }
 
-main();
+main().catch((error) => {
+  process.stderr.write(
+    `atlas: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
+  process.exitCode = 1;
+});

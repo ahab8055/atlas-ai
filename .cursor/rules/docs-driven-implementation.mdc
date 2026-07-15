@@ -42,6 +42,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Desktop shell | `docs/guides/Desktop-Shell.md`, `docs/Architecture/11-Desktop-Application-Architecture.md`, `apps/desktop/` |
 | Security | `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/adr/0014-permission-management-foundation.md`, `docs/Architecture/06-Security-Architecture.md`, `packages/security/` |
 | Request pipeline / core runtime | `docs/guides/Request-Pipeline.md`, `docs/adr/0007-request-processing-pipeline.md`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `packages/core/`, `apps/cli/` |
+| CLI adapter | `docs/guides/CLI.md`, `docs/adr/0017-command-line-interface.md`, `apps/cli/` |
 | Intent detection | `docs/guides/Intent-Detection.md`, `docs/adr/0008-intent-detection-registry.md`, `packages/core/src/intent/`, `docs/Architecture/02-Component-Architecture.md` |
 | Context management | `docs/guides/Context-Management.md`, `docs/adr/0009-context-management.md`, `packages/core/src/context/`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `docs/Architecture/04-Memory-Architecture.md` |
 | Task planning | `docs/guides/Task-Planning.md`, `docs/adr/0010-task-planning-engine.md`, `packages/core/src/planning/`, `docs/Architecture/22-AI-Orchestration-Architecture.md` |

@@ -2,7 +2,7 @@
 
 Central orchestration path for user commands (Phase 1 Core Runtime).
 
-Related: [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/cli`](../../apps/cli/), [ADR-0007](../adr/0007-request-processing-pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Context-Management.md](./Context-Management.md), [Task-Planning.md](./Task-Planning.md), [Execution-Controller.md](./Execution-Controller.md), [Response-Generation.md](./Response-Generation.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md), [Security.md](./Security.md).
+Related: [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/cli`](../../apps/cli/), [ADR-0007](../adr/0007-request-processing-pipeline.md), [CLI.md](./CLI.md), [Intent-Detection.md](./Intent-Detection.md), [Context-Management.md](./Context-Management.md), [Task-Planning.md](./Task-Planning.md), [Execution-Controller.md](./Execution-Controller.md), [Response-Generation.md](./Response-Generation.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md), [Security.md](./Security.md).
 
 ---
 
@@ -48,17 +48,22 @@ Desktop and voice reuse the same handler with `source: "desktop"` or `"voice"` â
 
 ## CLI usage
 
+See [CLI.md](./CLI.md) for the full adapter guide.
+
 ```bash
-pnpm core:build && pnpm cli:build
+pnpm packages:build && pnpm cli:build
 pnpm atlas help
 pnpm atlas status
 pnpm atlas echo hello world
+pnpm atlas --debug status
+pnpm atlas -i
 ```
 
 Quiet mode (response only):
 
 ```bash
 ATLAS_CLI_QUIET=1 pnpm atlas status
+# or: pnpm atlas --quiet status
 ```
 
 ---

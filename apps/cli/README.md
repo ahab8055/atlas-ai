@@ -1,13 +1,16 @@
 # Atlas AI CLI
 
-Thin input adapter that feeds commands into `@atlas-ai/core`.
+Thin terminal adapter into `@atlas-ai/core`. Commands go through the same request pipeline desktop and voice will use later (`source: "cli"`).
 
 ```bash
 pnpm atlas help
 pnpm atlas status
 pnpm atlas echo hello
+pnpm atlas --debug "Open VS Code"
+pnpm atlas -i
 ```
 
-Logs pipeline stages to stderr/stdout via `@atlas-ai/logging` (JSON). Set `ATLAS_CLI_QUIET=1` to hide info logs and only print the response.
+- **stdout** — Atlas response (`response.text`)
+- **stderr** — stage logs / debug events (debug mode)
 
-See [Request-Pipeline.md](../../docs/guides/Request-Pipeline.md).
+See [docs/guides/CLI.md](../../docs/guides/CLI.md) and [ADR-0017](../../docs/adr/0017-command-line-interface.md).
