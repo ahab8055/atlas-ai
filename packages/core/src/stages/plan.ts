@@ -6,7 +6,7 @@ import type {
 } from "../types.js";
 
 /**
- * Basic planner — maps intent to executable steps.
+ * Basic planner — maps intent + parameters to executable steps.
  */
 export function createPlan(
   request: NormalizedRequest,
@@ -38,8 +38,7 @@ export function createPlan(
         ],
       };
 
-    case "echo": {
-      const payload = request.text.replace(/^echo\s*/i, "").trim();
+    case "echo":
       return {
         requiresApproval: false,
         steps: [
@@ -47,11 +46,75 @@ export function createPlan(
             id: "echo",
             description: "Echo user text",
             tool: "echo",
-            args: { text: payload || "(empty)" },
+            args: {
+              text: String(intent.parameters.text ?? "(empty)"),
+            },
           },
         ],
       };
-    }
+
+    case "application.open":
+      return {
+        requiresApproval: true,
+        steps: [
+          {
+            id: "open-app",
+            description: intent.goal,
+            tool: "application.open",
+            capability: "application.control",
+            args: {
+              application: String(intent.parameters.application ?? ""),
+            },
+          },
+        ],
+      };
+
+    case "file.search":
+      return {
+        requiresApproval: true,
+        steps: [
+          {
+            id: "search-files",
+            description: intent.goal,
+            tool: "file.search",
+            capability: "filesystem.read",
+            args: {
+              query: String(
+                intent.parameters.query ?? intent.parameters.keyword ?? "",
+              ),
+            },
+          },
+        ],
+      };
+
+    case "code.analyze":
+      return {
+        requiresApproval: true,
+        steps: [
+          {
+            id: "analyze-code",
+            description: intent.goal,
+            tool: "code.analyze",
+            capability: "filesystem.read",
+            args: {
+              target: String(intent.parameters.target ?? ""),
+              focus: String(intent.parameters.focus ?? "explain"),
+            },
+          },
+        ],
+      };
+
+    case "unknown":
+      return {
+        requiresApproval: false,
+        steps: [
+          {
+            id: "unknown",
+            description: "Acknowledge unrecognized intent",
+            args: { text: request.text },
+          },
+        ],
+      };
 
     default:
       return {
@@ -59,8 +122,8 @@ export function createPlan(
         steps: [
           {
             id: "reply",
-            description: "Acknowledge conversational input",
-            args: { text: request.text },
+            description: `Handle intent ${intent.name}`,
+            args: { text: request.text, ...intent.parameters },
           },
         ],
       };

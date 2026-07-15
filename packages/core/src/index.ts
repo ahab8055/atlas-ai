@@ -11,7 +11,19 @@ export {
   type RequestHandlerOptions,
 } from "./handler.js";
 
-export { detectIntent } from "./stages/intent.js";
+export {
+  BUILTIN_INTENT_DEFINITIONS,
+  detectIntent,
+  getDefaultIntentRegistry,
+  IntentRegistry,
+  registerIntent,
+  toDetectedIntent,
+  unknownIntent,
+  type DetectIntentOptions,
+  type IntentDefinition,
+  type IntentMatchResult,
+} from "./intent/index.js";
+
 export { loadContext } from "./stages/context.js";
 export { createPlan } from "./stages/plan.js";
 export { executePlan } from "./stages/execute.js";
@@ -24,7 +36,9 @@ export type {
   ExecutionStatus,
   IncomingRequest,
   InputSource,
+  IntentCategory,
   IntentComplexity,
+  IntentParameters,
   LoadedContext,
   NormalizedRequest,
   PipelineResponse,

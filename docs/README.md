@@ -38,6 +38,7 @@ docs/
 | Desktop shell           | [guides/Desktop-Shell.md](./guides/Desktop-Shell.md)                                   |
 | Security baseline       | [guides/Security.md](./guides/Security.md)                                             |
 | Request pipeline        | [guides/Request-Pipeline.md](./guides/Request-Pipeline.md)                             |
+| Intent detection        | [guides/Intent-Detection.md](./guides/Intent-Detection.md)                             |
 
 ## Adding future documents
 

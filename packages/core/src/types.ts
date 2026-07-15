@@ -25,14 +25,14 @@ export interface NormalizedRequest {
 export type PipelineStageName =
   "normalize" | "intent" | "context" | "planning" | "execution" | "response";
 
-export type IntentComplexity = "low" | "medium" | "high";
+export type {
+  DetectedIntent,
+  IntentCategory,
+  IntentComplexity,
+  IntentParameters,
+} from "./intent/types.js";
 
-export interface DetectedIntent {
-  name: string;
-  confidence: number;
-  capabilities: string[];
-  complexity: IntentComplexity;
-}
+import type { DetectedIntent } from "./intent/types.js";
 
 export interface LoadedContext {
   conversationSummary: string;

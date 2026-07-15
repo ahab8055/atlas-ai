@@ -81,7 +81,37 @@ export function executePlan(
       continue;
     }
 
-    // Non-tool steps (help / conversational) complete as informational.
+    if (step.tool === "application.open") {
+      const application = String(step.args?.application ?? "unknown");
+      steps.push({
+        stepId: step.id,
+        status: "completed",
+        output: `Application Control: would open "${application}" (launcher not wired yet).`,
+      });
+      continue;
+    }
+
+    if (step.tool === "file.search") {
+      const query = String(step.args?.query ?? "");
+      steps.push({
+        stepId: step.id,
+        status: "completed",
+        output: `File Search: would search for "${query}" (search tool not wired yet).`,
+      });
+      continue;
+    }
+
+    if (step.tool === "code.analyze") {
+      const target = String(step.args?.target ?? "");
+      steps.push({
+        stepId: step.id,
+        status: "completed",
+        output: `Code Analysis: would explain "${target}" (analyzer not wired yet).`,
+      });
+      continue;
+    }
+
+    // Non-tool steps (help / unknown) complete as informational.
     steps.push({
       stepId: step.id,
       status: "completed",

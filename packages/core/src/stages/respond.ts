@@ -18,20 +18,43 @@ export function generateResponse(
       intent: intent.name,
       status: execution.status,
       text: [
-        "Atlas AI — available commands:",
-        "  help              Show this message",
-        "  status | ping     Runtime status",
-        "  echo <text>       Echo text through the pipeline",
-        "  <anything else>   Conversational stub reply",
+        "Atlas AI — available commands & intents:",
+        "  help                         Show this message",
+        "  status | ping                Runtime status",
+        "  echo <text>                  Echo text through the pipeline",
+        "  Open VS Code                 Application Control intent",
+        "  Find my project files        File Search intent",
+        "  Explain this code            Code Analysis intent",
+        "  <unrecognized>               Handled as unknown intent",
+      ].join("\n"),
+    };
+  }
+
+  if (!intent.known || intent.name === "unknown") {
+    return {
+      intent: intent.name,
+      status: execution.status,
+      text: [
+        "I could not classify that request yet.",
+        `Received: "${request.text}"`,
+        "Try: help · Open VS Code · Find my project files · Explain this code",
       ].join("\n"),
     };
   }
 
   if (execution.status === "blocked") {
+    const reason =
+      execution.steps.find((s) => s.error)?.error ??
+      "permission approval required";
     return {
       intent: intent.name,
       status: execution.status,
-      text: "Action blocked pending permission approval.",
+      text: [
+        `Understood: ${intent.goal}`,
+        `Category: ${intent.category}`,
+        `Parameters: ${formatParams(intent)}`,
+        `Blocked: ${reason}`,
+      ].join("\n"),
     };
   }
 
@@ -50,17 +73,19 @@ export function generateResponse(
     .map((s) => s.output)
     .join("\n");
 
-  if (intent.name === "conversational.reply") {
-    return {
-      intent: intent.name,
-      status: execution.status,
-      text: `Received (${request.source}): "${request.text}". Full LLM/agent reply is not wired yet.`,
-    };
-  }
-
   return {
     intent: intent.name,
     status: execution.status,
-    text: outputs || "Done.",
+    text: outputs || `${intent.goal} (${intent.category})`,
   };
+}
+
+function formatParams(intent: DetectedIntent): string {
+  const entries = Object.entries(intent.parameters).filter(
+    ([, value]) => value !== undefined && value !== "",
+  );
+  if (entries.length === 0) {
+    return "(none)";
+  }
+  return entries.map(([key, value]) => `${key}=${String(value)}`).join(", ");
 }

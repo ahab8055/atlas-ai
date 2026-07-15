@@ -56,8 +56,13 @@ export function runPipeline(
   const intent = detectIntent(request);
   logStage(logger, "IntentDetected", "intent", request.traceId, {
     intent: intent.name,
+    category: intent.category,
+    goal: intent.goal,
     confidence: intent.confidence,
     complexity: intent.complexity,
+    known: intent.known,
+    parameters: intent.parameters,
+    capabilities: intent.capabilities,
   });
 
   const context = loadContext(request, intent);

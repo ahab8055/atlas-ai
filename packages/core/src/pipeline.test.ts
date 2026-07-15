@@ -83,7 +83,36 @@ describe("request processing pipeline", () => {
       { logger: createCapturingLogger().logger },
     );
 
-    expect(result.intent.name).toBe("conversational.reply");
-    expect(result.response.text).toContain("not wired yet");
+    expect(result.intent.name).toBe("unknown");
+    expect(result.intent.known).toBe(false);
+    expect(result.response.text).toContain("could not classify");
+  });
+
+  it("classifies story example commands through the pipeline", () => {
+    const logger = createCapturingLogger().logger;
+
+    const open = handleRequest(
+      { source: "cli", rawInput: "Open VS Code" },
+      { logger },
+    );
+    expect(open.intent.category).toBe("application_control");
+    expect(open.intent.parameters.application).toBe("VS Code");
+    expect(open.response.text).toMatch(
+      /Application Control|Blocked|Understood/,
+    );
+
+    const search = handleRequest(
+      { source: "cli", rawInput: "Find my project files" },
+      { logger },
+    );
+    expect(search.intent.category).toBe("file_search");
+    expect(search.intent.parameters.query).toBe("project files");
+
+    const code = handleRequest(
+      { source: "cli", rawInput: "Explain this code" },
+      { logger },
+    );
+    expect(code.intent.category).toBe("code_analysis");
+    expect(code.intent.parameters.target).toBe("code");
   });
 });
