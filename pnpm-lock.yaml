@@ -54,6 +54,22 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
+  apps/cli:
+    dependencies:
+      '@atlas-ai/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../../packages/logging
+    devDependencies:
+      '@types/node':
+        specifier: '22'
+        version: 22.20.1
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
   apps/desktop:
     dependencies:
       '@atlas-ai/logging':
@@ -98,6 +114,22 @@ importers:
         version: 7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/config:
+    devDependencies:
+      '@types/node':
+        specifier: '22'
+        version: 22.20.1
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
+  packages/core:
+    dependencies:
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../logging
+      '@atlas-ai/security':
+        specifier: workspace:*
+        version: link:../security
     devDependencies:
       '@types/node':
         specifier: '22'

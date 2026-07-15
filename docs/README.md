@@ -37,6 +37,7 @@ docs/
 | CI / CD                 | [guides/CI-CD.md](./guides/CI-CD.md)                                                   |
 | Desktop shell           | [guides/Desktop-Shell.md](./guides/Desktop-Shell.md)                                   |
 | Security baseline       | [guides/Security.md](./guides/Security.md)                                             |
+| Request pipeline        | [guides/Request-Pipeline.md](./guides/Request-Pipeline.md)                             |
 
 ## Adding future documents
 

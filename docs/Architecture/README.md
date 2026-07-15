@@ -27,7 +27,7 @@ Numbered technical design docs for Atlas AI. Read with the matching [PRD](../PRD
 | 19  | [Development Plan](./19-Development-Plan.md)                      | Engineering plan                                                  |
 | 20  | [Database Schema](./20-Database-Schema.md)                        | Schema                                                            |
 | 21  | [API Specification](./21-API-Specification.md)                    | APIs                                                              |
-| 22  | [AI Orchestration](./22-AI-Orchestration-Architecture.md)         | Orchestration                                                     |
+| 22  | [AI Orchestration](./22-AI-Orchestration-Architecture.md)         | Orchestration ([guide](../guides/Request-Pipeline.md), ADR-0007)  |
 | 23  | [Knowledge Graph](./23-Knowledge-Graph-Architecture.md)           | Knowledge graph                                                   |
 | 24  | [Search and Retrieval](./24-Search-and-Retrieval-Architecture.md) | Search / RAG                                                      |
 | 25  | [Model Management](./25-Model-Management-System.md)               | Model lifecycle                                                   |

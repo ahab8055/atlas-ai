@@ -1,0 +1,26 @@
+{
+  "name": "@atlas-ai/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Atlas AI CLI — first adapter into the core request pipeline",
+  "type": "module",
+  "bin": {
+    "atlas": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node ./dist/main.js",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@atlas-ai/core": "workspace:*",
+    "@atlas-ai/logging": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22",
+    "typescript": "~5.8.3"
+  }
+}

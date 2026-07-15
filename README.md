@@ -7,6 +7,7 @@ Local-first personal AI assistant. Privacy-focused, modular, and designed to run
 ```
 atlas-ai/
 ├── apps/desktop/     # Desktop application (Tauri)
+├── apps/cli/         # CLI adapter into the core request pipeline
 ├── packages/         # core, agents, tools, memory, database, shared, config, logging, security
 ├── config/           # Non-secret per-environment defaults
 ├── models/           # Local AI model weights
@@ -37,6 +38,7 @@ pnpm dev
 | `pnpm build:desktop` | Tauri production bundle     |
 | `pnpm check:quality` | Format + lint (TS + Rust)   |
 | `pnpm check`         | Full local quality gate     |
+| `pnpm atlas <cmd>`   | CLI → core request pipeline |
 
 ## Version control
 
@@ -58,6 +60,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [CI/CD](docs/guides/CI-CD.md)                                     | GitHub Actions checks        |
 | [Desktop Shell](docs/guides/Desktop-Shell.md)                     | Tauri window, IPC, lifecycle |
 | [Security](docs/guides/Security.md)                               | Permissions & secrets        |
+| [Request Pipeline](docs/guides/Request-Pipeline.md)               | Core stages + CLI            |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 
