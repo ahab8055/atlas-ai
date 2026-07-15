@@ -50,6 +50,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Tool registry | `docs/guides/Tool-Registry.md`, `docs/adr/0012-tool-registry.md`, `packages/tools/`, `docs/Architecture/05-Tool-System-Architecture.md` |
 | Tool execution | `docs/guides/Tool-Execution.md`, `docs/adr/0013-tool-execution-framework.md`, `packages/tools/src/executor.ts` |
 | Response generation | `docs/guides/Response-Generation.md`, `docs/adr/0015-response-generation-system.md`, `packages/core/src/response/` |
+| Error handling | `docs/guides/Error-Handling.md`, `docs/adr/0020-error-handling-framework.md`, `packages/core/src/errors/`, `docs/Architecture/22-AI-Orchestration-Architecture.md` |
 | Event system | `docs/guides/Event-System.md`, `docs/adr/0016-event-system-integration.md`, `docs/Architecture/10-Event-System-Architecture.md`, `packages/core/src/events/` |
 | Database | `docs/guides/Database.md`, `docs/adr/0018-core-database-integration.md`, `docs/guides/Task-History.md`, `docs/adr/0019-task-history-tracking.md`, `docs/Architecture/20-Database-Schema.md`, `packages/database/` |
 | Significant decisions | `docs/adr/` |

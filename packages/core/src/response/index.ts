@@ -11,9 +11,11 @@ export {
   formatParams,
 } from "./intents.js";
 export {
+  classifyExecutionFailures,
   collectWarnings,
   explainFailures,
   fallbackErrorMessage,
+  recoveryNextSteps,
 } from "./errors.js";
 export {
   formatProgress,

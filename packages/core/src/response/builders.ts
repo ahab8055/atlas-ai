@@ -2,10 +2,13 @@ import type { DetectedIntent } from "../intent/types.js";
 import type { ExecutionPlan } from "../planning/types.js";
 import type { ExecutionResult } from "../execution/types.js";
 import { formatPlanSteps } from "../planning/builders.js";
+import type { AtlasErrorResponse } from "../errors/types.js";
 import {
+  classifyExecutionFailures,
   collectWarnings,
   explainFailures,
   fallbackErrorMessage,
+  recoveryNextSteps,
 } from "./errors.js";
 import { formatProgress, lifecycleLabel, statusLabel } from "./status.js";
 import type { PipelineResponse, ResponseModality } from "./types.js";
@@ -47,12 +50,25 @@ export function assembleResponse(input: {
   textBody: string[];
   spokenParts: string[];
   errors?: string[];
+  structuredErrors?: AtlasErrorResponse[];
   warnings?: string[];
   nextSteps?: string[];
+  traceId?: string;
 }): PipelineResponse {
-  const errors = input.errors ?? explainFailures(input.execution.failures);
+  const structuredErrors =
+    input.structuredErrors ??
+    classifyExecutionFailures(input.execution.failures, {
+      traceId: input.traceId,
+    });
+  const errors =
+    input.errors ??
+    (structuredErrors.length > 0
+      ? explainFailures(input.execution.failures, { traceId: input.traceId })
+      : []);
   const warnings = input.warnings ?? collectWarnings(input.execution);
-  const nextSteps = input.nextSteps ?? [];
+  const nextSteps =
+    input.nextSteps ??
+    (structuredErrors.length > 0 ? recoveryNextSteps(structuredErrors) : []);
 
   const statusLine = `Task status: ${statusLabel(input.execution.status)}`;
   const lifecycleLine = input.execution.lifecycle
@@ -94,6 +110,7 @@ export function assembleResponse(input: {
     status: input.execution.status,
     lifecycle: input.execution.lifecycle,
     errors,
+    structuredErrors,
     warnings,
     nextSteps,
     modality: input.modality,
@@ -129,6 +146,7 @@ export function assembleSpecialResponse(input: {
     status: input.execution.status,
     lifecycle: input.execution.lifecycle,
     errors: [],
+    structuredErrors: [],
     warnings: [],
     nextSteps: input.nextSteps ?? [],
     modality: input.modality,
@@ -175,21 +193,27 @@ export function buildFailedBody(execution: ExecutionResult): {
   errors: string[];
   nextSteps: string[];
 } {
-  const errors = explainFailures(execution.failures);
-  if (errors.length === 0) {
-    errors.push(
-      `${fallbackErrorMessage(execution)}. A tool or step reported a failure without details.`,
-    );
-  }
+  const structured = classifyExecutionFailures(execution.failures);
+  const errors =
+    structured.length > 0
+      ? explainFailures(execution.failures)
+      : [
+          `${fallbackErrorMessage(execution)}. A tool or step reported a failure without details.`,
+        ];
+  const recovery = recoveryNextSteps(structured);
+  const nextSteps =
+    recovery.length > 0
+      ? recovery
+      : [
+          "Review the error detail above.",
+          "Retry the command, or run help for supported intents.",
+        ];
   return {
     summary: "Request failed",
     textBody: [],
     spokenParts: ["The request failed."],
     errors,
-    nextSteps: [
-      "Review the error detail above.",
-      "Retry the command, or run help for supported intents.",
-    ],
+    nextSteps,
   };
 }
 
@@ -201,12 +225,17 @@ export function buildCancelledBody(execution: ExecutionResult): {
   nextSteps: string[];
 } {
   const detail = execution.failures[0]?.message ?? "Cancelled by request";
+  const structured = classifyExecutionFailures(execution.failures);
+  const recovery = recoveryNextSteps(structured);
   return {
     summary: "Execution cancelled",
     textBody: [detail],
     spokenParts: [`Execution was cancelled. ${detail}.`],
     errors: explainFailures(execution.failures),
-    nextSteps: ["Run the command again when you are ready to continue."],
+    nextSteps:
+      recovery.length > 0
+        ? recovery
+        : ["Run the command again when you are ready to continue."],
   };
 }
 
@@ -223,6 +252,7 @@ export function buildBlockedOrPartialBody(
   nextSteps: string[];
 } {
   const reason = fallbackErrorMessage(execution);
+  const structured = classifyExecutionFailures(execution.failures);
   const errors = explainFailures(execution.failures);
   const warnings = collectWarnings(execution);
   const textBody: string[] = [
@@ -235,16 +265,19 @@ export function buildBlockedOrPartialBody(
   }
   textBody.push(`Detail: ${reason}`);
 
+  const recovery = recoveryNextSteps(structured);
   const nextSteps =
-    execution.status === "blocked"
-      ? [
-          "Approve or deny the pending permission in Atlas.",
-          "Re-run the command after granting access.",
-        ]
-      : [
-          "Review blocked or failed steps.",
-          "Approve any pending permissions, then retry if needed.",
-        ];
+    recovery.length > 0
+      ? recovery
+      : execution.status === "blocked"
+        ? [
+            "Approve or deny the pending permission in Atlas.",
+            "Re-run the command after granting access.",
+          ]
+        : [
+            "Review blocked or failed steps.",
+            "Approve any pending permissions, then retry if needed.",
+          ];
 
   return {
     summary:

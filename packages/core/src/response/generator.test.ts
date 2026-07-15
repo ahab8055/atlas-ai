@@ -102,7 +102,10 @@ describe("response generation", () => {
     expect(response.text).toContain("Task status: Failed");
     expect(response.text).toContain("Errors:");
     expect(response.errors[0]).toContain("disk full");
-    expect(response.errors[0]).toMatch(/tool|try again|help/i);
+    expect(response.errors[0]).toMatch(/Tool Error|tool/i);
+    expect(response.structuredErrors).toHaveLength(1);
+    expect(response.structuredErrors[0]?.category).toBe("tool");
+    expect(response.structuredErrors[0]?.recovery.length).toBeGreaterThan(0);
     expect(response.nextSteps.length).toBeGreaterThan(0);
     expect(response.spokenText).toContain("failed");
   });
@@ -156,6 +159,8 @@ describe("response generation", () => {
     expect(response.status).toBe("blocked");
     expect(response.text).toContain("Task status: Blocked");
     expect(response.errors[0]).toMatch(/approval/i);
+    expect(response.structuredErrors[0]?.category).toBe("user");
+    expect(response.structuredErrors[0]?.code).toBe("permission_blocked");
     expect(response.nextSteps.some((s) => /Approve|permission/i.test(s))).toBe(
       true,
     );
@@ -213,6 +218,10 @@ describe("response generation", () => {
     expect(response.text).toContain("Task status: Completed");
     expect(response.spokenText).toMatch(/classify|help/i);
     expect(response.nextSteps.length).toBeGreaterThan(0);
+    expect(response.structuredErrors).toHaveLength(1);
+    expect(response.structuredErrors[0]?.category).toBe("user");
+    expect(response.structuredErrors[0]?.code).toBe("unknown_intent");
+    expect(response.errors[0]).toMatch(/understand|help/i);
   });
 });
 
@@ -228,6 +237,6 @@ describe("explainFailures", () => {
     ]);
     expect(lines[0]).toContain("Permission denied");
     expect(lines[0]).toContain("open");
-    expect(lines[0]).toMatch(/approval/i);
+    expect(lines[0]).toMatch(/User Error|approval/i);
   });
 });

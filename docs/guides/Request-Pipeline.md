@@ -2,7 +2,7 @@
 
 Central orchestration path for user commands (Phase 1 Core Runtime).
 
-Related: [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/cli`](../../apps/cli/), [ADR-0007](../adr/0007-request-processing-pipeline.md), [CLI.md](./CLI.md), [Intent-Detection.md](./Intent-Detection.md), [Context-Management.md](./Context-Management.md), [Task-Planning.md](./Task-Planning.md), [Execution-Controller.md](./Execution-Controller.md), [Response-Generation.md](./Response-Generation.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md), [Security.md](./Security.md).
+Related: [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/cli`](../../apps/cli/), [ADR-0007](../adr/0007-request-processing-pipeline.md), [CLI.md](./CLI.md), [Intent-Detection.md](./Intent-Detection.md), [Context-Management.md](./Context-Management.md), [Task-Planning.md](./Task-Planning.md), [Execution-Controller.md](./Execution-Controller.md), [Response-Generation.md](./Response-Generation.md), [Error-Handling.md](./Error-Handling.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md), [Security.md](./Security.md).
 
 ---
 

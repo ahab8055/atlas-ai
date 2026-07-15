@@ -17,6 +17,7 @@ Practical guides for contributing to Atlas AI.
 | [Task-History.md](./Task-History.md)                     | Queryable task execution history         |
 | [Event-System.md](./Event-System.md)                     | Internal event bus + core events         |
 | [Response-Generation.md](./Response-Generation.md)       | User-facing responses + voice-ready text |
+| [Error-Handling.md](./Error-Handling.md)                 | Error categories, format, recovery       |
 | [Intent-Detection.md](./Intent-Detection.md)             | Intent categories, params, registry      |
 | [Context-Management.md](./Context-Management.md)         | Context sources before execution         |
 | [Task-Planning.md](./Task-Planning.md)                   | Single- and multi-step execution plans   |

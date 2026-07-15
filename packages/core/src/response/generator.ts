@@ -2,6 +2,7 @@ import type { DetectedIntent } from "../intent/types.js";
 import type { ExecutionPlan } from "../planning/types.js";
 import type { ExecutionResult } from "../execution/types.js";
 import type { NormalizedRequest } from "../types.js";
+import { createAtlasError } from "../errors/index.js";
 import {
   assembleResponse,
   assembleSpecialResponse,
@@ -32,6 +33,7 @@ export class ResponseGenerator {
   generate(input: GenerateResponseInput): PipelineResponse {
     const { request, intent, execution, plan } = input;
     const modality = this.options.modality ?? modalityForSource(request.source);
+    const withTrace = { traceId: request.traceId };
 
     if (intent.name === "help") {
       const { text, spokenText } = buildHelpText();
@@ -62,17 +64,25 @@ export class ResponseGenerator {
 
     if (!intent.known || intent.name === "unknown") {
       const { text, spokenText } = buildUnknownText(request);
-      return assembleSpecialResponse({
-        intent,
-        execution,
-        modality,
-        summary: "Unknown request",
-        text,
-        spokenText,
-        nextSteps: [
-          "Try: help · Open VS Code · Prepare my development environment",
-        ],
+      const structured = createAtlasError({
+        category: "user",
+        code: "unknown_intent",
+        message: `Unrecognized request: ${request.text}`,
+        traceId: request.traceId,
       });
+      return {
+        ...assembleSpecialResponse({
+          intent,
+          execution,
+          modality,
+          summary: "Unknown request",
+          text,
+          spokenText,
+          nextSteps: structured.recovery.map((action) => action.description),
+        }),
+        errors: [structured.userMessage],
+        structuredErrors: [structured],
+      };
     }
 
     if (execution.status === "failed") {
@@ -87,6 +97,7 @@ export class ResponseGenerator {
         errors: body.errors,
         warnings: [],
         nextSteps: body.nextSteps,
+        ...withTrace,
       });
     }
 
@@ -102,6 +113,7 @@ export class ResponseGenerator {
         errors: body.errors,
         warnings: [],
         nextSteps: body.nextSteps,
+        ...withTrace,
       });
     }
 
@@ -117,6 +129,7 @@ export class ResponseGenerator {
         errors: body.errors,
         warnings: body.warnings,
         nextSteps: body.nextSteps,
+        ...withTrace,
       });
     }
 
@@ -129,6 +142,7 @@ export class ResponseGenerator {
       textBody: body.textBody,
       spokenParts: body.spokenParts,
       errors: [],
+      ...withTrace,
     });
   }
 }

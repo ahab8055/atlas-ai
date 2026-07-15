@@ -128,6 +128,46 @@ describe("request processing pipeline", () => {
     expect(result.intent.name).toBe("unknown");
     expect(result.intent.known).toBe(false);
     expect(result.response.text).toContain("could not classify");
+    expect(result.response.structuredErrors[0]?.code).toBe("unknown_intent");
+  });
+
+  it("logs structured errors and recovers from unexpected pipeline throws", () => {
+    const { logger, records } = createCapturingLogger();
+    const bus = new EventBus();
+    const blocked = handleRequest(
+      { source: "cli", rawInput: "Open VS Code" },
+      { logger, contextManager: new ContextManager(), eventBus: bus },
+    );
+
+    expect(blocked.execution.failures.length).toBeGreaterThan(0);
+    expect(
+      records.some(
+        (r) =>
+          r.context?.errorCode === "permission_blocked" ||
+          r.context?.errorCategory === "user",
+      ),
+    ).toBe(true);
+    expect(blocked.response.structuredErrors[0]?.category).toBe("user");
+
+    const throwingController = {
+      execute() {
+        throw new Error("controller exploded");
+      },
+    };
+
+    const degraded = handleRequest(
+      { source: "cli", rawInput: "status" },
+      {
+        logger,
+        contextManager: new ContextManager(),
+        executionController: throwingController as never,
+      },
+    );
+
+    expect(degraded.execution.status).toBe("failed");
+    expect(degraded.response.structuredErrors[0]?.category).toBe("system");
+    expect(degraded.response.errors[0]).toMatch(/Something went wrong|system/i);
+    expect(degraded.response.nextSteps.length).toBeGreaterThan(0);
   });
 
   it("classifies story example commands through the pipeline", () => {

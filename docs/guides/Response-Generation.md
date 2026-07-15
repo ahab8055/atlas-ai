@@ -2,7 +2,7 @@
 
 Converts execution results into clear user-facing messages after the pipeline runs a task.
 
-Related: [Request-Pipeline.md](./Request-Pipeline.md), [Execution-Controller.md](./Execution-Controller.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (§8 Response Generator), [Architecture/08](../Architecture/08-Voice-System-Architecture.md) (TTS later), [ADR-0015](../adr/0015-response-generation-system.md), [`@atlas-ai/core`](../../packages/core/).
+Related: [Request-Pipeline.md](./Request-Pipeline.md), [Execution-Controller.md](./Execution-Controller.md), [Error-Handling.md](./Error-Handling.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (§8 Response Generator), [Architecture/08](../Architecture/08-Voice-System-Architecture.md) (TTS later), [ADR-0015](../adr/0015-response-generation-system.md), [`@atlas-ai/core`](../../packages/core/).
 
 ---
 
@@ -28,21 +28,23 @@ interface PipelineResponse {
   status: ExecutionStatus;
   lifecycle?: ExecutionLifecycleState;
   errors: string[];
+  structuredErrors: AtlasErrorResponse[]; // category, code, recovery
   warnings: string[];
   nextSteps: string[];
   modality: "text" | "voice" | "both";
 }
 ```
 
-| Field        | Use                                                           |
-| ------------ | ------------------------------------------------------------- |
-| `text`       | Full formatted message (status, body, errors, warnings)       |
-| `spokenText` | Concise speakable form — adapters feed TTS later              |
-| `status`     | Task outcome (`completed`, `blocked`, `failed`, …)            |
-| `errors`     | Explained failures (permission, tool, cancel, …)              |
-| `warnings`   | Non-fatal issues (skipped steps, partial completion)          |
-| `nextSteps`  | What the user can do next                                     |
-| `modality`   | Hint from input source (`voice` → prefer spoken presentation) |
+| Field              | Use                                                           |
+| ------------------ | ------------------------------------------------------------- |
+| `text`             | Full formatted message (status, body, errors, warnings)       |
+| `spokenText`       | Concise speakable form — adapters feed TTS later              |
+| `status`           | Task outcome (`completed`, `blocked`, `failed`, …)            |
+| `errors`           | Explained failures (permission, tool, cancel, …)              |
+| `structuredErrors` | Category / code / recovery for UI and logs                    |
+| `warnings`         | Non-fatal issues (skipped steps, partial completion)          |
+| `nextSteps`        | What the user can do next (often from recovery suggestions)   |
+| `modality`         | Hint from input source (`voice` → prefer spoken presentation) |
 
 ---
 

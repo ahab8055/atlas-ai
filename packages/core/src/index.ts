@@ -19,6 +19,30 @@ export {
   setDefaultEventBus,
 } from "./events/index.js";
 
+export {
+  AtlasError,
+  classifyCategory,
+  createAtlasError,
+  ErrorHandler,
+  formatErrorCategory,
+  fromUnknown,
+  getDefaultErrorHandler,
+  handleError,
+  isAtlasErrorResponse,
+  markRecoveryAttempted,
+  setDefaultErrorHandler,
+  suggestRecovery,
+  ERROR_CATEGORY_LABELS,
+} from "./errors/index.js";
+export type {
+  AtlasErrorResponse,
+  ClassifyErrorInput,
+  ErrorCategory,
+  HandleErrorOptions,
+  RecoveryAction,
+  RecoveryStrategy,
+} from "./errors/index.js";
+
 export { normalizeRequest } from "./normalize.js";
 export { runPipeline } from "./pipeline.js";
 export type { PipelineOptions } from "./pipeline.js";

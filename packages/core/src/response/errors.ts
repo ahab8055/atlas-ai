@@ -1,28 +1,45 @@
 import type { ExecutionFailure, ExecutionResult } from "../execution/types.js";
+import {
+  formatErrorCategory,
+  getDefaultErrorHandler,
+  type AtlasErrorResponse,
+} from "../errors/index.js";
 
-const FAILURE_HINTS: Record<ExecutionFailure["code"], string> = {
-  permission_blocked:
-    "Atlas needs your approval before continuing this action. Review the pending permission and approve or deny it.",
-  tool_failed:
-    "A tool did not finish successfully. Check the detail below and try again, or run help for supported commands.",
-  cancelled: "The task was cancelled before it finished.",
-  unknown: "Something went wrong. Try the request again or run help.",
-};
+/**
+ * Turn structured execution failures into AtlasErrorResponse list + user lines.
+ */
+export function classifyExecutionFailures(
+  failures: readonly ExecutionFailure[],
+  options: { traceId?: string } = {},
+): AtlasErrorResponse[] {
+  const handler = getDefaultErrorHandler();
+  return failures.map((failure) =>
+    handler.fromExecutionFailure(failure, {
+      traceId: options.traceId,
+      log: false,
+    }),
+  );
+}
 
 /**
  * Turn structured execution failures into clear user-facing error lines.
  */
 export function explainFailures(
   failures: readonly ExecutionFailure[],
+  options: { traceId?: string } = {},
 ): string[] {
-  if (failures.length === 0) {
-    return [];
-  }
-
-  return failures.map((failure) => {
-    const where = failure.stepId ? ` (step: ${failure.stepId})` : "";
-    const hint = FAILURE_HINTS[failure.code];
-    return `${failure.message}${where}. ${hint}`;
+  return classifyExecutionFailures(failures, options).map((error) => {
+    const parts = [
+      `[${formatErrorCategory(error.category)}] ${error.userMessage}`,
+    ];
+    if (error.message && !error.userMessage.includes(error.message)) {
+      parts.push(`Detail: ${error.message}`);
+    }
+    const stepId = error.context?.stepId;
+    if (typeof stepId === "string" && stepId.length > 0) {
+      parts.push(`(step: ${stepId})`);
+    }
+    return parts.join(" ");
   });
 }
 
@@ -53,7 +70,6 @@ export function collectWarnings(execution: ExecutionResult): string[] {
     }
   }
 
-  // Prefer dedicated errors[] for hard failures — avoid duplicating into warnings.
   if (execution.status === "failed") {
     return warnings.filter(
       (w) => !execution.failures.some((f) => w.includes(f.message)),
@@ -69,4 +85,19 @@ export function fallbackErrorMessage(execution: ExecutionResult): string {
     execution.steps.find((s) => s.error)?.error ??
     "Unknown failure"
   );
+}
+
+/** Flatten recovery descriptions into next-step strings. */
+export function recoveryNextSteps(
+  errors: readonly AtlasErrorResponse[],
+): string[] {
+  const steps: string[] = [];
+  for (const error of errors) {
+    for (const action of error.recovery) {
+      if (!steps.includes(action.description)) {
+        steps.push(action.description);
+      }
+    }
+  }
+  return steps;
 }

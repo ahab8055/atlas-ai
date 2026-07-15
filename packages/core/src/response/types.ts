@@ -3,6 +3,7 @@ import type {
   ExecutionResult,
   ExecutionStatus,
 } from "../execution/types.js";
+import type { AtlasErrorResponse } from "../errors/types.js";
 import type { DetectedIntent } from "../intent/types.js";
 import type { ExecutionPlan } from "../planning/types.js";
 import type { NormalizedRequest } from "../types.js";
@@ -26,8 +27,10 @@ export interface PipelineResponse {
   status: ExecutionStatus;
   /** Lifecycle state when available. */
   lifecycle?: ExecutionLifecycleState;
-  /** Clear explanations of failures. */
+  /** Clear explanations of failures (user-facing lines). */
   errors: string[];
+  /** Structured errors (category, recovery, codes) for UI / adapters. */
+  structuredErrors: AtlasErrorResponse[];
   /** Non-fatal issues (skipped steps, partial work, etc.). */
   warnings: string[];
   /** Suggested next actions for the user. */
