@@ -13,6 +13,7 @@ Practical guides for contributing to Atlas AI.
 | [Security.md](./Security.md)                             | Permissions, approvals, secrets       |
 | [Request-Pipeline.md](./Request-Pipeline.md)             | Core request stages + CLI adapter     |
 | [Intent-Detection.md](./Intent-Detection.md)             | Intent categories, params, registry   |
+| [Context-Management.md](./Context-Management.md)         | Context sources before execution      |
 | [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits         |
 | [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow     |
 

@@ -1,5 +1,7 @@
 import type { Logger } from "@atlas-ai/logging";
 
+import type { ContextManager } from "./context/manager.js";
+import { getDefaultContextManager } from "./context/manager.js";
 import { type OrchestrationEvent } from "./events.js";
 import { normalizeRequest } from "./normalize.js";
 import { loadContext } from "./stages/context.js";
@@ -15,6 +17,7 @@ import type {
 
 export interface PipelineOptions {
   logger: Logger;
+  contextManager?: ContextManager;
 }
 
 function logStage(
@@ -45,6 +48,7 @@ export function runPipeline(
   options: PipelineOptions,
 ): PipelineResult {
   const { logger } = options;
+  const contextManager = options.contextManager ?? getDefaultContextManager();
   const request = normalizeRequest(incoming);
 
   logStage(logger, "RequestReceived", "normalize", request.traceId, {
@@ -65,10 +69,17 @@ export function runPipeline(
     capabilities: intent.capabilities,
   });
 
-  const context = loadContext(request, intent);
+  const context = loadContext(request, intent, { manager: contextManager });
   logStage(logger, "ContextLoaded", "context", request.traceId, {
+    sources: context.sources,
+    turnCount: context.conversation.turns.length,
     memoryCount: context.memories.length,
+    knowledgeCount: context.knowledge.length,
+    activeTaskCount: context.activeTasks.length,
+    preferredEditor: context.preferences.preferredEditor,
+    project: context.project?.name,
     runtime: context.systemState.runtime,
+    conversationSummary: context.conversationSummary,
   });
 
   const plan = createPlan(request, intent, context);
@@ -93,6 +104,8 @@ export function runPipeline(
     status: response.status,
     responseLength: response.text.length,
   });
+
+  contextManager.recordAssistant(request.sessionId, response.text, intent.name);
 
   return {
     request,

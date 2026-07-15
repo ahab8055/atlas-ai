@@ -1,7 +1,6 @@
-/**
- * Request sources. CLI is first; desktop and voice reuse the same pipeline.
- */
-export type InputSource = "cli" | "desktop" | "voice" | "api";
+import type { InputSource } from "./sources.js";
+
+export type { InputSource } from "./sources.js";
 
 /** Raw input from any adapter before normalization. */
 export interface IncomingRequest {
@@ -32,16 +31,21 @@ export type {
   IntentParameters,
 } from "./intent/types.js";
 
-import type { DetectedIntent } from "./intent/types.js";
+export type {
+  ActiveTask,
+  ContextSourceId,
+  ConversationContext,
+  ConversationTurn,
+  KnowledgeSnippet,
+  LoadedContext,
+  MemorySnippet,
+  ProjectContext,
+  SystemStateInfo,
+  UserPreferences,
+} from "./context/types.js";
 
-export interface LoadedContext {
-  conversationSummary: string;
-  memories: string[];
-  systemState: {
-    runtime: string;
-    source: InputSource;
-  };
-}
+import type { DetectedIntent } from "./intent/types.js";
+import type { LoadedContext } from "./context/types.js";
 
 export interface PlanStep {
   id: string;

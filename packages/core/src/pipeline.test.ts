@@ -2,6 +2,7 @@ import { createLogger, type LogRecord } from "@atlas-ai/logging";
 import { describe, expect, it } from "vitest";
 
 import {
+  ContextManager,
   createRequestHandler,
   handleRequest,
   ORCHESTRATION_EVENTS,
@@ -26,12 +27,14 @@ describe("request processing pipeline", () => {
     const { logger, records } = createCapturingLogger();
     const result = handleRequest(
       { source: "cli", rawInput: "  status  " },
-      { logger },
+      { logger, contextManager: new ContextManager() },
     );
 
     expect(result.request.source).toBe("cli");
     expect(result.request.text).toBe("status");
     expect(result.intent.name).toBe("system.status");
+    expect(result.context.sources).toContain("conversation");
+    expect(result.context.preferences.preferredEditor).toBe("VS Code");
     expect(result.execution.status).toBe("completed");
     expect(result.response.text).toContain("Atlas core OK");
 
@@ -48,14 +51,20 @@ describe("request processing pipeline", () => {
   it("handles help and echo intents", () => {
     const help = handleRequest(
       { source: "cli", rawInput: "help" },
-      { logger: createCapturingLogger().logger },
+      {
+        logger: createCapturingLogger().logger,
+        contextManager: new ContextManager(),
+      },
     );
     expect(help.intent.name).toBe("help");
     expect(help.response.text).toContain("available commands");
 
     const echo = handleRequest(
       { source: "cli", rawInput: "echo hello atlas" },
-      { logger: createCapturingLogger().logger },
+      {
+        logger: createCapturingLogger().logger,
+        contextManager: new ContextManager(),
+      },
     );
     expect(echo.intent.name).toBe("echo");
     expect(echo.response.text).toBe("hello atlas");
@@ -64,6 +73,7 @@ describe("request processing pipeline", () => {
   it("accepts future input sources without changing the pipeline", () => {
     const handler = createRequestHandler({
       logger: createCapturingLogger().logger,
+      contextManager: new ContextManager(),
     });
 
     for (const source of ["desktop", "voice", "api"] as const) {
@@ -80,7 +90,10 @@ describe("request processing pipeline", () => {
   it("returns a conversational stub for unknown commands", () => {
     const result = handleRequest(
       { source: "cli", rawInput: "prepare my development environment" },
-      { logger: createCapturingLogger().logger },
+      {
+        logger: createCapturingLogger().logger,
+        contextManager: new ContextManager(),
+      },
     );
 
     expect(result.intent.name).toBe("unknown");
@@ -90,10 +103,11 @@ describe("request processing pipeline", () => {
 
   it("classifies story example commands through the pipeline", () => {
     const logger = createCapturingLogger().logger;
+    const contextManager = new ContextManager();
 
     const open = handleRequest(
       { source: "cli", rawInput: "Open VS Code" },
-      { logger },
+      { logger, contextManager },
     );
     expect(open.intent.category).toBe("application_control");
     expect(open.intent.parameters.application).toBe("VS Code");
@@ -103,16 +117,35 @@ describe("request processing pipeline", () => {
 
     const search = handleRequest(
       { source: "cli", rawInput: "Find my project files" },
-      { logger },
+      { logger, contextManager },
     );
     expect(search.intent.category).toBe("file_search");
     expect(search.intent.parameters.query).toBe("project files");
 
     const code = handleRequest(
       { source: "cli", rawInput: "Explain this code" },
-      { logger },
+      { logger, contextManager },
     );
     expect(code.intent.category).toBe("code_analysis");
     expect(code.intent.parameters.target).toBe("code");
+  });
+
+  it("loads context before execution and records conversation", () => {
+    const contextManager = new ContextManager();
+    const logger = createCapturingLogger().logger;
+
+    const first = handleRequest(
+      { source: "cli", rawInput: "status", sessionId: "s-ctx" },
+      { logger, contextManager },
+    );
+    expect(first.context.conversation.turns.length).toBeGreaterThanOrEqual(1);
+
+    const second = handleRequest(
+      { source: "cli", rawInput: "help", sessionId: "s-ctx" },
+      { logger, contextManager },
+    );
+    expect(second.context.conversation.turns.length).toBeGreaterThan(
+      first.context.conversation.turns.length,
+    );
   });
 });

@@ -43,6 +43,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Security | `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/Architecture/06-Security-Architecture.md`, `packages/security/` |
 | Request pipeline / core runtime | `docs/guides/Request-Pipeline.md`, `docs/adr/0007-request-processing-pipeline.md`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `packages/core/`, `apps/cli/` |
 | Intent detection | `docs/guides/Intent-Detection.md`, `docs/adr/0008-intent-detection-registry.md`, `packages/core/src/intent/`, `docs/Architecture/02-Component-Architecture.md` |
+| Context management | `docs/guides/Context-Management.md`, `docs/adr/0009-context-management.md`, `packages/core/src/context/`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `docs/Architecture/04-Memory-Architecture.md` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

@@ -4,12 +4,14 @@ import {
   type LoggerOptions,
 } from "@atlas-ai/logging";
 
+import type { ContextManager } from "./context/manager.js";
 import { runPipeline, type PipelineOptions } from "./pipeline.js";
 import type { IncomingRequest, PipelineResult } from "./types.js";
 
 export interface RequestHandlerOptions {
   logger?: Logger;
   loggerOptions?: Omit<LoggerOptions, "service"> & { service?: string };
+  contextManager?: ContextManager;
 }
 
 /**
@@ -27,8 +29,12 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
 
   return {
     logger,
+    contextManager: options.contextManager,
     handle(incoming: IncomingRequest): PipelineResult {
-      return runPipeline(incoming, { logger } satisfies PipelineOptions);
+      return runPipeline(incoming, {
+        logger,
+        contextManager: options.contextManager,
+      } satisfies PipelineOptions);
     },
   };
 }

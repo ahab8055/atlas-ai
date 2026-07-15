@@ -32,6 +32,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0006](./0006-security-baseline.md)             | Security baseline package and rules     | Accepted |
 | [0007](./0007-request-processing-pipeline.md)   | Request processing pipeline in core     | Accepted |
 | [0008](./0008-intent-detection-registry.md)     | Intent detection registry               | Accepted |
+| [0009](./0009-context-management.md)            | Context management providers            | Accepted |
 
 ## Naming
 
