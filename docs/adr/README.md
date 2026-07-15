@@ -22,21 +22,22 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 
 ## Index
 
-| ADR                                             | Title                                   | Status   |
-| ----------------------------------------------- | --------------------------------------- | -------- |
-| [0001](./0001-record-architecture-decisions.md) | Record architecture decisions as ADRs   | Accepted |
-| [0002](./0002-documentation-structure.md)       | Adopt organized documentation structure | Accepted |
-| [0003](./0003-configuration-management.md)      | Configuration management approach       | Accepted |
-| [0004](./0004-structured-logging.md)            | Structured local logging                | Accepted |
-| [0005](./0005-github-actions-ci.md)             | GitHub Actions CI for pull requests     | Accepted |
-| [0006](./0006-security-baseline.md)             | Security baseline package and rules     | Accepted |
-| [0007](./0007-request-processing-pipeline.md)   | Request processing pipeline in core     | Accepted |
-| [0008](./0008-intent-detection-registry.md)     | Intent detection registry               | Accepted |
-| [0009](./0009-context-management.md)            | Context management providers            | Accepted |
-| [0010](./0010-task-planning-engine.md)          | Task planning engine                    | Accepted |
-| [0011](./0011-execution-controller.md)          | Execution controller                    | Accepted |
-| [0012](./0012-tool-registry.md)                 | Central tool registry package           | Accepted |
-| [0013](./0013-tool-execution-framework.md)      | Tool execution framework                | Accepted |
+| ADR                                                | Title                                   | Status   |
+| -------------------------------------------------- | --------------------------------------- | -------- |
+| [0001](./0001-record-architecture-decisions.md)    | Record architecture decisions as ADRs   | Accepted |
+| [0002](./0002-documentation-structure.md)          | Adopt organized documentation structure | Accepted |
+| [0003](./0003-configuration-management.md)         | Configuration management approach       | Accepted |
+| [0004](./0004-structured-logging.md)               | Structured local logging                | Accepted |
+| [0005](./0005-github-actions-ci.md)                | GitHub Actions CI for pull requests     | Accepted |
+| [0006](./0006-security-baseline.md)                | Security baseline package and rules     | Accepted |
+| [0007](./0007-request-processing-pipeline.md)      | Request processing pipeline in core     | Accepted |
+| [0008](./0008-intent-detection-registry.md)        | Intent detection registry               | Accepted |
+| [0009](./0009-context-management.md)               | Context management providers            | Accepted |
+| [0010](./0010-task-planning-engine.md)             | Task planning engine                    | Accepted |
+| [0011](./0011-execution-controller.md)             | Execution controller                    | Accepted |
+| [0012](./0012-tool-registry.md)                    | Central tool registry package           | Accepted |
+| [0013](./0013-tool-execution-framework.md)         | Tool execution framework                | Accepted |
+| [0014](./0014-permission-management-foundation.md) | Permission management foundation        | Accepted |
 
 ## Naming
 

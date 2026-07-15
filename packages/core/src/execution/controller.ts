@@ -1,7 +1,7 @@
 import {
-  evaluatePermission,
-  isActionBlocked,
+  getDefaultPermissionManager,
   type PermissionCapability,
+  type PermissionManager,
 } from "@atlas-ai/security";
 import { randomUUID } from "node:crypto";
 
@@ -140,6 +140,11 @@ function deriveLifecycle(
  */
 export class ExecutionController {
   private readonly tasks = new Map<string, ExecutionTask>();
+  private readonly permissions: PermissionManager;
+
+  constructor(permissions: PermissionManager = getDefaultPermissionManager()) {
+    this.permissions = permissions;
+  }
 
   /** Create a pending task without running it (monitorable). */
   createTask(request: NormalizedRequest, plan: ExecutionPlan): ExecutionTask {
@@ -274,17 +279,17 @@ export class ExecutionController {
 
       const capability = asCapability(step.capability);
       if (capability) {
-        const evaluation = evaluatePermission({
+        const check = this.permissions.requestPermission({
           capability,
           reason: step.description,
           resource: request.id,
         });
 
-        if (isActionBlocked(evaluation)) {
+        if (check.blocked) {
           const result: StepResult = {
             stepId: step.id,
             status: "blocked",
-            error: `Permission ${evaluation.decision} for ${capability}`,
+            error: `Permission ${check.evaluation.decision} for ${capability} (${check.tierLabel})`,
           };
           task.steps.push(result);
           this.pushFailure(task, {

@@ -30,7 +30,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Local AI / models | `docs/Architecture/09-Local-AI-Architecture.md`, `25-Model-Management-System.md`, `22-AI-Orchestration-Architecture.md` |
 | Data / DB / search / graph | `docs/Architecture/07-Data-Architecture.md`, `20-Database-Schema.md`, `24-Search-and-Retrieval-Architecture.md`, `23-Knowledge-Graph-Architecture.md` |
 | API surface | `docs/Architecture/21-API-Specification.md` |
-| Security / permissions | `docs/Architecture/06-Security-Architecture.md` |
+| Security / permissions | `docs/Architecture/06-Security-Architecture.md`, `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/adr/0014-permission-management-foundation.md` |
 | Events / workflows / plugins | `docs/Architecture/10-Event-System-Architecture.md`, `13-Workflow-Automation-Architecture.md`, `12-Plugin-System-Architecture.md` |
 | Desktop / voice | `docs/Architecture/11-Desktop-Application-Architecture.md`, `08-Voice-System-Architecture.md` |
 | Deploy / monitor / roadmap | `docs/Architecture/14-Deployment-Architecture.md`, `15-Monitoring-Architecture.md`, `16-Implementation-Roadmap.md`, `19-Development-Plan.md` |
@@ -40,7 +40,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Testing | `docs/guides/Testing.md`, `vitest.config.ts`, `tests/` |
 | CI / CD | `docs/guides/CI-CD.md`, `.github/workflows/ci.yml` |
 | Desktop shell | `docs/guides/Desktop-Shell.md`, `docs/Architecture/11-Desktop-Application-Architecture.md`, `apps/desktop/` |
-| Security | `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/Architecture/06-Security-Architecture.md`, `packages/security/` |
+| Security | `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/adr/0014-permission-management-foundation.md`, `docs/Architecture/06-Security-Architecture.md`, `packages/security/` |
 | Request pipeline / core runtime | `docs/guides/Request-Pipeline.md`, `docs/adr/0007-request-processing-pipeline.md`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `packages/core/`, `apps/cli/` |
 | Intent detection | `docs/guides/Intent-Detection.md`, `docs/adr/0008-intent-detection-registry.md`, `packages/core/src/intent/`, `docs/Architecture/02-Component-Architecture.md` |
 | Context management | `docs/guides/Context-Management.md`, `docs/adr/0009-context-management.md`, `packages/core/src/context/`, `docs/Architecture/22-AI-Orchestration-Architecture.md`, `docs/Architecture/04-Memory-Architecture.md` |

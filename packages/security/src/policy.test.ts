@@ -63,6 +63,16 @@ describe("evaluatePermission", () => {
     });
     expect(install.decision).toBe("require_explicit_approval");
   });
+
+  it("allows critical ops under Trusted Execution after grant", () => {
+    const del = evaluatePermission(
+      { capability: "filesystem.delete", reason: "cleanup" },
+      new Set(["filesystem.delete"]),
+    );
+    expect(del.decision).toBe("allow");
+    expect(del.granted).toBe(true);
+    expect(isActionBlocked(del)).toBe(false);
+  });
 });
 
 describe("createApprovalRequest", () => {
@@ -81,6 +91,7 @@ describe("createApprovalRequest", () => {
     );
 
     expect(approval.id).toBe("apr_1");
+    expect(approval.status).toBe("pending");
     expect(approval.summary).toContain("terminal.execute");
     expect(approval.evaluation.requiresUserAction).toBe(true);
   });

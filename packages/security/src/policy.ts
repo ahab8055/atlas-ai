@@ -32,11 +32,12 @@ const LEVEL_RISK: Record<PermissionLevel, RiskLevel> = {
  * Foundation policy evaluator.
  * Does not execute actions — only decides allow / grant / confirm / approve / deny.
  *
- * Flow (Security Architecture):
+ * Flow (Security Architecture + Trusted Execution):
  * Level 0 → allow
- * Level 1 → require prior grant (and confirmation when not yet granted)
- * Level 2 → require confirmation
- * Level 3 → require explicit approval
+ * Levels 1–3 with prior grant → allow (Trusted Execution)
+ * Level 1 without grant → require prior grant
+ * Level 2 without grant → require confirmation
+ * Level 3 without grant → require explicit approval
  */
 export function evaluatePermission(
   request: PermissionRequest,
@@ -56,16 +57,17 @@ export function evaluatePermission(
     };
   }
 
+  if (hasGrant) {
+    return {
+      level,
+      decision: "allow",
+      granted: true,
+      requiresUserAction: false,
+      message: `Trusted execution for ${request.capability} (${risk} risk).`,
+    };
+  }
+
   if (level === 1) {
-    if (hasGrant) {
-      return {
-        level,
-        decision: "allow",
-        granted: true,
-        requiresUserAction: false,
-        message: `User data access already granted for ${request.capability}.`,
-      };
-    }
     return {
       level,
       decision: "require_grant",

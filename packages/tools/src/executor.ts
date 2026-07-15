@@ -1,7 +1,7 @@
 import {
-  evaluatePermission,
-  isActionBlocked,
+  getDefaultPermissionManager,
   type PermissionCapability,
+  type PermissionManager,
 } from "@atlas-ai/security";
 import { randomUUID } from "node:crypto";
 
@@ -43,12 +43,17 @@ function nowIso(): string {
 export class ToolExecutor {
   private readonly history: ToolExecutionResult[] = [];
   private readonly maxHistory: number;
+  private readonly permissions: PermissionManager;
 
   constructor(
     private readonly registry: ToolRegistry = getDefaultToolRegistry(),
-    options: { maxHistory?: number } = {},
+    options: {
+      maxHistory?: number;
+      permissions?: PermissionManager;
+    } = {},
   ) {
     this.maxHistory = options.maxHistory ?? 100;
+    this.permissions = options.permissions ?? getDefaultPermissionManager();
   }
 
   /** Recent executions for monitoring (newest last). */
@@ -118,30 +123,28 @@ export class ToolExecutor {
     }
 
     if (request.checkPermissions) {
-      const granted = new Set(
-        [...(request.grantedCapabilities ?? [])].filter(
-          (c): c is PermissionCapability => asCapability(c) !== null,
-        ),
+      const additionalGrants = [...(request.grantedCapabilities ?? [])].filter(
+        (c): c is PermissionCapability => asCapability(c) !== null,
       );
 
       for (const permission of tool.metadata.permissions) {
-        const evaluation = evaluatePermission(
+        const check = this.permissions.requestPermission(
           {
             capability: permission,
             reason: `Execute tool ${tool.metadata.name}`,
             resource: context.stepId ?? context.requestId,
           },
-          granted,
+          { additionalGrants },
         );
-        if (isActionBlocked(evaluation)) {
+        if (check.blocked) {
           return finish({
             toolName: tool.metadata.name,
             toolVersion: tool.metadata.version,
             status: "permission_denied",
             ok: false,
-            error: evaluation.message,
+            error: check.evaluation.message,
             errorCode: "permission_denied",
-            permission: evaluation,
+            permission: check.evaluation,
           });
         }
       }

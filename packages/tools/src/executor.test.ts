@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { PermissionManager } from "@atlas-ai/security";
 
 import {
   executeTool,
   getDefaultToolExecutor,
+  getDefaultToolRegistry,
   ToolExecutor,
   ToolRegistry,
 } from "./index.js";
@@ -101,7 +103,10 @@ describe("tool execution framework", () => {
   });
 
   it("denies execution when checkPermissions is enabled", () => {
-    const result = executeTool({
+    const executor = new ToolExecutor(getDefaultToolRegistry(), {
+      permissions: new PermissionManager(),
+    });
+    const result = executor.execute({
       name: "application.open",
       input: { application: "VS Code" },
       checkPermissions: true,

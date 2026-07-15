@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PermissionManager } from "@atlas-ai/security";
 
 import { ContextManager, loadContext } from "../context/index.js";
 import { detectIntent } from "../intent/detect.js";
@@ -8,7 +9,7 @@ import { ExecutionController, executePlan } from "./index.js";
 
 describe("execution controller", () => {
   it("runs the lifecycle pending → running → completed", () => {
-    const controller = new ExecutionController();
+    const controller = new ExecutionController(new PermissionManager());
     const states: string[] = [];
     const plan = finalizePlan({
       goal: "Echo pair",
@@ -40,7 +41,7 @@ describe("execution controller", () => {
   });
 
   it("tracks progress and captures permission failures", () => {
-    const controller = new ExecutionController();
+    const controller = new ExecutionController(new PermissionManager());
     const request = normalizeRequest({
       source: "cli",
       rawInput: "Prepare my development environment",
@@ -72,7 +73,7 @@ describe("execution controller", () => {
   });
 
   it("supports cancellation between steps", () => {
-    const controller = new ExecutionController();
+    const controller = new ExecutionController(new PermissionManager());
     const plan = finalizePlan({
       goal: "Cancel mid-way",
       intentName: "demo",
@@ -98,7 +99,7 @@ describe("execution controller", () => {
   });
 
   it("cancels a pending task before run", () => {
-    const controller = new ExecutionController();
+    const controller = new ExecutionController(new PermissionManager());
     const plan = finalizePlan({
       goal: "Never run",
       intentName: "demo",
@@ -117,7 +118,7 @@ describe("execution controller", () => {
   });
 
   it("executePlan delegates to the controller", () => {
-    const controller = new ExecutionController();
+    const controller = new ExecutionController(new PermissionManager());
     const plan = finalizePlan({
       goal: "Echo",
       intentName: "echo",

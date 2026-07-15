@@ -36,4 +36,4 @@ Atlas will access personal files and system resources. Phase 0 needs documented 
 
 - Desktop IPC + UI for approval prompts.
 - Platform `SecureStorageProvider` implementations.
-- Audit log schema for permission outcomes.
+- Audit log schema for permission outcomes. → **Done in ADR-0014** (`PermissionDecisionLog`).

@@ -4,7 +4,7 @@ Foundation rules for permissions, secure storage, and sensitive data.
 
 **Principle:** _The AI can suggest actions, but the user owns the final authority._
 
-Related: [Architecture/06-Security-Architecture.md](../Architecture/06-Security-Architecture.md), [`@atlas-ai/security`](../../packages/security/), [ADR-0006](../adr/0006-security-baseline.md), [Configuration.md](./Configuration.md), [Logging.md](./Logging.md).
+Related: [Architecture/06-Security-Architecture.md](../Architecture/06-Security-Architecture.md), [`@atlas-ai/security`](../../packages/security/), [ADR-0006](../adr/0006-security-baseline.md), [ADR-0014](../adr/0014-permission-management-foundation.md), [Configuration.md](./Configuration.md), [Logging.md](./Logging.md).
 
 ---
 
@@ -18,65 +18,93 @@ Related: [Architecture/06-Security-Architecture.md](../Architecture/06-Security-
 
 ---
 
+## Permission tiers (product)
+
+| Tier                       | Meaning                                                           | Architecture levels |
+| -------------------------- | ----------------------------------------------------------------- | ------------------- |
+| **Read Only**              | Public info and user data reads (e.g. file search after grant)    | 0–1                 |
+| **User Approval Required** | Sensitive writes / system / critical ops until the user decides   | 2–3                 |
+| **Trusted Execution**      | Capability was granted (or approved once); later runs may proceed | 1–3 with grant      |
+
+Examples:
+
+- Reading files → **Read Only**; blocked until granted, then **Trusted Execution**.
+- Deleting files → **User Approval Required**; blocked until approved; after approve → **Trusted Execution** until revoked.
+
+---
+
 ## Permission model (foundation)
 
 Capability-based. Levels from Security Architecture:
 
-| Level | Name                | Rule                                                                          |
+| Level | Name                | Rule (no prior grant)                                                         |
 | ----- | ------------------- | ----------------------------------------------------------------------------- |
 | **0** | Public information  | Allow (e.g. `system.info`)                                                    |
-| **1** | User data access    | Requires **granted** permission (e.g. `filesystem.read`)                      |
+| **1** | User data access    | Requires **grant** (e.g. `filesystem.read`)                                   |
 | **2** | System actions      | Requires **confirmation** (e.g. `terminal.execute`, `filesystem.write`)       |
 | **3** | Critical operations | Requires **explicit approval** (e.g. `filesystem.delete`, `software.install`) |
 
-Implemented in `@atlas-ai/security` as `evaluatePermission()`.
+Once a capability is **granted** (via approval workflow), later checks use **Trusted Execution** (`decision: allow`) until revoked.
+
+### Primary API — `PermissionManager`
+
+Actions request permissions; decisions are recorded; sensitive actions are blocked.
 
 ```ts
-import { evaluatePermission, isActionBlocked } from "@atlas-ai/security";
+import { PermissionManager, isActionBlocked } from "@atlas-ai/security";
 
-const evaluation = evaluatePermission({
+const permissions = new PermissionManager();
+
+const check = permissions.requestPermission({
   capability: "filesystem.delete",
   reason: "Remove obsolete build artifacts",
   resource: "/Projects/OldApp/dist",
 });
 
-if (isActionBlocked(evaluation)) {
-  // Must not execute — go through approval flow
+if (check.blocked) {
+  // Do not execute — approval is pending at check.approval
+  // User decides:
+  permissions.resolveApproval(check.approval!.id, "approved"); // or "denied"
 }
+
+// Audit
+permissions.listDecisions(); // allowed | blocked | approved | denied | cancelled
 ```
 
-**Future system access** (files, terminal, apps) **must** call this (or a successor policy engine) before execution.
+Low-level policy remains `evaluatePermission()` / `isActionBlocked()`.
+
+**ExecutionController** and **ToolExecutor** (`checkPermissions: true`) call `PermissionManager.requestPermission()` so checks are audited.
 
 ---
 
-## Planned approval flow
+## Approval workflow foundation
 
 ```
 Tool / Agent requests action
         ↓
-evaluatePermission(...)
+permissions.requestPermission(...)
         ↓
-   allow? → execute + audit log
+   allow? → execute + decision recorded (allowed)
         ↓
-requires user action?
+blocked?
         ↓
-createApprovalRequest(...)  → Permission Center UI (desktop)
+ApprovalWorkflow.create(...)  → pending (Permission Center UI later)
         ↓
-user: approve | deny | cancel
+resolveApproval(approve | deny | cancel)
         ↓
-if approved → execute + audit log
-else → deny + audit log
+if approved → grant capability + decision recorded
+else → decision recorded; action stays blocked
 ```
 
 | Decision                    | Meaning                                             |
 | --------------------------- | --------------------------------------------------- |
-| `allow`                     | Proceed (Level 0 or prior Level 1 grant)            |
-| `require_grant`             | User must grant capability first                    |
-| `require_confirmation`      | Confirm this instance of a Level 2 action           |
+| `allow`                     | Proceed (Level 0 or Trusted Execution)              |
+| `require_grant`             | User must grant capability first (Level 1)          |
+| `require_confirmation`      | Confirm this Level 2 action                         |
 | `require_explicit_approval` | Explicit Level 3 approval (delete/install/settings) |
 | `deny`                      | Reserved for hard policy denies (future)            |
 
-UI IPC for prompts is **not** wired yet; the payload shape is ready via `createApprovalRequest`.
+UI IPC for prompts is **not** wired yet; payloads + `ApprovalWorkflow` are ready.
 
 ---
 
@@ -115,15 +143,16 @@ Logging already redacts secret-shaped keys (`@atlas-ai/logging` redact).
 
 ---
 
-## Audit expectations (next)
+## Audit expectations
 
-Every important tool action should eventually log:
+`PermissionManager` records every check and approval resolution in `PermissionDecisionLog` (in-memory; persist later):
 
-- timestamp, agent, tool, action
-- permission result / approval id
-- execution result
+- timestamp, capability, reason, resource
+- evaluation + product tier
+- outcome: allowed | blocked | approved | denied | cancelled
+- approval id when applicable
 
-Use `category: "security"` in structured logs for permission decisions.
+Prefer `category: "security"` in structured logs when bridging to `@atlas-ai/logging`.
 
 ---
 

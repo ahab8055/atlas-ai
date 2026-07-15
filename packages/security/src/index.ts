@@ -18,7 +18,35 @@ export type {
   ApprovalResult,
   ApprovalStatus,
 } from "./approval.js";
-export { createApprovalRequest, isActionBlocked } from "./approval.js";
+export {
+  ApprovalWorkflow,
+  createApprovalRequest,
+  isActionBlocked,
+} from "./approval.js";
+
+export type { PermissionTier } from "./tiers.js";
+export {
+  PERMISSION_TIER_LABELS,
+  isSensitiveTier,
+  tierForLevel,
+} from "./tiers.js";
+
+export type {
+  PermissionDecisionOutcome,
+  PermissionDecisionRecord,
+} from "./audit.js";
+export { PermissionDecisionLog } from "./audit.js";
+
+export type {
+  PermissionCheckResult,
+  PermissionManagerOptions,
+} from "./manager.js";
+export {
+  PermissionManager,
+  getDefaultPermissionManager,
+  requestPermission,
+  setDefaultPermissionManager,
+} from "./manager.js";
 
 export type { DataClassification, DataSensitivity } from "./data.js";
 export {
