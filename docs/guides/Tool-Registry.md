@@ -65,7 +65,17 @@ MVP builtins self-register on import (`system.info`, `echo`, `application.open`,
 
 ## Execution wiring
 
-`@atlas-ai/core` ExecutionController invokes tools via `registry.invoke(name, args)` (input schema validated first). Plan steps use the same tool names.
+Prefer the **tool execution framework**:
+
+```ts
+import { executeTool } from "@atlas-ai/tools";
+
+const result = executeTool({ name: "echo", input: { text: "hi" } });
+```
+
+`@atlas-ai/core` ExecutionController calls this via `executeToolStep` (input validated, errors captured, outputs returned as step results). See [Tool-Execution.md](./Tool-Execution.md).
+
+`registry.invoke` remains a thin shortcut that returns a bare `ToolResult`.
 
 ---
 

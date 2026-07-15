@@ -66,6 +66,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Task Planning](docs/guides/Task-Planning.md)                     | Ordered execution plans      |
 | [Execution Controller](docs/guides/Execution-Controller.md)       | Lifecycle + progress         |
 | [Tool Registry](docs/guides/Tool-Registry.md)                     | Register & discover tools    |
+| [Tool Execution](docs/guides/Tool-Execution.md)                   | Safe tool runs + results     |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 

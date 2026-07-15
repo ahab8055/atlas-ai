@@ -36,6 +36,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0010](./0010-task-planning-engine.md)          | Task planning engine                    | Accepted |
 | [0011](./0011-execution-controller.md)          | Execution controller                    | Accepted |
 | [0012](./0012-tool-registry.md)                 | Central tool registry package           | Accepted |
+| [0013](./0013-tool-execution-framework.md)      | Tool execution framework                | Accepted |
 
 ## Naming
 

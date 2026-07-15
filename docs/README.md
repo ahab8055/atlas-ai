@@ -43,6 +43,7 @@ docs/
 | Task planning           | [guides/Task-Planning.md](./guides/Task-Planning.md)                                   |
 | Execution controller    | [guides/Execution-Controller.md](./guides/Execution-Controller.md)                     |
 | Tool registry           | [guides/Tool-Registry.md](./guides/Tool-Registry.md)                                   |
+| Tool execution          | [guides/Tool-Execution.md](./guides/Tool-Execution.md)                                 |
 
 ## Adding future documents
 

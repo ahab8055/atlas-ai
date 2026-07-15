@@ -11,6 +11,13 @@ export type {
   ToolResult,
 } from "./types.js";
 
+export type {
+  ToolExecutionErrorCode,
+  ToolExecutionRequest,
+  ToolExecutionResult,
+  ToolExecutionStatus,
+} from "./execution-types.js";
+
 export {
   ToolRegistry,
   getDefaultToolRegistry,
@@ -18,6 +25,13 @@ export {
   setDefaultToolRegistry,
   type RegisterToolOptions,
 } from "./registry.js";
+
+export {
+  ToolExecutor,
+  executeTool,
+  getDefaultToolExecutor,
+  setDefaultToolExecutor,
+} from "./executor.js";
 
 export {
   validateAgainstSchema,

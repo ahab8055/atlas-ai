@@ -12,4 +12,5 @@ import {
 console.log(listToolMetadata().map((t) => t.name));
 ```
 
-See [docs/guides/Tool-Registry.md](../../docs/guides/Tool-Registry.md).
+See [docs/guides/Tool-Registry.md](../../docs/guides/Tool-Registry.md) and
+[docs/guides/Tool-Execution.md](../../docs/guides/Tool-Execution.md).

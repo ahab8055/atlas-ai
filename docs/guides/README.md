@@ -17,6 +17,7 @@ Practical guides for contributing to Atlas AI.
 | [Task-Planning.md](./Task-Planning.md)                   | Single- and multi-step execution plans |
 | [Execution-Controller.md](./Execution-Controller.md)     | Lifecycle, progress, failures          |
 | [Tool-Registry.md](./Tool-Registry.md)                   | Tool metadata, discovery, versioning   |
+| [Tool-Execution.md](./Tool-Execution.md)                 | Validate, run, capture tool results    |
 | [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits          |
 | [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow      |
 

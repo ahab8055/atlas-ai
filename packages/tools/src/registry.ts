@@ -131,6 +131,7 @@ export class ToolRegistry {
 
   /**
    * Validate input against the tool's input schema, then invoke the handler.
+   * Prefer `ToolExecutor.execute` / `executeTool` when callers need full execution records.
    */
   invoke(
     name: string,
