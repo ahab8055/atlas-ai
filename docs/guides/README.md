@@ -10,6 +10,7 @@ Practical guides for contributing to Atlas AI.
 | [Testing.md](./Testing.md)                               | Vitest, Rust tests, e2e placeholder   |
 | [CI-CD.md](./CI-CD.md)                                   | GitHub Actions PR quality gates       |
 | [Desktop-Shell.md](./Desktop-Shell.md)                   | Tauri shell, IPC, lifecycle           |
+| [Security.md](./Security.md)                             | Permissions, approvals, secrets       |
 | [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits         |
 | [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow     |
 

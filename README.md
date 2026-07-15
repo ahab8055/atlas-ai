@@ -7,7 +7,7 @@ Local-first personal AI assistant. Privacy-focused, modular, and designed to run
 ```
 atlas-ai/
 ├── apps/desktop/     # Desktop application (Tauri)
-├── packages/         # core, agents, tools, memory, database, shared, config
+├── packages/         # core, agents, tools, memory, database, shared, config, logging, security
 ├── config/           # Non-secret per-environment defaults
 ├── models/           # Local AI model weights
 ├── docs/             # Product, architecture, guides, ADRs
@@ -57,6 +57,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Testing](docs/guides/Testing.md)                                 | Vitest & test layout         |
 | [CI/CD](docs/guides/CI-CD.md)                                     | GitHub Actions checks        |
 | [Desktop Shell](docs/guides/Desktop-Shell.md)                     | Tauri window, IPC, lifecycle |
+| [Security](docs/guides/Security.md)                               | Permissions & secrets        |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 

@@ -134,7 +134,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Scopes (suggested)
 
-`desktop`, `core`, `agents`, `tools`, `memory`, `database`, `shared`, `config`, `logging`, `docs`, `scripts`
+`desktop`, `core`, `agents`, `tools`, `memory`, `database`, `shared`, `config`, `logging`, `security`, `docs`, `scripts`
 
 ### Examples
 

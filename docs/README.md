@@ -36,6 +36,7 @@ docs/
 | Testing                 | [guides/Testing.md](./guides/Testing.md)                                               |
 | CI / CD                 | [guides/CI-CD.md](./guides/CI-CD.md)                                                   |
 | Desktop shell           | [guides/Desktop-Shell.md](./guides/Desktop-Shell.md)                                   |
+| Security baseline       | [guides/Security.md](./guides/Security.md)                                             |
 
 ## Adding future documents
 

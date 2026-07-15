@@ -40,6 +40,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Testing | `docs/guides/Testing.md`, `vitest.config.ts`, `tests/` |
 | CI / CD | `docs/guides/CI-CD.md`, `.github/workflows/ci.yml` |
 | Desktop shell | `docs/guides/Desktop-Shell.md`, `docs/Architecture/11-Desktop-Application-Architecture.md`, `apps/desktop/` |
+| Security | `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/Architecture/06-Security-Architecture.md`, `packages/security/` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

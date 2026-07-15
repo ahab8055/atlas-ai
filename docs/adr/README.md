@@ -29,6 +29,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0003](./0003-configuration-management.md)      | Configuration management approach       | Accepted |
 | [0004](./0004-structured-logging.md)            | Structured local logging                | Accepted |
 | [0005](./0005-github-actions-ci.md)             | GitHub Actions CI for pull requests     | Accepted |
+| [0006](./0006-security-baseline.md)             | Security baseline package and rules     | Accepted |
 
 ## Naming
 
