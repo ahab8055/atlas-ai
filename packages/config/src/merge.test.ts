@@ -1,0 +1,70 @@
+import { describe, expect, it } from "vitest";
+import {
+  applyEnvOverrides,
+  mergeAppConfig,
+  parseEnvironment,
+} from "./merge.js";
+import { DEFAULT_APP_CONFIG } from "./defaults.js";
+import { loadConfig } from "./load.js";
+import { resolve } from "node:path";
+
+describe("parseEnvironment", () => {
+  it("accepts known environments", () => {
+    expect(parseEnvironment("production")).toBe("production");
+    expect(parseEnvironment("test")).toBe("test");
+  });
+
+  it("falls back to development for unknown values", () => {
+    expect(parseEnvironment("staging")).toBe("development");
+    expect(parseEnvironment(undefined)).toBe("development");
+  });
+});
+
+describe("applyEnvOverrides", () => {
+  it("overrides log level from ATLAS_LOG_LEVEL", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_LOG_LEVEL: "debug",
+    });
+    expect(next.logLevel).toBe("debug");
+  });
+});
+
+describe("loadConfig", () => {
+  const repoRoot = resolve(import.meta.dirname, "../../..");
+
+  it("loads production non-secret defaults without reading secrets from JSON", () => {
+    const config = loadConfig({
+      repoRoot,
+      env: "production",
+      loadEnvFile: false,
+      envVars: { ATLAS_ENV: "production" },
+    });
+
+    expect(config.env).toBe("production");
+    expect(config.logLevel).toBe("info");
+    expect(config.secrets.openaiApiKey).toBeUndefined();
+  });
+
+  it("reads secrets only from environment variables", () => {
+    const config = loadConfig({
+      repoRoot,
+      loadEnvFile: false,
+      envVars: {
+        ATLAS_ENV: "development",
+        OPENAI_API_KEY: "sk-test",
+      },
+    });
+
+    expect(config.secrets.openaiApiKey).toBe("sk-test");
+  });
+});
+
+describe("mergeAppConfig", () => {
+  it("merges nested path overrides", () => {
+    const merged = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      paths: { dataDir: ".data/custom" },
+    });
+    expect(merged.paths.dataDir).toBe(".data/custom");
+    expect(merged.paths.modelsDir).toBe(DEFAULT_APP_CONFIG.paths.modelsDir);
+  });
+});

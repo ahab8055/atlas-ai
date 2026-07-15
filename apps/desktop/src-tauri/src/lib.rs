@@ -2,11 +2,15 @@
 
 use tracing::{error, info, instrument};
 
+fn format_greeting(name: &str) -> String {
+    format!("Hello, {name}! Atlas Rust core is ready.")
+}
+
 #[tauri::command]
 #[instrument(fields(category = "application"))]
 fn greet(name: &str) -> String {
     info!(service = "desktop-core", message = "greet invoked", name);
-    format!("Hello, {name}! Atlas Rust core is ready.")
+    format_greeting(name)
 }
 
 fn init_logging() {
@@ -46,5 +50,17 @@ pub fn run() {
             "Atlas desktop failed to start"
         );
         panic!("error while running Atlas AI: {error}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_greeting;
+
+    #[test]
+    fn format_greeting_includes_name() {
+        let message = format_greeting("Ada");
+        assert!(message.contains("Ada"));
+        assert!(message.contains("Atlas Rust core is ready"));
     }
 }

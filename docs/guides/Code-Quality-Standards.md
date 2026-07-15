@@ -63,7 +63,7 @@ Rules:
 - Put **app entry points** under `apps/`.
 - Put **reusable libraries** under `packages/`.
 - Keep **unit tests next to source** (`*.test.ts`, Rust `#[cfg(test)]`).
-- Use `tests/` for **cross-package** or e2e suites.
+- Use `tests/` for **cross-package** or e2e suites (see [Testing.md](./Testing.md)).
 - Do not place production source at the repo root.
 - Prefer one primary concern per package (aligns with modular MVP architecture).
 

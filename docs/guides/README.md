@@ -7,6 +7,7 @@ Practical guides for contributing to Atlas AI.
 | [Development-Setup.md](./Development-Setup.md)           | Toolchain, env vars, OS prerequisites |
 | [Configuration.md](./Configuration.md)                   | Config loading, env profiles, secrets |
 | [Logging.md](./Logging.md)                               | Structured logs, levels, error format |
+| [Testing.md](./Testing.md)                               | Vitest, Rust tests, e2e placeholder   |
 | [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits         |
 | [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow     |
 

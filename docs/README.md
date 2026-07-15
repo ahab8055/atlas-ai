@@ -33,6 +33,7 @@ docs/
 | Recording a decision    | [adr/README.md](./adr/README.md)                                                       |
 | Configuration / secrets | [guides/Configuration.md](./guides/Configuration.md)                                   |
 | Logging / debugging     | [guides/Logging.md](./guides/Logging.md)                                               |
+| Testing                 | [guides/Testing.md](./guides/Testing.md)                                               |
 
 ## Adding future documents
 
