@@ -1,4 +1,5 @@
 export type {
+  AtlasAiConfig,
   AtlasAppConfig,
   AtlasConfig,
   AtlasEnvironment,

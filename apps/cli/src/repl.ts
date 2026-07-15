@@ -1,6 +1,7 @@
 import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
+import { tryHandleAiCommand } from "./ai-command.js";
 import { exitCodeForResult } from "./display.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
 import type { CliOptions } from "./options.js";
@@ -46,6 +47,14 @@ export async function runRepl(
       }
       if (isExitLine(trimmed)) {
         break;
+      }
+
+      if (await tryHandleAiCommand(trimmed)) {
+        lastCode =
+          process.exitCode === 1 || process.exitCode === 2
+            ? process.exitCode
+            : 0;
+        continue;
       }
 
       if (tryHandleHistoryCommand(runtime, trimmed)) {

@@ -7,6 +7,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 /** Root `tests/integration` imports workspace packages via aliases (not hoisted to root). */
 const workspaceAlias = {
   "@atlas-ai/core": path.join(root, "packages/core/dist/index.js"),
+  "@atlas-ai/ai": path.join(root, "packages/ai/dist/index.js"),
   "@atlas-ai/logging": path.join(root, "packages/logging/dist/index.js"),
   "@atlas-ai/security": path.join(root, "packages/security/dist/index.js"),
   "@atlas-ai/tools": path.join(root, "packages/tools/dist/index.js"),

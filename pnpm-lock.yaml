@@ -8,6 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@atlas-ai/core':
+        specifier: workspace:*
+        version: link:packages/core
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:packages/logging
+      '@atlas-ai/security':
+        specifier: workspace:*
+        version: link:packages/security
+      '@atlas-ai/tools':
+        specifier: workspace:*
+        version: link:packages/tools
       '@commitlint/cli':
         specifier: ^19.8.1
         version: 19.8.1(@types/node@26.1.1)(typescript@5.8.3)
@@ -56,6 +68,12 @@ importers:
 
   apps/cli:
     dependencies:
+      '@atlas-ai/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@atlas-ai/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@atlas-ai/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -115,6 +133,19 @@ importers:
       vite:
         specifier: ^7.0.4
         version: 7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
+
+  packages/ai:
+    dependencies:
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../logging
+    devDependencies:
+      '@types/node':
+        specifier: '22'
+        version: 22.20.1
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
 
   packages/config:
     devDependencies:

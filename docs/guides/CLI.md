@@ -76,6 +76,15 @@ pnpm atlas history --status blocked --limit 5
 pnpm atlas --no-db status
 ```
 
+### Local AI runtime
+
+Probe the inference facade without running the request pipeline — see [Local-AI-Runtime.md](./Local-AI-Runtime.md).
+
+```bash
+pnpm atlas ai status
+ATLAS_AI_PROVIDER=llamacpp pnpm atlas ai status
+```
+
 ---
 
 ## Options

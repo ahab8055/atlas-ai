@@ -25,6 +25,15 @@ export interface AtlasFeatureFlags {
   telemetry: boolean;
 }
 
+export interface AtlasAiConfig {
+  /** Active inference provider id (`mock` | `llamacpp` | custom). */
+  provider: string;
+  /** Local llama.cpp / OpenAI-compatible endpoint. */
+  endpoint: string;
+  /** Default model id for load/generate. */
+  defaultModelId: string;
+}
+
 /** Non-secret, serializable application settings. */
 export interface AtlasAppConfig {
   env: AtlasEnvironment;
@@ -32,6 +41,7 @@ export interface AtlasAppConfig {
   paths: AtlasPathsConfig;
   server: AtlasServerConfig;
   features: AtlasFeatureFlags;
+  ai: AtlasAiConfig;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type {
+  AtlasAiConfig,
   AtlasAppConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
@@ -103,6 +104,17 @@ function mergeFeatures(
   };
 }
 
+function mergeAi(base: AtlasAiConfig, patch: unknown): AtlasAiConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    provider: asString(patch.provider, base.provider),
+    endpoint: asString(patch.endpoint, base.endpoint),
+    defaultModelId: asString(patch.defaultModelId, base.defaultModelId),
+  };
+}
+
 /** Deep-merge a partial JSON object onto defaults (non-secret fields only). */
 export function mergeAppConfig(
   base: AtlasAppConfig,
@@ -114,6 +126,7 @@ export function mergeAppConfig(
       paths: { ...base.paths },
       server: { ...base.server },
       features: { ...base.features },
+      ai: { ...base.ai },
     };
   }
 
@@ -123,6 +136,7 @@ export function mergeAppConfig(
     paths: mergePaths(base.paths, patch.paths),
     server: mergeServer(base.server, patch.server),
     features: mergeFeatures(base.features, patch.features),
+    ai: mergeAi(base.ai, patch.ai),
   };
 }
 
@@ -156,6 +170,12 @@ export function applyEnvOverrides(
         envVars.ATLAS_FEATURE_TELEMETRY !== undefined
           ? envVars.ATLAS_FEATURE_TELEMETRY === "true"
           : config.features.telemetry,
+    },
+    ai: {
+      provider: envVars.ATLAS_AI_PROVIDER ?? config.ai.provider,
+      endpoint: envVars.ATLAS_AI_ENDPOINT ?? config.ai.endpoint,
+      defaultModelId:
+        envVars.ATLAS_AI_DEFAULT_MODEL ?? config.ai.defaultModelId,
     },
   });
 

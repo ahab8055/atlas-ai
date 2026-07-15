@@ -45,6 +45,7 @@ export function usage(): string {
     "Examples:",
     "  atlas help",
     "  atlas status",
+    "  atlas ai status",
     "  atlas history",
     "  atlas history --status failed --limit 5",
     "  atlas echo hello",
@@ -57,6 +58,9 @@ export function usage(): string {
     "  ATLAS_DB_PATH=…       Default database file path",
     "  ATLAS_DB_DISABLED=1   Same as --no-db",
     "  ATLAS_LOG_LEVEL=…     Default log level when not --debug/--quiet",
+    "  ATLAS_AI_PROVIDER=…   mock | llamacpp",
+    "  ATLAS_AI_ENDPOINT=…   llama-server base URL",
+    "  ATLAS_AI_DEFAULT_MODEL=…",
     "",
     "Desktop and voice will call the same core handler with source desktop|voice.",
   ].join("\n");

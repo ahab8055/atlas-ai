@@ -17,4 +17,9 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
     cloudProviders: false,
     telemetry: false,
   },
+  ai: {
+    provider: "mock",
+    endpoint: "http://127.0.0.1:8080",
+    defaultModelId: "mock-general",
+  },
 };

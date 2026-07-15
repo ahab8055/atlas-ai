@@ -45,6 +45,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0019](./0019-task-history-tracking.md)                 | Task history tracking                   | Accepted |
 | [0020](./0020-error-handling-framework.md)              | Error handling framework                | Accepted |
 | [0021](./0021-phase1-core-runtime-integration-tests.md) | Phase 1 core runtime integration tests  | Accepted |
+| [0022](./0022-ai-runtime-foundation.md)                 | AI runtime foundation                   | Accepted |
 
 ## Naming
 
