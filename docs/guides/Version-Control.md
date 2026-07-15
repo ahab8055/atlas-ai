@@ -49,6 +49,7 @@ main
 4. Prefer **squash merge** so `main` history stays readable.
 5. Delete the branch after merge.
 6. Do not commit directly to `main` once a remote and branch protection exist (local bootstrapping excepted).
+7. CI must be green (`Lint & format`, `Test`, `Build`) — see [CI-CD.md](./CI-CD.md).
 
 ### Naming examples
 

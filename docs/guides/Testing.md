@@ -15,7 +15,7 @@ Related: [Technology-Stack-Architecture.md](../product/Technology-Stack-Architec
 | End-to-end                    | **Playwright** (directory reserved under `tests/e2e/`) |
 | Rust                          | Built-in `cargo test`                                  |
 
-CI (GitHub Actions) can call the same commands later — no pipeline required for this foundation step.
+CI (GitHub Actions) runs the same unit commands on every pull request — see [CI-CD.md](./CI-CD.md).
 
 ---
 
@@ -85,6 +85,6 @@ describe("parseLogLevel", () => {
 
 1. Add Playwright under `tests/e2e/` with `playwright.config.ts`.
 2. Add `pnpm test:e2e`.
-3. In GitHub Actions: `pnpm test` + `pnpm test:rust` (+ e2e on PR as needed).
+3. Extend [CI-CD.md](./CI-CD.md) / `.github/workflows/ci.yml` with an e2e job when ready.
 
-Until then, local Vitest/Rust runs are the quality gate for logic changes.
+Unit Vitest + Rust tests already run in CI on every PR.

@@ -34,6 +34,7 @@ docs/
 | Configuration / secrets | [guides/Configuration.md](./guides/Configuration.md)                                   |
 | Logging / debugging     | [guides/Logging.md](./guides/Logging.md)                                               |
 | Testing                 | [guides/Testing.md](./guides/Testing.md)                                               |
+| CI / CD                 | [guides/CI-CD.md](./guides/CI-CD.md)                                                   |
 
 ## Adding future documents
 

@@ -55,6 +55,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Configuration](docs/guides/Configuration.md)                     | Env profiles & secrets       |
 | [Logging](docs/guides/Logging.md)                                 | Structured logging           |
 | [Testing](docs/guides/Testing.md)                                 | Vitest & test layout         |
+| [CI/CD](docs/guides/CI-CD.md)                                     | GitHub Actions checks        |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs        |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions       |
 
