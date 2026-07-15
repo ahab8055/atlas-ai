@@ -23,6 +23,8 @@ if command -v pnpm >/dev/null 2>&1; then
   pnpm install
   echo "Building @atlas-ai/config..."
   pnpm config:build
+  echo "Building @atlas-ai/logging..."
+  pnpm logging:build
 else
   echo "pnpm not found — skip install. See docs/guides/Development-Setup.md"
 fi

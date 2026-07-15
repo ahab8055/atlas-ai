@@ -27,6 +27,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0001](./0001-record-architecture-decisions.md) | Record architecture decisions as ADRs   | Accepted |
 | [0002](./0002-documentation-structure.md)       | Adopt organized documentation structure | Accepted |
 | [0003](./0003-configuration-management.md)      | Configuration management approach       | Accepted |
+| [0004](./0004-structured-logging.md)            | Structured local logging                | Accepted |
 
 ## Naming
 

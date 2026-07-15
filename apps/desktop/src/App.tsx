@@ -1,6 +1,13 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { createLogger } from "@atlas-ai/logging";
+
+const log = createLogger({
+  service: "desktop-ui",
+  level: "debug",
+  category: "application",
+});
 
 function App() {
   const [name, setName] = useState("");
@@ -10,12 +17,16 @@ function App() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
+    const greeter = name.trim() || "developer";
+    log.info("greet requested", { context: { name: greeter } });
     try {
-      const result = await invoke<string>("greet", {
-        name: name.trim() || "developer",
-      });
+      const result = await invoke<string>("greet", { name: greeter });
       setMessage(result);
+      log.debug("greet succeeded", { context: { name: greeter } });
     } catch (error) {
+      log.logError("greet failed", error, {
+        context: { name: greeter },
+      });
       setMessage(
         error instanceof Error ? error.message : "Failed to reach Rust core",
       );

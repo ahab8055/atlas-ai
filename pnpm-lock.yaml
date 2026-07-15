@@ -50,6 +50,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../../packages/logging
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1
@@ -89,6 +92,15 @@ importers:
         version: 7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/config:
+    devDependencies:
+      '@types/node':
+        specifier: '22'
+        version: 22.20.1
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
+  packages/logging:
     devDependencies:
       '@types/node':
         specifier: '22'
@@ -2902,7 +2914,7 @@ snapshots:
 
   '@types/conventional-commits-parser@5.0.2':
     dependencies:
-      '@types/node': 26.1.1
+      '@types/node': 22.20.1
 
   '@types/estree@1.0.9': {}
 

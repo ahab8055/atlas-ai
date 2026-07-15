@@ -32,6 +32,7 @@ docs/
 | Stack choices           | [product/Technology-Stack-Architecture.md](./product/Technology-Stack-Architecture.md) |
 | Recording a decision    | [adr/README.md](./adr/README.md)                                                       |
 | Configuration / secrets | [guides/Configuration.md](./guides/Configuration.md)                                   |
+| Logging / debugging     | [guides/Logging.md](./guides/Logging.md)                                               |
 
 ## Adding future documents
 
