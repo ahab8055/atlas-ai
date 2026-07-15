@@ -1,5 +1,23 @@
-export type { OrchestrationEvent } from "./events.js";
-export { ORCHESTRATION_EVENTS } from "./events.js";
+export type {
+  AtlasEvent,
+  CoreAtlasEvent,
+  CoreEventPayloadMap,
+  CoreEventType,
+  EventHandler,
+  OrchestrationEvent,
+  PublishInput,
+  Unsubscribe,
+} from "./events/index.js";
+export {
+  CORE_EVENTS,
+  EventBus,
+  ORCHESTRATION_EVENTS,
+  assertAtlasEvent,
+  getDefaultEventBus,
+  isCoreEventType,
+  publishCoreEvent,
+  setDefaultEventBus,
+} from "./events/index.js";
 
 export { normalizeRequest } from "./normalize.js";
 export { runPipeline } from "./pipeline.js";

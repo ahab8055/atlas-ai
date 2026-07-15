@@ -4,7 +4,13 @@ import type { ContextManager } from "./context/manager.js";
 import { getDefaultContextManager } from "./context/manager.js";
 import type { ExecutionController } from "./execution/controller.js";
 import { getDefaultExecutionController } from "./execution/controller.js";
-import { type OrchestrationEvent } from "./events.js";
+import {
+  getDefaultEventBus,
+  publishCoreEvent,
+  type CoreEventPayloadMap,
+  type CoreEventType,
+  type EventBus,
+} from "./events/index.js";
 import { normalizeRequest } from "./normalize.js";
 import { loadContext } from "./stages/context.js";
 import { executePlan } from "./stages/execute.js";
@@ -21,22 +27,33 @@ export interface PipelineOptions {
   logger: Logger;
   contextManager?: ContextManager;
   executionController?: ExecutionController;
+  /** Internal event bus for component communication (Architecture/10). */
+  eventBus?: EventBus;
 }
 
-function logStage(
+function stageCategory(stage: PipelineStageName): "tool" | "ai" {
+  return stage === "execution" ? "tool" : "ai";
+}
+
+/**
+ * Publish a core event on the bus and mirror it to structured logs.
+ */
+function emitCoreEvent<T extends CoreEventType>(
+  bus: EventBus,
   logger: Logger,
-  event: OrchestrationEvent,
+  type: T,
   stage: PipelineStageName,
   traceId: string,
-  context?: Record<string, unknown>,
+  payload: CoreEventPayloadMap[T],
 ): void {
-  logger.info(event, {
-    category: stage === "execution" ? "tool" : "ai",
+  publishCoreEvent(bus, type, payload, { traceId });
+
+  logger.info(type, {
+    category: stageCategory(stage),
     traceId,
     context: {
-      stage,
-      event,
-      ...context,
+      event: type,
+      ...payload,
     },
   });
 }
@@ -54,16 +71,26 @@ export function runPipeline(
   const contextManager = options.contextManager ?? getDefaultContextManager();
   const executionController =
     options.executionController ?? getDefaultExecutionController();
+  const eventBus = options.eventBus ?? getDefaultEventBus();
   const request = normalizeRequest(incoming);
 
-  logStage(logger, "RequestReceived", "normalize", request.traceId, {
-    source: request.source,
-    sessionId: request.sessionId,
-    textLength: request.text.length,
-  });
+  emitCoreEvent(
+    eventBus,
+    logger,
+    "RequestReceived",
+    "normalize",
+    request.traceId,
+    {
+      stage: "normalize",
+      inputSource: request.source,
+      sessionId: request.sessionId,
+      textLength: request.text.length,
+    },
+  );
 
   const intent = detectIntent(request);
-  logStage(logger, "IntentDetected", "intent", request.traceId, {
+  emitCoreEvent(eventBus, logger, "IntentDetected", "intent", request.traceId, {
+    stage: "intent",
     intent: intent.name,
     category: intent.category,
     goal: intent.goal,
@@ -75,7 +102,8 @@ export function runPipeline(
   });
 
   const context = loadContext(request, intent, { manager: contextManager });
-  logStage(logger, "ContextLoaded", "context", request.traceId, {
+  emitCoreEvent(eventBus, logger, "ContextLoaded", "context", request.traceId, {
+    stage: "context",
     sources: context.sources,
     turnCount: context.conversation.turns.length,
     memoryCount: context.memories.length,
@@ -88,7 +116,8 @@ export function runPipeline(
   });
 
   const plan = createPlan(request, intent, context);
-  logStage(logger, "PlanCreated", "planning", request.traceId, {
+  emitCoreEvent(eventBus, logger, "PlanCreated", "planning", request.traceId, {
+    stage: "planning",
     planId: plan.id,
     goal: plan.goal,
     kind: plan.kind,
@@ -102,10 +131,18 @@ export function runPipeline(
     })),
   });
 
-  logStage(logger, "ExecutionStarted", "execution", request.traceId, {
-    planId: plan.id,
-    stepCount: plan.steps.length,
-  });
+  emitCoreEvent(
+    eventBus,
+    logger,
+    "ExecutionStarted",
+    "execution",
+    request.traceId,
+    {
+      stage: "execution",
+      planId: plan.id,
+      stepCount: plan.steps.length,
+    },
+  );
 
   const execution = executePlan(request, plan, {
     controller: executionController,
@@ -123,26 +160,42 @@ export function runPipeline(
     },
   });
 
-  logStage(logger, "ExecutionCompleted", "execution", request.traceId, {
-    taskId: execution.taskId,
-    status: execution.status,
-    lifecycle: execution.lifecycle,
-    progress: execution.progress,
-    failures: execution.failures,
-    steps: execution.steps.map((s) => ({ id: s.stepId, status: s.status })),
-  });
+  emitCoreEvent(
+    eventBus,
+    logger,
+    "ExecutionCompleted",
+    "execution",
+    request.traceId,
+    {
+      stage: "execution",
+      taskId: execution.taskId,
+      status: execution.status,
+      lifecycle: execution.lifecycle,
+      progress: { ...execution.progress },
+      failures: [...execution.failures],
+      steps: execution.steps.map((s) => ({ id: s.stepId, status: s.status })),
+    },
+  );
 
   const response = generateResponse(request, intent, execution, plan);
-  logStage(logger, "ResponseGenerated", "response", request.traceId, {
-    intent: response.intent,
-    status: response.status,
-    summary: response.summary,
-    modality: response.modality,
-    errorCount: response.errors.length,
-    warningCount: response.warnings.length,
-    responseLength: response.text.length,
-    spokenLength: response.spokenText.length,
-  });
+  emitCoreEvent(
+    eventBus,
+    logger,
+    "ResponseGenerated",
+    "response",
+    request.traceId,
+    {
+      stage: "response",
+      intent: response.intent,
+      status: response.status,
+      summary: response.summary,
+      modality: response.modality,
+      errorCount: response.errors.length,
+      warningCount: response.warnings.length,
+      responseLength: response.text.length,
+      spokenLength: response.spokenText.length,
+    },
+  );
 
   contextManager.recordAssistant(request.sessionId, response.text, intent.name);
 

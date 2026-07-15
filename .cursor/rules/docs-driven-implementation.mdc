@@ -31,7 +31,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Data / DB / search / graph | `docs/Architecture/07-Data-Architecture.md`, `20-Database-Schema.md`, `24-Search-and-Retrieval-Architecture.md`, `23-Knowledge-Graph-Architecture.md` |
 | API surface | `docs/Architecture/21-API-Specification.md` |
 | Security / permissions | `docs/Architecture/06-Security-Architecture.md`, `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/adr/0014-permission-management-foundation.md` |
-| Events / workflows / plugins | `docs/Architecture/10-Event-System-Architecture.md`, `13-Workflow-Automation-Architecture.md`, `12-Plugin-System-Architecture.md` |
+| Events / workflows / plugins | `docs/Architecture/10-Event-System-Architecture.md`, `docs/guides/Event-System.md`, `docs/adr/0016-event-system-integration.md`, `13-Workflow-Automation-Architecture.md`, `12-Plugin-System-Architecture.md` |
 | Desktop / voice | `docs/Architecture/11-Desktop-Application-Architecture.md`, `08-Voice-System-Architecture.md` |
 | Deploy / monitor / roadmap | `docs/Architecture/14-Deployment-Architecture.md`, `15-Monitoring-Architecture.md`, `16-Implementation-Roadmap.md`, `19-Development-Plan.md` |
 | Dev environment / quality / git | `docs/guides/` |
@@ -49,6 +49,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Tool registry | `docs/guides/Tool-Registry.md`, `docs/adr/0012-tool-registry.md`, `packages/tools/`, `docs/Architecture/05-Tool-System-Architecture.md` |
 | Tool execution | `docs/guides/Tool-Execution.md`, `docs/adr/0013-tool-execution-framework.md`, `packages/tools/src/executor.ts` |
 | Response generation | `docs/guides/Response-Generation.md`, `docs/adr/0015-response-generation-system.md`, `packages/core/src/response/` |
+| Event system | `docs/guides/Event-System.md`, `docs/adr/0016-event-system-integration.md`, `docs/Architecture/10-Event-System-Architecture.md`, `packages/core/src/events/` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

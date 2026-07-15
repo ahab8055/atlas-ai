@@ -12,7 +12,7 @@ MVP Phase 1 requires a core runtime that accepts commands, runs them through def
 
 1. Implement the pipeline in `@atlas-ai/core` (MVP `packages/` layout — not Architecture-19 `services/`).
 2. Stages: normalize → intent → context → planning → execution → response.
-3. Log Architecture/22 orchestration events with a per-request `traceId` via `@atlas-ai/logging`.
+3. Log Architecture/22 orchestration events with a per-request `traceId` via `@atlas-ai/logging`, and publish them on the in-process event bus (see ADR-0016).
 4. Keep input adapters thin: `@atlas-ai/cli` today; desktop/voice call the same `handleRequest` with a different `InputSource`.
 5. Use heuristic intent and stub tools for Phase 1; call `@atlas-ai/security` before capability-bearing steps.
 
@@ -27,7 +27,7 @@ MVP Phase 1 requires a core runtime that accepts commands, runs them through def
 ### Negative / trade-offs
 
 - Intent/tools are stubs until models and `@atlas-ai/tools` land.
-- No async event bus yet — events are log messages.
+- No async / distributed bus yet — in-process `EventBus` (ADR-0016); SQLite store later.
 
 ### Follow-ups
 

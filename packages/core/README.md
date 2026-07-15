@@ -11,6 +11,7 @@ Incoming request → normalize → intent → context → plan → execute → r
 - Planning: `src/planning/` — [Task-Planning.md](../../docs/guides/Task-Planning.md)
 - Execution: `src/execution/` — [Execution-Controller.md](../../docs/guides/Execution-Controller.md)
 - Response: `src/response/` — [Response-Generation.md](../../docs/guides/Response-Generation.md)
+- Events: `src/events/` — [Event-System.md](../../docs/guides/Event-System.md)
 - Tools: `@atlas-ai/tools` — [Tool-Registry.md](../../docs/guides/Tool-Registry.md)
 
 Input adapters (CLI, desktop, voice) stay outside this package and call `handleRequest`.

@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   ContextManager,
+  CORE_EVENTS,
   createRequestHandler,
+  EventBus,
   handleRequest,
   ORCHESTRATION_EVENTS,
 } from "./index.js";
+import type { AtlasEvent } from "./events/index.js";
 
 function createCapturingLogger() {
   const records: LogRecord[] = [];
@@ -23,6 +26,29 @@ function createCapturingLogger() {
 }
 
 describe("request processing pipeline", () => {
+  it("publishes core events on the event bus for subscribers", () => {
+    const bus = new EventBus({ historyLimit: 50 });
+    const seen: string[] = [];
+    bus.subscribe("*", (event: AtlasEvent) => {
+      seen.push(event.type);
+    });
+
+    handleRequest(
+      { source: "cli", rawInput: "status" },
+      {
+        logger: createCapturingLogger().logger,
+        contextManager: new ContextManager(),
+        eventBus: bus,
+      },
+    );
+
+    for (const type of CORE_EVENTS) {
+      expect(seen).toContain(type);
+    }
+    expect(bus.getHistory().every((e) => e.traceId)).toBe(true);
+    expect(bus.getHistory()[0]?.source).toBe("atlas.pipeline");
+  });
+
   it("normalizes CLI input and runs all orchestration stages", () => {
     const { logger, records } = createCapturingLogger();
     const result = handleRequest(
