@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@atlas-ai/core": "workspace:*",
+    "@atlas-ai/database": "workspace:*",
     "@atlas-ai/logging": "workspace:*"
   },
   "devDependencies": {

@@ -28,7 +28,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | System / components | `docs/Architecture/01-System-Architecture.md`, `docs/Architecture/02-Component-Architecture.md` |
 | Agents / tools / memory | `docs/Architecture/03-Agent-System-Architecture.md`, `05-Tool-System-Architecture.md`, `04-Memory-Architecture.md` |
 | Local AI / models | `docs/Architecture/09-Local-AI-Architecture.md`, `25-Model-Management-System.md`, `22-AI-Orchestration-Architecture.md` |
-| Data / DB / search / graph | `docs/Architecture/07-Data-Architecture.md`, `20-Database-Schema.md`, `24-Search-and-Retrieval-Architecture.md`, `23-Knowledge-Graph-Architecture.md` |
+| Data / DB / search / graph | `docs/Architecture/07-Data-Architecture.md`, `20-Database-Schema.md`, `docs/guides/Database.md`, `docs/adr/0018-core-database-integration.md`, `24-Search-and-Retrieval-Architecture.md`, `23-Knowledge-Graph-Architecture.md` |
 | API surface | `docs/Architecture/21-API-Specification.md` |
 | Security / permissions | `docs/Architecture/06-Security-Architecture.md`, `docs/guides/Security.md`, `docs/adr/0006-security-baseline.md`, `docs/adr/0014-permission-management-foundation.md` |
 | Events / workflows / plugins | `docs/Architecture/10-Event-System-Architecture.md`, `docs/guides/Event-System.md`, `docs/adr/0016-event-system-integration.md`, `13-Workflow-Automation-Architecture.md`, `12-Plugin-System-Architecture.md` |
@@ -51,6 +51,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Tool execution | `docs/guides/Tool-Execution.md`, `docs/adr/0013-tool-execution-framework.md`, `packages/tools/src/executor.ts` |
 | Response generation | `docs/guides/Response-Generation.md`, `docs/adr/0015-response-generation-system.md`, `packages/core/src/response/` |
 | Event system | `docs/guides/Event-System.md`, `docs/adr/0016-event-system-integration.md`, `docs/Architecture/10-Event-System-Architecture.md`, `packages/core/src/events/` |
+| Database | `docs/guides/Database.md`, `docs/adr/0018-core-database-integration.md`, `docs/Architecture/20-Database-Schema.md`, `packages/database/` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

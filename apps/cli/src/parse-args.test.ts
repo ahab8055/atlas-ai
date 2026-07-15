@@ -26,6 +26,16 @@ describe("parseCliArgs", () => {
     expect(options.sessionId).toBe("dev-1");
     expect(options.commandArgs).toEqual(["help"]);
     expect(options.quiet).toBe(false);
+    expect(options.enableDatabase).toBe(true);
+  });
+
+  it("parses database flags", () => {
+    const withPath = parseCliArgs(["--db", "/tmp/atlas.sqlite", "status"], {});
+    expect(withPath.databasePath).toBe("/tmp/atlas.sqlite");
+    expect(withPath.enableDatabase).toBe(true);
+
+    const disabled = parseCliArgs(["--no-db", "status"], {});
+    expect(disabled.enableDatabase).toBe(false);
   });
 
   it("respects env quiet/debug defaults", () => {

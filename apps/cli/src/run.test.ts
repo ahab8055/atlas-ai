@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { exitCodeForResult } from "./display.js";
 import type { CliOptions } from "./options.js";
-import { createCliRuntime, executeCommand } from "./run.js";
+import { recordPipelineResult } from "./persist.js";
+import { closeCliRuntime, createCliRuntime, executeCommand } from "./run.js";
 
 function baseOptions(overrides: Partial<CliOptions> = {}): CliOptions {
   return {
@@ -12,6 +13,7 @@ function baseOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     debug: false,
     sessionId: "test-session",
     showCliHelp: false,
+    enableDatabase: false,
     ...overrides,
   };
 }
@@ -48,5 +50,24 @@ describe("CLI → core runtime", () => {
     expect(result.request.source).toBe("cli");
     expect(result.request.metadata.adapter).toBe("cli");
     expect(result.response.text).toContain("adapter-ok");
+  });
+
+  it("persists execution history when database is enabled", () => {
+    const options = baseOptions({
+      enableDatabase: true,
+      databasePath: ":memory:",
+    });
+    const runtime = createCliRuntime(options);
+    expect(runtime.database).toBeDefined();
+
+    const result = executeCommand(runtime, options, "status");
+    recordPipelineResult(runtime.database!, result);
+
+    const history = runtime.database!.executionHistory.listRecent(5);
+    expect(history.length).toBeGreaterThanOrEqual(1);
+    expect(history[0]?.intent).toBe("system.status");
+    expect(runtime.database!.tools.list().length).toBeGreaterThan(0);
+
+    closeCliRuntime(runtime);
   });
 });

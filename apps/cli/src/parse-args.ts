@@ -15,6 +15,8 @@ export function parseCliArgs(
   let debug = env.ATLAS_CLI_DEBUG === "1";
   let sessionId = env.ATLAS_CLI_SESSION ?? "cli-default";
   let showCliHelp = false;
+  let enableDatabase = env.ATLAS_DB_DISABLED !== "1";
+  let databasePath = env.ATLAS_DB_PATH;
   const commandArgs: string[] = [];
 
   for (let i = 0; i < tokens.length; i += 1) {
@@ -36,6 +38,18 @@ export function parseCliArgs(
       case "--debug":
         debug = true;
         break;
+      case "--no-db":
+        enableDatabase = false;
+        break;
+      case "--db": {
+        const next = tokens[i + 1];
+        if (!next || next.startsWith("-")) {
+          throw new Error("Missing value for --db <path>");
+        }
+        databasePath = next;
+        i += 1;
+        break;
+      }
       case "--session": {
         const next = tokens[i + 1];
         if (!next || next.startsWith("-")) {
@@ -54,8 +68,6 @@ export function parseCliArgs(
     }
   }
 
-  // --debug wins over quiet for observability; quiet still suppresses if both set
-  // Preference: debug implies not quiet for logs
   if (debug) {
     quiet = false;
   }
@@ -67,5 +79,7 @@ export function parseCliArgs(
     debug,
     sessionId,
     showCliHelp,
+    enableDatabase,
+    databasePath,
   };
 }

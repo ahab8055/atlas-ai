@@ -41,6 +41,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0015](./0015-response-generation-system.md)       | Response generation system              | Accepted |
 | [0016](./0016-event-system-integration.md)         | Event system integration                | Accepted |
 | [0017](./0017-command-line-interface.md)           | Command line interface adapter          | Accepted |
+| [0018](./0018-core-database-integration.md)        | Core database integration               | Accepted |
 
 ## Naming
 

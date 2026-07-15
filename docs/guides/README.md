@@ -13,6 +13,7 @@ Practical guides for contributing to Atlas AI.
 | [Security.md](./Security.md)                             | Permissions, approvals, secrets          |
 | [Request-Pipeline.md](./Request-Pipeline.md)             | Core request stages + CLI adapter        |
 | [CLI.md](./CLI.md)                                       | Terminal adapter, REPL, debug mode       |
+| [Database.md](./Database.md)                             | SQLite init, core tables, repositories   |
 | [Event-System.md](./Event-System.md)                     | Internal event bus + core events         |
 | [Response-Generation.md](./Response-Generation.md)       | User-facing responses + voice-ready text |
 | [Intent-Detection.md](./Intent-Detection.md)             | Intent categories, params, registry      |

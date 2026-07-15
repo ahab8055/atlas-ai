@@ -62,6 +62,7 @@ See **[docs/guides/Version-Control.md](docs/guides/Version-Control.md)** for bra
 | [Security](docs/guides/Security.md)                               | Permissions & secrets         |
 | [Request Pipeline](docs/guides/Request-Pipeline.md)               | Core stages + CLI             |
 | [CLI](docs/guides/CLI.md)                                         | Terminal adapter, REPL, debug |
+| [Database](docs/guides/Database.md)                               | SQLite persistence            |
 | [Architecture index](docs/Architecture/README.md)                 | Technical design docs         |
 | [ADRs](docs/adr/README.md)                                        | Architecture decisions        |
 

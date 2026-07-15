@@ -15,8 +15,14 @@ export interface CliOptions {
   debug: boolean;
   /** Conversation session id (shared across REPL turns). */
   sessionId: string;
-  /** Show help for the CLI itself (not atlas help intent). */
+  /** Show help for the CLI itself (not the atlas help intent). */
   showCliHelp: boolean;
+  /**
+   * When false, skip SQLite (rare; tests). Default true — DB initializes automatically.
+   */
+  enableDatabase: boolean;
+  /** Override SQLite path (default `.data/atlas.sqlite` or `ATLAS_DB_PATH`). */
+  databasePath?: string;
 }
 
 export function usage(): string {
@@ -32,6 +38,8 @@ export function usage(): string {
     "  -d, --debug           Debug mode: events + stage logs + result meta on stderr",
     "  -q, --quiet           Response only (no stage logs)",
     "  --session <id>        Set conversation session id",
+    "  --db <path>           SQLite database path (default: .data/atlas.sqlite)",
+    "  --no-db               Disable SQLite for this run",
     "  -h, --help            Show this CLI help",
     "",
     "Examples:",
@@ -44,6 +52,8 @@ export function usage(): string {
     "Env:",
     "  ATLAS_CLI_QUIET=1     Same as --quiet",
     "  ATLAS_CLI_DEBUG=1     Same as --debug",
+    "  ATLAS_DB_PATH=…       Default database file path",
+    "  ATLAS_DB_DISABLED=1   Same as --no-db",
     "  ATLAS_LOG_LEVEL=…     Default log level when not --debug/--quiet",
     "",
     "Desktop and voice will call the same core handler with source desktop|voice.",

@@ -2,7 +2,7 @@
 
 Terminal adapter for testing Atlas before the full desktop UI.
 
-Related: [Request-Pipeline.md](./Request-Pipeline.md), [`@atlas-ai/cli`](../../apps/cli/), [`@atlas-ai/core`](../../packages/core/), [ADR-0017](../adr/0017-command-line-interface.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md).
+Related: [Request-Pipeline.md](./Request-Pipeline.md), [`@atlas-ai/cli`](../../apps/cli/), [`@atlas-ai/core`](../../packages/core/), [ADR-0017](../adr/0017-command-line-interface.md), [Database.md](./Database.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md).
 
 ---
 
@@ -65,18 +65,31 @@ pnpm atlas --quiet status
 ATLAS_CLI_QUIET=1 pnpm atlas status
 ```
 
+### Database
+
+SQLite initializes automatically (default `.data/atlas.sqlite`). Each command syncs tools and records execution history — see [Database.md](./Database.md).
+
+```bash
+pnpm atlas --db /tmp/atlas.sqlite status
+pnpm atlas --no-db status
+```
+
 ---
 
 ## Options
 
-| Flag / env             | Meaning                          |
-| ---------------------- | -------------------------------- |
-| `-i` / `--interactive` | REPL                             |
-| `-d` / `--debug`       | Debug mode                       |
-| `-q` / `--quiet`       | Response only                    |
-| `--session <id>`       | Conversation session id          |
-| `-h` / `--help`        | CLI help (not the `help` intent) |
-| `ATLAS_LOG_LEVEL`      | Log level when not debug/quiet   |
+| Flag / env             | Meaning                                    |
+| ---------------------- | ------------------------------------------ |
+| `-i` / `--interactive` | REPL                                       |
+| `-d` / `--debug`       | Debug mode                                 |
+| `-q` / `--quiet`       | Response only                              |
+| `--session <id>`       | Conversation session id                    |
+| `--db <path>`          | SQLite path (default `.data/atlas.sqlite`) |
+| `--no-db`              | Skip database for this run                 |
+| `-h` / `--help`        | CLI help (not the `help` intent)           |
+| `ATLAS_DB_PATH`        | Default database path                      |
+| `ATLAS_DB_DISABLED=1`  | Same as `--no-db`                          |
+| `ATLAS_LOG_LEVEL`      | Log level when not debug/quiet             |
 
 ---
 

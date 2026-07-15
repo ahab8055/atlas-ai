@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * CLI adapter: terminal → @atlas-ai/core → stdout.
+ * CLI adapter: terminal → @atlas-ai/core → stdout (+ SQLite runtime data).
  *
  * Desktop and voice replace this adapter by calling the same
  * `createRequestHandler` / `handleRequest` with `source: "desktop" | "voice"`.
  */
+import { exitCodeForResult } from "./display.js";
 import { usage } from "./options.js";
 import { parseCliArgs } from "./parse-args.js";
 import { runRepl } from "./repl.js";
-import { createCliRuntime, runCommand } from "./run.js";
-import { exitCodeForResult } from "./display.js";
+import { closeCliRuntime, createCliRuntime, runCommand } from "./run.js";
 
 async function main(): Promise<void> {
   let options;
@@ -39,17 +39,20 @@ async function main(): Promise<void> {
 
   const runtime = createCliRuntime(options);
 
-  if (options.interactive) {
-    if (hasCommand) {
-      // Optional: run initial command then enter REPL
-      runCommand(runtime, options, options.commandArgs.join(" "));
+  try {
+    if (options.interactive) {
+      if (hasCommand) {
+        runCommand(runtime, options, options.commandArgs.join(" "));
+      }
+      process.exitCode = await runRepl(options, runtime);
+      return;
     }
-    process.exitCode = await runRepl(options, runtime);
-    return;
-  }
 
-  const result = runCommand(runtime, options, options.commandArgs.join(" "));
-  process.exitCode = exitCodeForResult(result);
+    const result = runCommand(runtime, options, options.commandArgs.join(" "));
+    process.exitCode = exitCodeForResult(result);
+  } finally {
+    closeCliRuntime(runtime);
+  }
 }
 
 main().catch((error) => {

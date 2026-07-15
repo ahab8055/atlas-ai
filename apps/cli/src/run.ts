@@ -4,6 +4,7 @@ import {
   createRequestHandler,
   type PipelineResult,
 } from "@atlas-ai/core";
+import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
 import {
   createLogger,
   formatLogRecord,
@@ -19,6 +20,7 @@ import {
   shouldPrintDebugMeta,
 } from "./display.js";
 import type { CliOptions } from "./options.js";
+import { recordPipelineResult, syncToolsToDatabase } from "./persist.js";
 
 /** Keep stage logs off stdout so responses stay scriptable. */
 export function createStderrSink(): LogSink {
@@ -34,11 +36,12 @@ export interface CliRuntime {
   eventBus: EventBus;
   contextManager: ContextManager;
   logger: Logger;
+  database?: AtlasDatabase;
 }
 
 /**
  * Build a CLI runtime wired to the core request pipeline.
- * Desktop/voice adapters use the same `createRequestHandler` with a different source.
+ * Opens SQLite automatically unless `--no-db` / `ATLAS_DB_DISABLED=1`.
  */
 export function createCliRuntime(options: CliOptions): CliRuntime {
   const level = options.debug
@@ -65,13 +68,24 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     });
   }
 
+  let database: AtlasDatabase | undefined;
+  if (options.enableDatabase) {
+    database = openAtlasDatabase({ path: options.databasePath });
+    const toolCount = syncToolsToDatabase(database);
+    if (options.debug) {
+      process.stderr.write(
+        `[debug] database=${database.path} schema=${database.schemaVersion} tools=${toolCount}\n`,
+      );
+    }
+  }
+
   const handler = createRequestHandler({
     logger,
     eventBus,
     contextManager,
   });
 
-  return { handler, eventBus, contextManager, logger };
+  return { handler, eventBus, contextManager, logger, database };
 }
 
 /** Execute one command through core without I/O (testable). */
@@ -88,20 +102,28 @@ export function executeCommand(
       adapter: "cli",
       debug: options.debug,
       interactive: options.interactive,
+      database: Boolean(runtime.database),
     },
   });
 }
 
-/** Run one user command through the core runtime and display the response. */
+/** Run one user command through the core runtime, persist, and display. */
 export function runCommand(
   runtime: CliRuntime,
   options: CliOptions,
   rawInput: string,
 ): PipelineResult {
   const result = executeCommand(runtime, options, rawInput);
+  if (runtime.database) {
+    recordPipelineResult(runtime.database, result);
+  }
   displayResponse(result);
   if (shouldPrintDebugMeta(options)) {
     displayDebugMeta(result);
   }
   return result;
+}
+
+export function closeCliRuntime(runtime: CliRuntime): void {
+  runtime.database?.close();
 }
