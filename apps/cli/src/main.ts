@@ -39,10 +39,15 @@ async function main(): Promise<void> {
     return;
   }
 
-  // AI probe does not need the core pipeline / SQLite.
+  // AI commands use their own path; registry persistence still honors --db / --no-db.
   if (hasCommand && !options.interactive) {
     const rawInput = options.commandArgs.join(" ");
-    if (await tryHandleAiCommand(rawInput)) {
+    if (
+      await tryHandleAiCommand(rawInput, {
+        enableDatabase: options.enableDatabase,
+        databasePath: options.databasePath,
+      })
+    ) {
       return;
     }
   }
@@ -53,7 +58,12 @@ async function main(): Promise<void> {
     if (options.interactive) {
       if (hasCommand) {
         const initial = options.commandArgs.join(" ");
-        if (await tryHandleAiCommand(initial)) {
+        if (
+          await tryHandleAiCommand(initial, {
+            enableDatabase: options.enableDatabase,
+            databasePath: options.databasePath,
+          })
+        ) {
           // continue into REPL
         } else if (!tryHandleHistoryCommand(runtime, initial)) {
           runCommand(runtime, options, initial);

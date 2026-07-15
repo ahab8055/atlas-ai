@@ -20,6 +20,7 @@ Practical guides for contributing to Atlas AI.
 | [Error-Handling.md](./Error-Handling.md)                         | Error categories, format, recovery       |
 | [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md) | Cross-package Phase 1 runtime Vitest     |
 | [Local-AI-Runtime.md](./Local-AI-Runtime.md)                     | Local inference providers + AI facade    |
+| [Model-Registry.md](./Model-Registry.md)                         | Installed model catalog + SQLite persist |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)             | GGUF load, CPU/GPU, inference params     |
 | [Intent-Detection.md](./Intent-Detection.md)                     | Intent categories, params, registry      |
 | [Context-Management.md](./Context-Management.md)                 | Context sources before execution         |

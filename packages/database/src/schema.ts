@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -89,4 +89,24 @@ CREATE INDEX IF NOT EXISTS idx_execution_history_finished
 
 CREATE INDEX IF NOT EXISTS idx_task_executions_execution
   ON task_executions(execution_id);
+
+CREATE TABLE IF NOT EXISTS models (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  version TEXT,
+  format TEXT,
+  size INTEGER,
+  context_length INTEGER,
+  capabilities TEXT,
+  requirements TEXT,
+  location TEXT,
+  status TEXT NOT NULL DEFAULT 'available',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_models_status ON models(status);
+CREATE INDEX IF NOT EXISTS idx_models_provider ON models(provider);
+CREATE INDEX IF NOT EXISTS idx_models_format ON models(format);
 `;

@@ -5,6 +5,7 @@ import {
   type SqliteDatabase,
 } from "./client.js";
 import { ExecutionHistoryRepository } from "./repositories/execution-history.js";
+import { ModelsRepository } from "./repositories/models.js";
 import { SystemConfigRepository } from "./repositories/system-config.js";
 import { ToolsRepository } from "./repositories/tools.js";
 import { UserPreferencesRepository } from "./repositories/user-preferences.js";
@@ -18,6 +19,7 @@ export class AtlasDatabase {
   readonly systemConfig: SystemConfigRepository;
   readonly userPreferences: UserPreferencesRepository;
   readonly tools: ToolsRepository;
+  readonly models: ModelsRepository;
   readonly executionHistory: ExecutionHistoryRepository;
   /** UI-oriented task history tracking (query + display DTOs). */
   readonly taskHistory: TaskHistoryService;
@@ -29,6 +31,7 @@ export class AtlasDatabase {
     this.systemConfig = new SystemConfigRepository(db);
     this.userPreferences = new UserPreferencesRepository(db);
     this.tools = new ToolsRepository(db);
+    this.models = new ModelsRepository(db);
     this.executionHistory = new ExecutionHistoryRepository(db);
     this.taskHistory = new TaskHistoryService(this.executionHistory);
   }

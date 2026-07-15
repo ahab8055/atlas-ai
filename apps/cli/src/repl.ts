@@ -49,7 +49,12 @@ export async function runRepl(
         break;
       }
 
-      if (await tryHandleAiCommand(trimmed)) {
+      if (
+        await tryHandleAiCommand(trimmed, {
+          enableDatabase: options.enableDatabase,
+          databasePath: options.databasePath,
+        })
+      ) {
         lastCode =
           process.exitCode === 1 || process.exitCode === 2
             ? process.exitCode

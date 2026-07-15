@@ -113,6 +113,35 @@ describe("AtlasDatabase", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("upserts and queries AI model registry rows", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:" });
+
+    atlas.models.upsert({
+      id: "phi-3-mini",
+      name: "Phi-3 Mini",
+      provider: "llamacpp",
+      version: "3.0.0",
+      format: "gguf",
+      sizeBytes: 2_147_483_648,
+      contextLength: 4096,
+      capabilities: ["chat", "local"],
+      requirements: { minRamGb: 8, acceleration: "cpu" },
+      location: "/tmp/phi-3-mini.gguf",
+      status: "available",
+    });
+
+    expect(atlas.models.get("phi-3-mini")?.name).toBe("Phi-3 Mini");
+    expect(atlas.models.list({ format: "gguf" })).toHaveLength(1);
+    expect(atlas.models.list({ capability: "chat" })[0]?.contextLength).toBe(
+      4096,
+    );
+    expect(atlas.models.count()).toBe(1);
+    expect(atlas.models.remove("phi-3-mini")).toBe(true);
+    expect(atlas.models.count()).toBe(0);
+
+    atlas.close();
+  });
 });
 
 describe("TaskHistoryService", () => {

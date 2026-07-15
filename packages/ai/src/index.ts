@@ -40,6 +40,22 @@ export {
 } from "./providers/llamacpp.js";
 
 export {
+  ModelRegistry,
+  createModelRegistry,
+  createPersistentModelRegistryStore,
+  InMemoryModelRegistryStore,
+  scanInstalledGgufModels,
+  type ModelRegistryOptions,
+  type ModelRegistryQuery,
+  type ModelRegistryStore,
+  type ModelRequirements as RegistryModelRequirements,
+  type PersistentModelsApi,
+  type RegisterModelInput,
+  type RegisteredModel,
+  type ScanInstalledModelsOptions,
+} from "./model-registry/index.js";
+
+export {
   buildLlamaServerArgs,
   LlamaServerProcess,
   parseEndpoint,

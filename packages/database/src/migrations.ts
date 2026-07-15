@@ -40,6 +40,29 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     `);
   }
 
+  if (version < 3) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS models (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        version TEXT,
+        format TEXT,
+        size INTEGER,
+        context_length INTEGER,
+        capabilities TEXT,
+        requirements TEXT,
+        location TEXT,
+        status TEXT NOT NULL DEFAULT 'available',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_models_status ON models(status);
+      CREATE INDEX IF NOT EXISTS idx_models_provider ON models(provider);
+      CREATE INDEX IF NOT EXISTS idx_models_format ON models(format);
+    `);
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

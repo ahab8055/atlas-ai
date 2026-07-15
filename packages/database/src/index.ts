@@ -23,6 +23,15 @@ export {
   type ToolRow,
 } from "./repositories/tools.js";
 export {
+  ModelsRepository,
+  type ModelFormat,
+  type ModelQuery,
+  type ModelRecordInput,
+  type ModelRequirements,
+  type ModelRow,
+  type ModelStatus,
+} from "./repositories/models.js";
+export {
   ExecutionHistoryRepository,
   type ExecutionFailureInput,
   type ExecutionHistoryInput,

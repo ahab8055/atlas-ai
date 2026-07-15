@@ -20,7 +20,11 @@ import {
   shouldPrintDebugMeta,
 } from "./display.js";
 import type { CliOptions } from "./options.js";
-import { recordPipelineResult, syncToolsToDatabase } from "./persist.js";
+import {
+  recordPipelineResult,
+  syncModelsToDatabase,
+  syncToolsToDatabase,
+} from "./persist.js";
 
 /** Keep stage logs off stdout so responses stay scriptable. */
 export function createStderrSink(): LogSink {
@@ -72,9 +76,10 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   if (options.enableDatabase) {
     database = openAtlasDatabase({ path: options.databasePath });
     const toolCount = syncToolsToDatabase(database);
+    const modelCount = syncModelsToDatabase(database);
     if (options.debug) {
       process.stderr.write(
-        `[debug] database=${database.path} schema=${database.schemaVersion} tools=${toolCount}\n`,
+        `[debug] database=${database.path} schema=${database.schemaVersion} tools=${toolCount} models=${modelCount}\n`,
       );
     }
   }

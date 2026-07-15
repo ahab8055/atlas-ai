@@ -78,7 +78,13 @@ pnpm atlas --no-db status
 
 ### Local AI runtime
 
-Probe the inference facade without running the request pipeline — see [Local-AI-Runtime.md](./Local-AI-Runtime.md).
+Probe the inference facade without running the request pipeline — see [Local-AI-Runtime.md](./Local-AI-Runtime.md) and [Model-Registry.md](./Model-Registry.md).
+
+```bash
+pnpm atlas ai status
+pnpm atlas ai register   # persist GGUF metadata
+pnpm atlas ai models
+```
 
 ```bash
 pnpm atlas ai status

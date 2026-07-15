@@ -1,6 +1,11 @@
 /**
  * Persist pipeline outcomes and sync in-memory tool registry into SQLite.
  */
+import {
+  createModelRegistry,
+  createPersistentModelRegistryStore,
+} from "@atlas-ai/ai";
+import { loadConfig } from "@atlas-ai/config";
 import type { PipelineResult } from "@atlas-ai/core";
 import { listToolMetadata } from "@atlas-ai/core";
 import type { AtlasDatabase } from "@atlas-ai/database";
@@ -21,6 +26,19 @@ export function syncToolsToDatabase(database: AtlasDatabase): number {
     });
   }
   return tools.length;
+}
+
+/** Scan `models/` for GGUF files and upsert into the persistent models table. */
+export function syncModelsToDatabase(database: AtlasDatabase): number {
+  const config = loadConfig();
+  const registry = createModelRegistry({
+    store: createPersistentModelRegistryStore(database.models),
+    modelsDir: config.paths.modelsDir,
+    defaultProvider:
+      config.ai.provider === "mock" ? "llamacpp" : config.ai.provider,
+    defaultContextLength: config.ai.hardware.contextSize,
+  });
+  return registry.syncFromDisk();
 }
 
 export function recordPipelineResult(

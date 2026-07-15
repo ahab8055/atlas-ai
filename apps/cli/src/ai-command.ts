@@ -4,7 +4,13 @@ import {
   InferenceProviderRegistry,
   type AiRuntime,
   type ModelInfo,
+  type RegisteredModel,
 } from "@atlas-ai/ai";
+
+import {
+  openModelRegistrySession,
+  type ModelRegistryCliOptions,
+} from "./model-registry.js";
 
 /**
  * Build an AiRuntime from Atlas config (+ env overrides via loadConfig).
@@ -28,7 +34,8 @@ function printAiHelp(): void {
     [
       "Atlas AI runtime commands:",
       "  atlas ai status              Probe local inference provider health",
-      "  atlas ai models              List GGUF / server models",
+      "  atlas ai models              List registered / available models",
+      "  atlas ai register            Scan models/ and persist registry entries",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Load default model and generate a reply',
       "",
@@ -40,10 +47,14 @@ function printAiHelp(): void {
 }
 
 /**
- * Handle `ai` / `ai status` / `ai load` / `ai ask` without the request pipeline.
+ * Handle `ai` / `ai status` / `ai models` / `ai register` / `ai load` / `ai ask`
+ * without the request pipeline.
  * Returns true when the input was an AI runtime command.
  */
-export async function tryHandleAiCommand(rawInput: string): Promise<boolean> {
+export async function tryHandleAiCommand(
+  rawInput: string,
+  options: ModelRegistryCliOptions = { enableDatabase: true },
+): Promise<boolean> {
   const trimmed = rawInput.trim();
 
   if (/^ai\s*$/i.test(trimmed)) {
@@ -60,7 +71,13 @@ export async function tryHandleAiCommand(rawInput: string): Promise<boolean> {
 
   const modelsMatch = /^ai\s+models\s*$/i.exec(trimmed);
   if (modelsMatch) {
-    await handleModels();
+    await handleModels(options);
+    return true;
+  }
+
+  const registerMatch = /^ai\s+(register|sync-models)\s*$/i.exec(trimmed);
+  if (registerMatch) {
+    handleRegister(options);
     return true;
   }
 
@@ -115,25 +132,81 @@ async function handleStatus(): Promise<void> {
   process.exitCode = health.ok ? 0 : 1;
 }
 
-async function handleModels(): Promise<void> {
-  const runtime = createAiRuntimeFromConfig();
-  const models = await runtime.listModels();
-  if (models.length === 0) {
+function formatRegisteredModel(m: RegisteredModel): string {
+  const size =
+    m.sizeBytes !== undefined
+      ? ` ${(m.sizeBytes / (1024 * 1024)).toFixed(1)}MiB`
+      : "";
+  const caps =
+    m.capabilities.length > 0 ? ` caps=[${m.capabilities.join(",")}]` : "";
+  const ctx = m.contextLength !== undefined ? ` ctx=${m.contextLength}` : "";
+  const loc = m.location ? ` ${m.location}` : "";
+  return `- ${m.id} v${m.version} [${m.format}/${m.status}]${size}${ctx}${caps}${loc}`;
+}
+
+async function handleModels(options: ModelRegistryCliOptions): Promise<void> {
+  const session = openModelRegistrySession(options);
+  try {
+    // Keep registry up to date with on-disk installs, then query persistable metadata.
+    session.registry.syncFromDisk();
+    const registered = session.registry.list();
+
+    if (registered.length > 0) {
+      const source = session.database
+        ? "registry (persistent)"
+        : "registry (memory)";
+      process.stdout.write(
+        `Registered models (${source}):\n${registered.map(formatRegisteredModel).join("\n")}\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    // Fall back to provider enumeration when nothing is registered yet.
+    const runtime = createAiRuntimeFromConfig();
+    const models = await runtime.listModels();
+    if (models.length === 0) {
+      process.stdout.write(
+        "No models found. Place GGUF files under models/ then run: atlas ai register\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+    const lines = models.map((m: ModelInfo) => {
+      const size =
+        m.sizeBytes !== undefined
+          ? ` ${(m.sizeBytes / (1024 * 1024)).toFixed(1)}MiB`
+          : "";
+      return `- ${m.id} [${m.status}]${size}${m.path ? ` ${m.path}` : ""}`;
+    });
     process.stdout.write(
-      "No models found. Place GGUF files under models/ or start llama-server.\n",
+      `Provider models (not yet registered):\n${lines.join("\n")}\n`,
     );
     process.exitCode = 0;
-    return;
+  } finally {
+    session.close();
   }
-  const lines = models.map((m: ModelInfo) => {
-    const size =
-      m.sizeBytes !== undefined
-        ? ` ${(m.sizeBytes / (1024 * 1024)).toFixed(1)}MiB`
-        : "";
-    return `- ${m.id} [${m.status}]${size}${m.path ? ` ${m.path}` : ""}`;
-  });
-  process.stdout.write(`${lines.join("\n")}\n`);
-  process.exitCode = 0;
+}
+
+function handleRegister(options: ModelRegistryCliOptions): void {
+  const session = openModelRegistrySession(options);
+  try {
+    const count = session.registry.syncFromDisk();
+    const listed = session.registry.list();
+    const persist = session.database
+      ? "SQLite"
+      : "memory (use without --no-db to persist)";
+    process.stdout.write(
+      [
+        `Registered ${count} model(s) from disk (${persist}).`,
+        `Queryable entries: ${listed.length}`,
+        ...listed.map(formatRegisteredModel),
+      ].join("\n") + "\n",
+    );
+    process.exitCode = 0;
+  } finally {
+    session.close();
+  }
 }
 
 async function handleLoad(modelId?: string): Promise<void> {

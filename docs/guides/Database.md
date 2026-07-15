@@ -45,6 +45,7 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 | `system_config`     | Runtime / system settings                                |
 | `user_preferences`  | Preference placeholders (`preferred_editor`, `theme`, …) |
 | `tools`             | Tool registry persistence                                |
+| `models`            | AI model registry (name, format, caps, requirements, …)  |
 | `execution_history` | Pipeline / task run history                              |
 | `task_executions`   | Per-step execution rows                                  |
 | `schema_migrations` | Applied schema version                                   |
@@ -62,6 +63,16 @@ db.userPreferences.list();
 
 db.tools.upsert({ name: "echo", description: "Echo text", version: "1.0.0" });
 db.tools.list();
+
+db.models.upsert({
+  id: "phi-3",
+  name: "Phi-3",
+  provider: "llamacpp",
+  format: "gguf",
+  capabilities: ["chat"],
+  location: "./models/phi-3.gguf",
+});
+db.models.list({ status: "available" });
 
 db.executionHistory.record({ taskId: "…", status: "completed", steps: […] });
 db.executionHistory.listRecent(20);

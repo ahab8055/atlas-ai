@@ -17,6 +17,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai status");
       expect(writes.join("")).toContain("atlas ai ask");
       expect(writes.join("")).toContain("atlas ai load");
+      expect(writes.join("")).toContain("atlas ai register");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -73,6 +74,26 @@ describe("ai CLI command", () => {
       } else {
         process.env.ATLAS_AI_PROVIDER = prevProvider;
       }
+    }
+  });
+
+  it("register syncs into memory registry when DB disabled", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand("ai register", {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      expect(writes.join("")).toMatch(/Registered \d+ model/);
+      expect(writes.join("")).toContain("memory");
+    } finally {
+      process.stdout.write = originalWrite;
     }
   });
 
