@@ -48,6 +48,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Execution controller | `docs/guides/Execution-Controller.md`, `docs/adr/0011-execution-controller.md`, `packages/core/src/execution/`, `docs/Architecture/22-AI-Orchestration-Architecture.md` |
 | Tool registry | `docs/guides/Tool-Registry.md`, `docs/adr/0012-tool-registry.md`, `packages/tools/`, `docs/Architecture/05-Tool-System-Architecture.md` |
 | Tool execution | `docs/guides/Tool-Execution.md`, `docs/adr/0013-tool-execution-framework.md`, `packages/tools/src/executor.ts` |
+| Response generation | `docs/guides/Response-Generation.md`, `docs/adr/0015-response-generation-system.md`, `packages/core/src/response/` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

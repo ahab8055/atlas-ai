@@ -87,7 +87,12 @@ export {
   getDefaultToolExecutor,
 } from "@atlas-ai/tools";
 
-export { generateResponse } from "./stages/respond.js";
+export {
+  generateResponse,
+  getDefaultResponseGenerator,
+  ResponseGenerator,
+  setDefaultResponseGenerator,
+} from "./response/index.js";
 
 export type {
   ActiveTask,
@@ -102,6 +107,7 @@ export type {
   ExecutionResult,
   ExecutionStatus,
   ExecutionTask,
+  GenerateResponseInput,
   IncomingRequest,
   InputSource,
   IntentCategory,
@@ -117,6 +123,8 @@ export type {
   PlanKind,
   PlanStep,
   ProjectContext,
+  ResponseGeneratorOptions,
+  ResponseModality,
   StepResult,
   StepStatus,
   SystemStateInfo,

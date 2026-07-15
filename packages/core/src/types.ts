@@ -60,13 +60,15 @@ export type {
 import type { DetectedIntent } from "./intent/types.js";
 import type { LoadedContext } from "./context/types.js";
 import type { ExecutionPlan } from "./planning/types.js";
-import type { ExecutionResult, ExecutionStatus } from "./execution/types.js";
+import type { ExecutionResult } from "./execution/types.js";
+import type { PipelineResponse } from "./response/types.js";
 
-export interface PipelineResponse {
-  text: string;
-  intent: string;
-  status: ExecutionStatus;
-}
+export type {
+  PipelineResponse,
+  ResponseModality,
+  GenerateResponseInput,
+  ResponseGeneratorOptions,
+} from "./response/types.js";
 
 export interface PipelineResult {
   request: NormalizedRequest;

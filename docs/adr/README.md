@@ -38,6 +38,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0012](./0012-tool-registry.md)                    | Central tool registry package           | Accepted |
 | [0013](./0013-tool-execution-framework.md)         | Tool execution framework                | Accepted |
 | [0014](./0014-permission-management-foundation.md) | Permission management foundation        | Accepted |
+| [0015](./0015-response-generation-system.md)       | Response generation system              | Accepted |
 
 ## Naming
 

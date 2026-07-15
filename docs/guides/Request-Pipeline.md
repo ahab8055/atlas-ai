@@ -2,7 +2,7 @@
 
 Central orchestration path for user commands (Phase 1 Core Runtime).
 
-Related: [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/cli`](../../apps/cli/), [ADR-0007](../adr/0007-request-processing-pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Context-Management.md](./Context-Management.md), [Task-Planning.md](./Task-Planning.md), [Execution-Controller.md](./Execution-Controller.md), [Logging.md](./Logging.md), [Security.md](./Security.md).
+Related: [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/cli`](../../apps/cli/), [ADR-0007](../adr/0007-request-processing-pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Context-Management.md](./Context-Management.md), [Task-Planning.md](./Task-Planning.md), [Execution-Controller.md](./Execution-Controller.md), [Response-Generation.md](./Response-Generation.md), [Logging.md](./Logging.md), [Security.md](./Security.md).
 
 ---
 
@@ -81,13 +81,13 @@ console.log(result.response.text);
 
 ## MVP vs later
 
-| Stage    | MVP                                | Later                            |
-| -------- | ---------------------------------- | -------------------------------- |
-| Intent   | Registry heuristics + params       | Model / Request Analyzer         |
-| Context  | Provider assembly + conversation   | Memory + KG (`@atlas-ai/memory`) |
-| Plan     | Template registry (simple + multi) | Agent / LLM planner              |
-| Execute  | ExecutionController + tool stubs   | `@atlas-ai/tools` registry       |
-| Response | Template text                      | LLM generation                   |
+| Stage    | MVP                                          | Later                            |
+| -------- | -------------------------------------------- | -------------------------------- |
+| Intent   | Registry heuristics + params                 | Model / Request Analyzer         |
+| Context  | Provider assembly + conversation             | Memory + KG (`@atlas-ai/memory`) |
+| Plan     | Template registry (simple + multi)           | Agent / LLM planner              |
+| Execute  | ExecutionController + tool stubs             | `@atlas-ai/tools` registry       |
+| Response | Template text + status / errors / spokenText | LLM polish + TTS                 |
 
 ---
 

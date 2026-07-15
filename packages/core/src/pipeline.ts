@@ -136,7 +136,12 @@ export function runPipeline(
   logStage(logger, "ResponseGenerated", "response", request.traceId, {
     intent: response.intent,
     status: response.status,
+    summary: response.summary,
+    modality: response.modality,
+    errorCount: response.errors.length,
+    warningCount: response.warnings.length,
     responseLength: response.text.length,
+    spokenLength: response.spokenText.length,
   });
 
   contextManager.recordAssistant(request.sessionId, response.text, intent.name);

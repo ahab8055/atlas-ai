@@ -67,7 +67,10 @@ describe("request processing pipeline", () => {
       },
     );
     expect(echo.intent.name).toBe("echo");
-    expect(echo.response.text).toBe("hello atlas");
+    expect(echo.response.text).toContain("hello atlas");
+    expect(echo.response.status).toBe("completed");
+    expect(echo.response.spokenText).toContain("hello atlas");
+    expect(echo.response.errors).toEqual([]);
   });
 
   it("accepts future input sources without changing the pipeline", () => {
