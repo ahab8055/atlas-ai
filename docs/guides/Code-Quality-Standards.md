@@ -134,7 +134,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Scopes (suggested)
 
-`desktop`, `core`, `agents`, `tools`, `memory`, `database`, `shared`, `docs`, `scripts`
+`desktop`, `core`, `agents`, `tools`, `memory`, `database`, `shared`, `config`, `docs`, `scripts`
 
 ### Examples
 
@@ -149,6 +149,12 @@ Rules enforced by **commitlint** (`commitlint.config.js`):
 
 - Header ≤ 100 characters
 - Body/footer separated by a blank line
+- Body lines ≤ 100 characters (from `@commitlint/config-conventional`)
+
+Cursor (Agent + Generate Commit Message) is steered by:
+
+- `.cursor/rules/git-commits.mdc`
+- `.cursorrules` (SCM sparkle button)
 
 ```bash
 pnpm commitlint:last     # validate the latest commit message

@@ -1,0 +1,17 @@
+{
+  "env": "test",
+  "logLevel": "warn",
+  "paths": {
+    "dataDir": ".data/test",
+    "modelsDir": "models",
+    "databasePath": ".data/test/atlas.db"
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 7421
+  },
+  "features": {
+    "cloudProviders": false,
+    "telemetry": false
+  }
+}

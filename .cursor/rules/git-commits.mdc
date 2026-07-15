@@ -1,0 +1,54 @@
+---
+description: Atlas AI Conventional Commits — use for all git commits and commit message generation
+alwaysApply: true
+---
+
+# Git commit messages (Atlas AI)
+
+Follow `docs/guides/Code-Quality-Standards.md`, `docs/guides/Version-Control.md`, and `commitlint.config.js`.
+
+## Format
+
+```
+<type>(optional-scope): <summary>
+
+[optional body]
+
+[optional footer]
+```
+
+- **Header** (first line) ≤ **100** characters
+- Blank line between subject and body
+- **Every body/footer line** ≤ **100** characters (wrap long sentences)
+- Subject: imperative, concise; no trailing period
+- English only
+
+## Types
+
+`feat` | `fix` | `docs` | `style` | `refactor` | `perf` | `test` | `build` | `ci` | `chore`
+
+## Scopes (when useful)
+
+`desktop` | `core` | `agents` | `tools` | `memory` | `database` | `shared` | `config` | `docs` | `scripts`
+
+## Examples
+
+```
+feat(desktop): add Atlas shell greet IPC bridge
+fix(config): resolve print script dist import path
+docs: reorganize documentation structure
+chore(deps): bump @tauri-apps/cli
+```
+
+## Agent commit workflow
+
+- Only commit when the user asks
+- Use a HEREDOC for the message (avoids shell eating backticks)
+- Run hooks normally (Husky + commitlint); do not use `--no-verify`
+- Do not commit `.env`, secrets, `.data/`, or model weights
+
+## Bad patterns
+
+- Long unbroken body paragraphs (fails `body-max-line-length`)
+- Non-conventional subjects like `Updated stuff` or `WIP`
+- Putting secrets or file paths with unescaped shell metacharacters in `-m "..."` without a HEREDOC

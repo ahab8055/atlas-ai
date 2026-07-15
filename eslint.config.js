@@ -2,6 +2,7 @@ import eslint from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -20,10 +21,22 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ["**/*.{js,mjs,cjs,ts,tsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ["apps/desktop/**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
         ecmaFeatures: { jsx: true },
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
       },
     },
     plugins: {
@@ -48,8 +61,16 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.{js,mjs,cjs}"],
-    ...eslint.configs.recommended,
+    files: ["packages/**/*.{ts,tsx}", "scripts/**/*.{js,mjs,cjs,ts}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
   },
   prettier,
 );

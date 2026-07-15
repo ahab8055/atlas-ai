@@ -35,6 +35,7 @@ Start at [`docs/README.md`](../../docs/README.md) for the folder map. Record sig
 | Desktop / voice | `docs/Architecture/11-Desktop-Application-Architecture.md`, `08-Voice-System-Architecture.md` |
 | Deploy / monitor / roadmap | `docs/Architecture/14-Deployment-Architecture.md`, `15-Monitoring-Architecture.md`, `16-Implementation-Roadmap.md`, `19-Development-Plan.md` |
 | Dev environment / quality / git | `docs/guides/` |
+| Configuration / secrets | `docs/guides/Configuration.md`, `docs/adr/0003-configuration-management.md`, `config/`, `packages/config/` |
 | Significant decisions | `docs/adr/` |
 
 When unsure which file applies, search `docs/` for the feature name, then read the matching Architecture and PRD sections.

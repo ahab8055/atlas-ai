@@ -7,6 +7,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Local runtime data
 .data/
@@ -25,6 +26,7 @@ dist/
 build/
 out/
 target/
+**/dist/
 *.tsbuildinfo
 .turbo/
 .cache/
@@ -68,4 +70,7 @@ apps/desktop/src-tauri/target/
 
 # Optional personal Cursor state (shared rules may still be committed)
 .cursor/*.log
+
+# Local config overlays (non-committed machine overrides)
+config/*.local.json
 

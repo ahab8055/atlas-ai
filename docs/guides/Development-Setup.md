@@ -105,12 +105,16 @@ For other distros, follow the [Tauri 2 prerequisites](https://v2.tauri.app/start
 
 ## Environment variables
 
-Secrets and machine-local paths are managed with dotenv-style files:
+Secrets and machine-local paths are managed with dotenv-style files and `@atlas-ai/config`.
 
-| File           | Tracked?            | Purpose                         |
-| -------------- | ------------------- | ------------------------------- |
-| `.env.example` | Yes                 | Template of supported variables |
-| `.env`         | **No** (gitignored) | Your local overrides            |
+Full guide: **[Configuration.md](./Configuration.md)**
+
+| File                      | Tracked?            | Purpose                             |
+| ------------------------- | ------------------- | ----------------------------------- |
+| `config/{env}.json`       | Yes                 | Non-secret defaults per environment |
+| `config/{env}.local.json` | **No**              | Optional machine overlays           |
+| `.env.example`            | Yes                 | Template of supported variables     |
+| `.env`                    | **No** (gitignored) | Local overrides & secrets           |
 
 ```bash
 cp .env.example .env
@@ -118,20 +122,21 @@ cp .env.example .env
 
 ### Variables
 
-| Variable              | Default          | Description                                       |
-| --------------------- | ---------------- | ------------------------------------------------- |
-| `ATLAS_ENV`           | `development`    | `development` \| `production` \| `test`           |
-| `ATLAS_LOG_LEVEL`     | `debug`          | `error` \| `warn` \| `info` \| `debug` \| `trace` |
-| `ATLAS_DATA_DIR`      | `.data`          | Local app data (caches, logs)                     |
-| `ATLAS_MODELS_DIR`    | `models`         | Local model weights directory                     |
-| `ATLAS_DATABASE_PATH` | `.data/atlas.db` | SQLite database path                              |
-| `OPENAI_API_KEY`      | _(empty)_        | Optional; leave unset for offline-first MVP       |
-| `ANTHROPIC_API_KEY`   | _(empty)_        | Optional; leave unset for offline-first MVP       |
-| `VITE_ATLAS_API_URL`  | _(commented)_    | Frontend API URL once desktop is scaffolded       |
+| Variable              | Default                  | Description                                       |
+| --------------------- | ------------------------ | ------------------------------------------------- |
+| `ATLAS_ENV`           | `development`            | `development` \| `production` \| `test`           |
+| `ATLAS_LOG_LEVEL`     | from `config/{env}.json` | `error` \| `warn` \| `info` \| `debug` \| `trace` |
+| `ATLAS_DATA_DIR`      | `.data`                  | Local app data (caches, logs)                     |
+| `ATLAS_MODELS_DIR`    | `models`                 | Local model weights directory                     |
+| `ATLAS_DATABASE_PATH` | `.data/atlas.db`         | SQLite database path                              |
+| `OPENAI_API_KEY`      | _(empty)_                | Secret — optional; never in JSON                  |
+| `ANTHROPIC_API_KEY`   | _(empty)_                | Secret — optional; never in JSON                  |
+| `VITE_ATLAS_API_URL`  | _(commented)_            | Public frontend URL only (no secrets)             |
 
 **Rules:**
 
 - Do not commit `.env` or API keys.
+- Do not store secrets in `config/*.json`.
 - Prefer local paths under the repo for development.
 - Model weight files under `models/` are gitignored; the directory itself is kept.
 

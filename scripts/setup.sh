@@ -21,10 +21,13 @@ echo "Ensured .data/ and models/ directories exist"
 if command -v pnpm >/dev/null 2>&1; then
   echo "Installing workspace dependencies with pnpm..."
   pnpm install
+  echo "Building @atlas-ai/config..."
+  pnpm config:build
 else
   echo "pnpm not found — skip install. See docs/guides/Development-Setup.md"
 fi
 
 echo
 echo "Next: pnpm check:env"
+echo "Config guide: docs/guides/Configuration.md"
 echo "Full guide: docs/guides/Development-Setup.md"

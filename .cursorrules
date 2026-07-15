@@ -1,0 +1,52 @@
+# Atlas AI — Cursor commit message generation
+
+When generating a Git commit message for this repository (including Source Control “Generate commit message”), follow these rules exactly.
+
+## Required format (Conventional Commits)
+
+```
+<type>(optional-scope): <summary>
+
+[optional body]
+```
+
+Rules:
+
+- First line (header) must be ≤ 100 characters
+- Use a blank line before any body
+- Every body line must be ≤ 100 characters — wrap text; do not emit long single lines
+- Subject: imperative mood, no trailing period
+- English only
+- Prefer a short subject; add a wrapped body only when it clarifies why
+
+## Allowed types
+
+feat, fix, docs, style, refactor, perf, test, build, ci, chore
+
+## Suggested scopes
+
+desktop, core, agents, tools, memory, database, shared, config, docs, scripts
+
+Omit scope when the change is cross-cutting.
+
+## Good examples
+
+```
+feat(desktop): add Atlas shell greet IPC bridge
+
+fix(config): resolve print script dist import path
+
+docs: reorganize documentation structure
+
+Move guides and product plans into dedicated folders, add docs hub
+indexes, and introduce ADR template plus initial decision records.
+```
+
+## Do not
+
+- Write non-conventional messages (e.g. "Update files", "Fixed bug")
+- Exceed 100 characters on any line
+- Include secrets, API keys, or `.env` contents
+- Use Markdown emphasis or emoji in the subject
+
+Project references: `docs/guides/Code-Quality-Standards.md`, `commitlint.config.js`

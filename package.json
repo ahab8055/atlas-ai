@@ -15,7 +15,7 @@
     "check:env": "bash scripts/check-env.sh",
     "dev": "bash scripts/with-cargo-path.sh pnpm --filter @atlas-ai/desktop tauri:dev",
     "dev:web": "pnpm --filter @atlas-ai/desktop dev",
-    "build": "pnpm --filter @atlas-ai/desktop build",
+    "build": "pnpm config:build && pnpm --filter @atlas-ai/desktop build",
     "build:desktop": "bash scripts/with-cargo-path.sh pnpm --filter @atlas-ai/desktop tauri:build",
     "check:rust": "bash scripts/with-cargo-path.sh cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml",
     "preview": "pnpm --filter @atlas-ai/desktop preview",
@@ -29,7 +29,9 @@
     "check:quality": "pnpm format:check && pnpm lint && pnpm format:rust:check && pnpm lint:rust",
     "check": "pnpm check:quality && pnpm check:rust && pnpm build",
     "commitlint": "commitlint",
-    "commitlint:last": "commitlint --last --verbose"
+    "commitlint:last": "commitlint --last --verbose",
+    "config:build": "pnpm --filter @atlas-ai/config build",
+    "config:print": "pnpm --filter @atlas-ai/config test:load"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
@@ -39,6 +41,7 @@
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
     "prettier": "^3.6.2",

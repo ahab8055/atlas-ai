@@ -24,13 +24,14 @@ docs/
 
 ## Start here
 
-| Role                   | Start with                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| New contributor        | [guides/Development-Setup.md](./guides/Development-Setup.md)                           |
-| Product / MVP scope    | [product/MVP-Plan.md](./product/MVP-Plan.md), [PRD/10-MVP.md](./PRD/10-MVP.md)         |
-| Architecture deep-dive | [Architecture/README.md](./Architecture/README.md)                                     |
-| Stack choices          | [product/Technology-Stack-Architecture.md](./product/Technology-Stack-Architecture.md) |
-| Recording a decision   | [adr/README.md](./adr/README.md)                                                       |
+| Role                    | Start with                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| New contributor         | [guides/Development-Setup.md](./guides/Development-Setup.md)                           |
+| Product / MVP scope     | [product/MVP-Plan.md](./product/MVP-Plan.md), [PRD/10-MVP.md](./PRD/10-MVP.md)         |
+| Architecture deep-dive  | [Architecture/README.md](./Architecture/README.md)                                     |
+| Stack choices           | [product/Technology-Stack-Architecture.md](./product/Technology-Stack-Architecture.md) |
+| Recording a decision    | [adr/README.md](./adr/README.md)                                                       |
+| Configuration / secrets | [guides/Configuration.md](./guides/Configuration.md)                                   |
 
 ## Adding future documents
 

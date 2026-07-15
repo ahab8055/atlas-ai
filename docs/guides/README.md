@@ -5,6 +5,7 @@ Practical guides for contributing to Atlas AI.
 | Guide                                                    | Description                           |
 | -------------------------------------------------------- | ------------------------------------- |
 | [Development-Setup.md](./Development-Setup.md)           | Toolchain, env vars, OS prerequisites |
+| [Configuration.md](./Configuration.md)                   | Config loading, env profiles, secrets |
 | [Code-Quality-Standards.md](./Code-Quality-Standards.md) | Naming, format, lint, commits         |
 | [Version-Control.md](./Version-Control.md)               | Branching strategy & Git workflow     |
 
