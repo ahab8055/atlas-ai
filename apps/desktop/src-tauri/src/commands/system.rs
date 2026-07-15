@@ -37,10 +37,7 @@ pub fn get_app_info() -> AppInfo {
 pub fn ping(message: Option<String>) -> PingResponse {
     let message = message.unwrap_or_else(|| "pong".into());
     info!(service = "desktop-core", %message, "ping invoked");
-    PingResponse {
-        ok: true,
-        message,
-    }
+    PingResponse { ok: true, message }
 }
 
 #[cfg(test)]
