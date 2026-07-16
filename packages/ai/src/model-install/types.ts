@@ -47,6 +47,10 @@ export interface InstallModelInput {
   source: string;
   /** Target category under models/ (default general). */
   category?: ModelCategory;
+  /**
+   * When category is `speech`, place under speech/stt or speech/tts (default stt).
+   */
+  speechModality?: "stt" | "tts";
   /** Optional explicit model id (default: category/basename). */
   id?: string;
   name?: string;

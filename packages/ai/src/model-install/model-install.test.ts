@@ -123,6 +123,37 @@ describe("model installation workflow", () => {
     }
   });
 
+  it("installs speech GGUF under speech/stt or speech/tts", async () => {
+    const root = join(tmpdir(), `atlas-install-speech-${Date.now()}`);
+    const modelsDir = join(root, "models");
+    const source = join(root, "whisper.gguf");
+    mkdirSync(root, { recursive: true });
+    writeToyGguf(source);
+
+    try {
+      const registry = createModelRegistry({ modelsDir });
+      const installer = createModelInstaller({ modelsDir, registry });
+
+      const result = await installer.install({
+        source,
+        category: "speech",
+        speechModality: "tts",
+        requirements: { minRamGb: 1, acceleration: "cpu" },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.modelId).toBe("speech/tts/whisper");
+      expect(result.destination).toContain(join("speech", "tts"));
+      const registered = registry.get("speech/tts/whisper");
+      expect(registered?.capabilities).toEqual(
+        expect.arrayContaining(["speech", "tts", "local"]),
+      );
+      expect(registered?.requirements.speechModality).toBe("tts");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("rejects invalid GGUF sources", async () => {
     const root = join(tmpdir(), `atlas-install-bad-${Date.now()}`);
     const modelsDir = join(root, "models");

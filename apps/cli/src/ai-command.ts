@@ -5,6 +5,7 @@ import {
   createInferenceConfigManager,
   createModelInstaller,
   createModelStorageManager,
+  createSpeechModelManager,
   configFromAtlasDefaults,
   detectHardware,
   evaluateModelSuitability,
@@ -21,11 +22,15 @@ import {
   formatQuantizationTradeoffs,
   routeModel,
   InferenceProviderRegistry,
+  MockSpeechToTextProvider,
+  MockTextToSpeechProvider,
+  SPEECH_MODALITIES,
   type AiRuntime,
   type InferenceConfigPatch,
   type ModelCategory,
   type ModelInfo,
   type RegisteredModel,
+  type SpeechModality,
 } from "@atlas-ai/ai";
 
 import {
@@ -154,6 +159,7 @@ function printAiHelp(): void {
       "  atlas ai recommend          Recommend models for this machine",
       "  atlas ai install <src> [cat] Install GGUF (file/URL) + register",
       "  atlas ai install --dry-run … Compatibility/storage check only",
+      "  atlas ai install … speech --modality stt|tts  Speech nest path",
       "  atlas ai check [modelId]     Verify RAM/CPU/GPU/storage compatibility",
       '  atlas ai route "<prompt>"    Explain automatic model selection for a task',
       "  atlas ai route --model <id> … Manual model selection (explain only)",
@@ -166,6 +172,11 @@ function printAiHelp(): void {
       '  atlas ai embed "<text>"      Generate a local embedding (mock or llama.cpp)',
       "  atlas ai embed --store …     Generate + persist for search/memory",
       "  atlas ai embeddings          List / search stored embeddings",
+      "  atlas ai speech              Speech model storage / STT·TTS prep",
+      "  atlas ai speech storage      Ensure speech/stt + speech/tts layout",
+      "  atlas ai speech models       List registered speech models",
+      "  atlas ai speech register     Scan speech dirs into registry",
+      "  atlas ai speech status       Mock STT/TTS provider health",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Route + load model and generate a reply',
       "",
@@ -247,17 +258,9 @@ export async function tryHandleAiCommand(
     return true;
   }
 
-  const installMatch =
-    /^ai\s+install(?:\s+(--dry-run|--check))?\s+(\S+)(?:\s+(\S+))?\s*$/i.exec(
-      trimmed,
-    );
+  const installMatch = /^ai\s+install\s+(.+)$/is.exec(trimmed);
   if (installMatch) {
-    await handleInstall(
-      installMatch[2]!,
-      installMatch[3],
-      Boolean(installMatch[1]),
-      options,
-    );
+    await handleInstall(installMatch[1]!.trim(), options);
     return true;
   }
 
@@ -302,6 +305,12 @@ export async function tryHandleAiCommand(
   const embeddingsMatch = /^ai\s+embeddings(?:\s+(.*))?$/is.exec(trimmed);
   if (embeddingsMatch) {
     await handleEmbeddings(embeddingsMatch[1]?.trim() ?? "", options);
+    return true;
+  }
+
+  const speechMatch = /^ai\s+speech(?:\s+(.*))?$/is.exec(trimmed);
+  if (speechMatch) {
+    await handleSpeech(speechMatch[1]?.trim() ?? "", options);
     return true;
   }
 
@@ -893,14 +902,206 @@ async function handleEmbeddings(
   }
 }
 
-async function handleInstall(
-  source: string,
-  categoryRaw: string | undefined,
-  dryRun: boolean,
+async function handleSpeech(
+  rest: string,
   options: ModelRegistryCliOptions,
 ): Promise<void> {
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+  const cmd = parts[0]?.toLowerCase();
+  const config = loadConfig();
+  const session = openModelRegistrySession(options);
+
+  try {
+    const manager = createSpeechModelManager({
+      modelsDir: config.paths.modelsDir,
+      registry: session.registry,
+    });
+
+    if (cmd === "help" || cmd === "--help" || cmd === "-h") {
+      process.stdout.write(
+        [
+          "Speech model prep (Architecture/08 / 25):",
+          "  atlas ai speech                 Overview + layout status",
+          "  atlas ai speech storage         Ensure models/speech/{stt,tts}",
+          "  atlas ai speech models [stt|tts] List registered speech models",
+          "  atlas ai speech register        Scan speech dirs → registry",
+          "  atlas ai speech status          Mock STT/TTS provider health",
+          "",
+          "Install into nested speech dirs:",
+          "  atlas ai install ./whisper.gguf speech --modality stt",
+          "  atlas ai install ./piper.gguf speech --modality tts",
+        ].join("\n") + "\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "storage") {
+      const result = manager.ensureStructure();
+      const files = manager.listFiles();
+      process.stdout.write(
+        [
+          `Speech layout: ${result.speechDir}`,
+          `Ready: ${manager.isStructureReady() ? "yes" : "no"}`,
+          `Created: ${result.created.length}`,
+          `Files on disk: ${files.length}`,
+          ...files.map(
+            (f) =>
+              `  - ${f.id} [${f.modality}/${f.format}] ${formatBytes(f.sizeBytes)}${f.valid ? "" : " INVALID"}`,
+          ),
+        ].join("\n") + "\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "models") {
+      const modalityRaw = parts[1]?.toLowerCase();
+      const modality =
+        modalityRaw &&
+        (SPEECH_MODALITIES as readonly string[]).includes(modalityRaw)
+          ? (modalityRaw as SpeechModality)
+          : undefined;
+      const rows = manager.list(modality ? { modality } : undefined);
+      if (rows.length === 0) {
+        process.stdout.write(
+          "No registered speech models. Place weights under models/speech/{stt,tts} then: atlas ai speech register\n",
+        );
+      } else {
+        process.stdout.write(
+          [
+            `Speech models (${rows.length})${modality ? ` [${modality}]` : ""}:`,
+            ...rows.map(
+              (m) =>
+                `- ${m.id} [${m.modality}] ${m.format} status=${m.status} langs=${m.metadata.languages.join(",")}`,
+            ),
+          ].join("\n") + "\n",
+        );
+      }
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "register") {
+      const count = manager.syncFromDisk();
+      process.stdout.write(
+        `Registered/synced ${count} speech model(s) from disk.\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "status") {
+      const stt = new MockSpeechToTextProvider();
+      const tts = new MockTextToSpeechProvider();
+      const [sttHealth, ttsHealth] = await Promise.all([
+        stt.health(),
+        tts.health(),
+      ]);
+      process.stdout.write(
+        [
+          "Speech providers (mock — no Whisper/Piper runtime yet):",
+          `  STT: ${sttHealth.provider} ok=${sttHealth.ok} ${sttHealth.message ?? ""}`,
+          `  TTS: ${ttsHealth.provider} ok=${ttsHealth.ok} ${ttsHealth.message ?? ""}`,
+          `Layout ready: ${manager.isStructureReady() ? "yes" : "no (run: atlas ai speech storage)"}`,
+          `Registered speech models: ${manager.list().length}`,
+        ].join("\n") + "\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (!cmd) {
+      const structure = manager.ensureStructure();
+      process.stdout.write(
+        [
+          "Speech model foundation",
+          `  Dir: ${structure.speechDir}`,
+          `  Nested: speech/stt, speech/tts`,
+          `  Ready: ${manager.isStructureReady() ? "yes" : "no"}`,
+          `  On disk: ${manager.listFiles().length} file(s)`,
+          `  Registered: ${manager.list().length}`,
+          "",
+          "Commands: storage | models [stt|tts] | register | status | help",
+        ].join("\n") + "\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    process.stderr.write(
+      [
+        `Unknown speech command: ${cmd}`,
+        "Usage: atlas ai speech [storage|models|register|status|help]",
+      ].join("\n") + "\n",
+    );
+    process.exitCode = 2;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  } finally {
+    session.close();
+  }
+}
+
+async function handleInstall(
+  rest: string,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const tokens = rest.split(/\s+/).filter(Boolean);
+  let dryRun = false;
+  let speechModality: SpeechModality | undefined;
+  const positional: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]!;
+    if (t === "--dry-run" || t === "--check") {
+      dryRun = true;
+      continue;
+    }
+    if (t === "--modality" && tokens[i + 1]) {
+      const raw = tokens[++i]!.toLowerCase();
+      if (!(SPEECH_MODALITIES as readonly string[]).includes(raw)) {
+        process.stderr.write(`Invalid --modality "${raw}". Use: stt | tts\n`);
+        process.exitCode = 2;
+        return;
+      }
+      speechModality = raw as SpeechModality;
+      continue;
+    }
+    if (t.startsWith("--modality=")) {
+      const raw = t.slice("--modality=".length).toLowerCase();
+      if (!(SPEECH_MODALITIES as readonly string[]).includes(raw)) {
+        process.stderr.write(`Invalid --modality "${raw}". Use: stt | tts\n`);
+        process.exitCode = 2;
+        return;
+      }
+      speechModality = raw as SpeechModality;
+      continue;
+    }
+    positional.push(t);
+  }
+
+  const source = positional[0];
+  const categoryRaw = positional[1];
+  if (!source) {
+    process.stderr.write(
+      "Usage: atlas ai install [--dry-run] [--modality stt|tts] <source> [category]\n",
+    );
+    process.exitCode = 2;
+    return;
+  }
+
   const config = loadConfig();
   const category = (categoryRaw ?? "general") as ModelCategory;
+  if (speechModality && category !== "speech") {
+    process.stderr.write("--modality applies only when category is speech\n");
+    process.exitCode = 2;
+    return;
+  }
+
   const session = openModelRegistrySession(options);
   try {
     const installer = createModelInstaller({
@@ -916,6 +1117,9 @@ async function handleInstall(
       category,
       dryRun,
       proceedOnWarnings: true,
+      ...(category === "speech"
+        ? { speechModality: speechModality ?? "stt" }
+        : {}),
     });
 
     const warningLines = result.warnings.map(
@@ -937,7 +1141,7 @@ async function handleInstall(
         : []),
     ];
     process.stdout.write(`${lines.join("\n")}\n`);
-    process.exitCode = result.ok ? (result.warnings.length > 0 ? 0 : 0) : 1;
+    process.exitCode = result.ok ? 0 : 1;
   } catch (error) {
     process.stderr.write(
       `${error instanceof Error ? error.message : String(error)}\n`,

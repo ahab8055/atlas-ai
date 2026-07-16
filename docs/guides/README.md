@@ -31,6 +31,7 @@ Practical guides for contributing to Atlas AI.
 | [Model-Runtime-Manager.md](./Model-Runtime-Manager.md)           | Load/unload, sessions, memory budget       |
 | [Quantization.md](./Quantization.md)                             | GGUF quant detect, recommend, tradeoffs    |
 | [Embedding-Models.md](./Embedding-Models.md)                     | Local embeddings + store for search/memory |
+| [Speech-Models.md](./Speech-Models.md)                           | Speech storage + STT/TTS provider ports    |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)             | GGUF load, CPU/GPU, inference params       |
 | [Intent-Detection.md](./Intent-Detection.md)                     | Intent categories, params, registry        |
 | [Context-Management.md](./Context-Management.md)                 | Context sources before execution           |

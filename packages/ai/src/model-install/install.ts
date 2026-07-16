@@ -15,6 +15,11 @@ import {
   type ModelCategory,
 } from "../model-storage/types.js";
 import { ensureModelDirectoryStructure } from "../model-storage/layout.js";
+import {
+  ensureSpeechStructure,
+  speechDestinationPath,
+} from "../speech/storage.js";
+import type { SpeechModality } from "../speech/types.js";
 import { checkInstallCompatibility } from "./compatibility.js";
 import { downloadModelFile, isHttpUrl } from "./download.js";
 import { checkInstallStorage, getFileSizeBytes } from "./storage-check.js";
@@ -91,6 +96,9 @@ export class ModelInstaller {
     const dryRun = input.dryRun === true;
 
     ensureModelDirectoryStructure(this.modelsDir);
+    if (category === "speech") {
+      ensureSpeechStructure(this.modelsDir);
+    }
 
     let workingPath = source;
     let downloadedTemp: string | undefined;
@@ -206,10 +214,21 @@ export class ModelInstaller {
         : basenameWithoutGguf(
             sourceKind === "url" ? new URL(source).pathname : workingPath,
           );
+      const speechModality: SpeechModality =
+        category === "speech" ? (input.speechModality ?? "stt") : "stt";
       const modelId = input.id?.includes("/")
         ? input.id
-        : `${category}/${leaf}`;
-      const destination = destinationPath(this.modelsDir, category, leaf);
+        : category === "speech"
+          ? `${category}/${speechModality}/${leaf}`
+          : `${category}/${leaf}`;
+      const destination =
+        category === "speech"
+          ? speechDestinationPath(
+              this.modelsDir,
+              speechModality,
+              `${leaf}.gguf`,
+            )
+          : destinationPath(this.modelsDir, category, leaf);
 
       if (dryRun) {
         return {
@@ -269,7 +288,18 @@ export class ModelInstaller {
       }
 
       const quantLevel = finalValidation.quantization;
-      const caps = [...(input.capabilities ?? ["chat", "local"])];
+      const defaultCaps =
+        category === "speech"
+          ? ["speech", "local", speechModality]
+          : ["chat", "local"];
+      const caps = [...(input.capabilities ?? defaultCaps)];
+      if (category === "speech") {
+        for (const c of ["speech", "local", speechModality] as const) {
+          if (!caps.includes(c)) {
+            caps.push(c);
+          }
+        }
+      }
       if (finalValidation.quantized && !caps.includes("quantized")) {
         caps.push("quantized");
       }
@@ -290,6 +320,12 @@ export class ModelInstaller {
           acceleration: "cpu",
           notes: "Installed via Atlas model installation workflow",
           ...(quantLevel ? { quantization: quantLevel } : {}),
+          ...(category === "speech"
+            ? {
+                speechModality,
+                speechFormat: "gguf",
+              }
+            : {}),
           ...input.requirements,
         },
         location: destination,

@@ -46,6 +46,10 @@ pnpm atlas ai install https://example.com/model.gguf general
 
 # Compatibility + storage only
 pnpm atlas ai install --dry-run ./phi.gguf
+
+# Speech category nests under speech/stt or speech/tts
+pnpm atlas ai install ./whisper.gguf speech --modality stt
+pnpm atlas ai install ./piper.gguf speech --modality tts
 ```
 
 Installed models show up in `pnpm atlas ai models`.
