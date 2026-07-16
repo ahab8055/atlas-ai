@@ -22,6 +22,7 @@ Practical guides for contributing to Atlas AI.
 | [Local-AI-Runtime.md](./Local-AI-Runtime.md)                     | Local inference providers + AI facade    |
 | [Model-Registry.md](./Model-Registry.md)                         | Installed model catalog + SQLite persist |
 | [Model-Storage.md](./Model-Storage.md)                           | Model dirs, usage, validate, remove      |
+| [Hardware-Detection.md](./Hardware-Detection.md)                 | CPU/RAM/GPU/OS detect + resource tiers   |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)             | GGUF load, CPU/GPU, inference params     |
 | [Intent-Detection.md](./Intent-Detection.md)                     | Intent categories, params, registry      |
 | [Context-Management.md](./Context-Management.md)                 | Context sources before execution         |

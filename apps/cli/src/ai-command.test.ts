@@ -21,6 +21,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai storage");
       expect(writes.join("")).toContain("atlas ai validate");
       expect(writes.join("")).toContain("atlas ai remove");
+      expect(writes.join("")).toContain("atlas ai hardware");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -118,6 +119,29 @@ describe("ai CLI command", () => {
       expect(text).toContain("Structure ready:");
       expect(text).toContain("Total size:");
       expect(text).toContain("general");
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("hardware reports CPU RAM OS and resource tier", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand("ai hardware", {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toMatch(/CPU:/);
+      expect(text).toMatch(/RAM:/);
+      expect(text).toMatch(/Resource tier:/);
+      expect(text).toMatch(/Suggested inference:/);
     } finally {
       process.stdout.write = originalWrite;
     }

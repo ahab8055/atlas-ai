@@ -98,6 +98,26 @@ export {
 } from "./hardware.js";
 
 export {
+  classifyHardwareTier,
+  createNodeSystemProbe,
+  detectHardware,
+  detectGpus,
+  evaluateModelSuitability,
+  selectSuitableModels,
+  suggestInferenceProfile,
+  type CommandResult,
+  type DetectHardwareOptions,
+  type DetectedCpu,
+  type DetectedGpu,
+  type DetectedHardware,
+  type DetectedMemory,
+  type DetectedOs,
+  type HardwareTier,
+  type ModelSuitabilityResult,
+  type SystemProbe,
+} from "./hardware-detection/index.js";
+
+export {
   DEFAULT_INFERENCE_PARAMS,
   inferenceParamsToApiBody,
   mergeInferenceParams,

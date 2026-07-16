@@ -86,6 +86,7 @@ pnpm atlas ai register   # persist GGUF metadata
 pnpm atlas ai models
 pnpm atlas ai storage    # usage + directory layout
 pnpm atlas ai validate   # detect invalid weights
+pnpm atlas ai hardware   # CPU/RAM/GPU/OS + suggested profile
 ```
 
 ```bash

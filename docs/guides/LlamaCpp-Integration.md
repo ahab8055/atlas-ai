@@ -49,6 +49,8 @@ Related: [Local-AI-Runtime.md](./Local-AI-Runtime.md), [ADR-0023](../adr/0023-ll
 
 GPU prep: set `"acceleration": "gpu"` and `"gpuLayers": N` (e.g. 32). CPU mode always forces `ngl=0`.
 
+Detect a suggested profile with `pnpm atlas ai hardware` (see [Hardware-Detection.md](./Hardware-Detection.md)); config is not overwritten automatically.
+
 ---
 
 ## CLI

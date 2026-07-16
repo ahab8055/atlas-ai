@@ -49,6 +49,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0023](./0023-llamacpp-integration.md)                  | llama.cpp integration                   | Accepted |
 | [0024](./0024-model-registry.md)                        | Model registry                          | Accepted |
 | [0025](./0025-model-storage-manager.md)                 | Model storage manager                   | Accepted |
+| [0026](./0026-hardware-detection.md)                    | Hardware detection system               | Accepted |
 
 ## Naming
 

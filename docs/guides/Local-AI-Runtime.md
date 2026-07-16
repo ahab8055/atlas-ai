@@ -2,7 +2,7 @@
 
 Foundation for running AI models locally without internet (Architecture/09, /17, /25).
 
-Related: [Architecture/09](../Architecture/09-Local-AI-Architecture.md), [Architecture/25](../Architecture/25-Model-Management-System.md), [Model-Registry.md](./Model-Registry.md), [Model-Storage.md](./Model-Storage.md), [LlamaCpp-Integration.md](./LlamaCpp-Integration.md), [ADR-0022](../adr/0022-ai-runtime-foundation.md), [ADR-0023](../adr/0023-llamacpp-integration.md), [ADR-0024](../adr/0024-model-registry.md), [ADR-0025](../adr/0025-model-storage-manager.md), [`@atlas-ai/ai`](../../packages/ai/), [`models/`](../../models/).
+Related: [Architecture/09](../Architecture/09-Local-AI-Architecture.md), [Architecture/25](../Architecture/25-Model-Management-System.md), [Model-Registry.md](./Model-Registry.md), [Model-Storage.md](./Model-Storage.md), [Hardware-Detection.md](./Hardware-Detection.md), [LlamaCpp-Integration.md](./LlamaCpp-Integration.md), [ADR-0022](../adr/0022-ai-runtime-foundation.md), [ADR-0023](../adr/0023-llamacpp-integration.md), [ADR-0024](../adr/0024-model-registry.md), [ADR-0025](../adr/0025-model-storage-manager.md), [ADR-0026](../adr/0026-hardware-detection.md), [`@atlas-ai/ai`](../../packages/ai/), [`models/`](../../models/).
 
 ---
 

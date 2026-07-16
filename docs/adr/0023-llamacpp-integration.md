@@ -33,5 +33,5 @@ ADR-0022 introduced `@atlas-ai/ai` with a thin HTTP `LlamaCppProvider`. The prod
 
 ### Follow-ups
 
-- Auto-detect GPU and suggest `gpuLayers`.
 - Optional model download / registry UX.
+- Wire suggested hardware profile into setup / Model Router (see ADR-0026).

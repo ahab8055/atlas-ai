@@ -2,6 +2,8 @@ import { loadConfig } from "@atlas-ai/config";
 import {
   createAiRuntime,
   createModelStorageManager,
+  detectHardware,
+  evaluateModelSuitability,
   InferenceProviderRegistry,
   type AiRuntime,
   type ModelInfo,
@@ -53,6 +55,7 @@ function printAiHelp(): void {
       "  atlas ai storage             Ensure layout + show storage usage",
       "  atlas ai validate            Validate stored model files",
       "  atlas ai remove <modelId>    Delete a model file (+ unregister)",
+      "  atlas ai hardware           Detect CPU/RAM/GPU/OS + suggest profile",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Load default model and generate a reply',
       "",
@@ -115,6 +118,12 @@ export async function tryHandleAiCommand(
     return true;
   }
 
+  const hardwareMatch = /^ai\s+hardware\s*$/i.exec(trimmed);
+  if (hardwareMatch) {
+    handleHardware();
+    return true;
+  }
+
   const loadMatch = /^ai\s+load(?:\s+(\S+))?\s*$/i.exec(trimmed);
   if (loadMatch) {
     await handleLoad(loadMatch[1]);
@@ -166,7 +175,10 @@ async function handleStatus(): Promise<void> {
   process.exitCode = health.ok ? 0 : 1;
 }
 
-function formatRegisteredModel(m: RegisteredModel): string {
+function formatRegisteredModel(
+  m: RegisteredModel,
+  suitability?: { suitable: boolean; reasons: string[] },
+): string {
   const size =
     m.sizeBytes !== undefined
       ? ` ${(m.sizeBytes / (1024 * 1024)).toFixed(1)}MiB`
@@ -175,7 +187,13 @@ function formatRegisteredModel(m: RegisteredModel): string {
     m.capabilities.length > 0 ? ` caps=[${m.capabilities.join(",")}]` : "";
   const ctx = m.contextLength !== undefined ? ` ctx=${m.contextLength}` : "";
   const loc = m.location ? ` ${m.location}` : "";
-  return `- ${m.id} v${m.version} [${m.format}/${m.status}]${size}${ctx}${caps}${loc}`;
+  const fit =
+    suitability === undefined
+      ? ""
+      : suitability.suitable
+        ? " fit=yes"
+        : ` fit=no (${suitability.reasons.join("; ")})`;
+  return `- ${m.id} v${m.version} [${m.format}/${m.status}]${size}${ctx}${caps}${fit}${loc}`;
 }
 
 async function handleModels(options: ModelRegistryCliOptions): Promise<void> {
@@ -185,11 +203,18 @@ async function handleModels(options: ModelRegistryCliOptions): Promise<void> {
     const registered = session.registry.list();
 
     if (registered.length > 0) {
+      const hardware = detectHardware({ skipGpuProbe: false });
       const source = session.database
         ? "registry (persistent)"
         : "registry (memory)";
+      const lines = registered.map((model) =>
+        formatRegisteredModel(
+          model,
+          evaluateModelSuitability(model.requirements, hardware),
+        ),
+      );
       process.stdout.write(
-        `Registered models (${source}):\n${registered.map(formatRegisteredModel).join("\n")}\n`,
+        `Registered models (${source}, tier=${hardware.tier}):\n${lines.join("\n")}\n`,
       );
       process.exitCode = 0;
       return;
@@ -232,7 +257,7 @@ function handleRegister(options: ModelRegistryCliOptions): void {
       [
         `Registered ${count} model(s) from disk (${persist}).`,
         `Queryable entries: ${listed.length}`,
-        ...listed.map(formatRegisteredModel),
+        ...listed.map((model) => formatRegisteredModel(model)),
       ].join("\n") + "\n",
     );
     process.exitCode = 0;
@@ -331,6 +356,40 @@ function handleRemove(modelId: string, options: ModelRegistryCliOptions): void {
     `Could not remove ${modelId}: ${result.reason ?? "unknown error"}\n`,
   );
   process.exitCode = 1;
+}
+
+function handleHardware(): void {
+  const config = loadConfig();
+  const detected = detectHardware({
+    contextSize: config.ai.hardware.contextSize,
+  });
+
+  const gpuLines =
+    detected.gpus.length === 0
+      ? ["  (none detected)"]
+      : detected.gpus.map((gpu) => {
+          const vram = gpu.vramGb !== undefined ? `, VRAM ${gpu.vramGb}GB` : "";
+          const kind = gpu.integrated ? "integrated" : "dedicated";
+          return `  - ${gpu.name} (${kind}${vram})`;
+        });
+
+  const lines = [
+    `Detected at: ${detected.detectedAt}`,
+    `OS: ${detected.os.type} ${detected.os.release} (${detected.os.platform}/${detected.os.arch})`,
+    ...(detected.os.version ? [`OS version: ${detected.os.version}`] : []),
+    `CPU: ${detected.cpu.model}`,
+    `CPU cores/threads: ${detected.cpu.logicalProcessors}${detected.cpu.speedMhz ? ` @ ~${detected.cpu.speedMhz}MHz` : ""}`,
+    `RAM: ${detected.memory.totalGb}GB total (${detected.memory.freeGb}GB free)`,
+    `GPU available: ${detected.gpuAvailable ? "yes" : "no"}`,
+    "GPUs:",
+    ...gpuLines,
+    `Resource tier: ${detected.tier}`,
+    `Suggested inference: acceleration=${detected.inferenceProfile.acceleration} threads=${detected.inferenceProfile.threads ?? 0} gpuLayers=${detected.inferenceProfile.gpuLayers} contextSize=${detected.inferenceProfile.contextSize}`,
+    `Configured inference: acceleration=${config.ai.hardware.acceleration} threads=${config.ai.hardware.threads} gpuLayers=${config.ai.hardware.gpuLayers} contextSize=${config.ai.hardware.contextSize}`,
+    ...detected.notes.map((note) => `Note: ${note}`),
+  ];
+  process.stdout.write(`${lines.join("\n")}\n`);
+  process.exitCode = 0;
 }
 
 async function handleLoad(modelId?: string): Promise<void> {
