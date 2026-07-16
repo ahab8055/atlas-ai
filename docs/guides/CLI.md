@@ -99,6 +99,8 @@ pnpm atlas ai runtime
 pnpm atlas ai runtime load mock-general
 pnpm atlas ai quantization
 pnpm atlas ai quantization detect model-Q4_K_M.gguf
+pnpm atlas ai embed "How does login work?"
+pnpm atlas ai embed --store --collection memory "I prefer TypeScript"
 ```
 
 ```bash

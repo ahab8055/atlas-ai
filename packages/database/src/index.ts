@@ -32,6 +32,12 @@ export {
   type ModelStatus,
 } from "./repositories/models.js";
 export {
+  EmbeddingsRepository,
+  type EmbeddingListQuery,
+  type EmbeddingRecordInput,
+  type EmbeddingRow,
+} from "./repositories/embeddings.js";
+export {
   ExecutionHistoryRepository,
   type ExecutionFailureInput,
   type ExecutionHistoryInput,

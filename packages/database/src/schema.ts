@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -109,4 +109,23 @@ CREATE TABLE IF NOT EXISTS models (
 CREATE INDEX IF NOT EXISTS idx_models_status ON models(status);
 CREATE INDEX IF NOT EXISTS idx_models_provider ON models(provider);
 CREATE INDEX IF NOT EXISTS idx_models_format ON models(format);
+
+CREATE TABLE IF NOT EXISTS embeddings (
+  id TEXT PRIMARY KEY,
+  content TEXT NOT NULL,
+  embedding BLOB NOT NULL,
+  dimensions INTEGER NOT NULL,
+  model_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  collection TEXT NOT NULL DEFAULT 'general',
+  source TEXT,
+  metadata TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_embeddings_collection ON embeddings(collection);
+CREATE INDEX IF NOT EXISTS idx_embeddings_model ON embeddings(model_id);
+CREATE INDEX IF NOT EXISTS idx_embeddings_source ON embeddings(source);
+CREATE INDEX IF NOT EXISTS idx_embeddings_updated ON embeddings(updated_at);
 `;

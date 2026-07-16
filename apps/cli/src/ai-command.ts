@@ -32,6 +32,7 @@ import {
   openModelRegistrySession,
   type ModelRegistryCliOptions,
 } from "./model-registry.js";
+import { openEmbeddingSession } from "./embedding-session.js";
 
 /**
  * Build an AiRuntime from Atlas config (+ env overrides via loadConfig).
@@ -162,6 +163,9 @@ function printAiHelp(): void {
       "  atlas ai runtime load|unload Manage model load/unload",
       "  atlas ai runtime reclaim     Unload idle models (no open sessions)",
       "  atlas ai quantization        Detect/recommend GGUF quant levels + tradeoffs",
+      '  atlas ai embed "<text>"      Generate a local embedding (mock or llama.cpp)',
+      "  atlas ai embed --store …     Generate + persist for search/memory",
+      "  atlas ai embeddings          List / search stored embeddings",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Route + load model and generate a reply',
       "",
@@ -286,6 +290,18 @@ export async function tryHandleAiCommand(
   const quantMatch = /^ai\s+quant(?:ization)?(?:\s+(.*))?$/is.exec(trimmed);
   if (quantMatch) {
     handleQuantization(quantMatch[1]?.trim() ?? "", options);
+    return true;
+  }
+
+  const embedMatch = /^ai\s+embed(?:\s+(.*))?$/is.exec(trimmed);
+  if (embedMatch) {
+    await handleEmbed(embedMatch[1]?.trim() ?? "", options);
+    return true;
+  }
+
+  const embeddingsMatch = /^ai\s+embeddings(?:\s+(.*))?$/is.exec(trimmed);
+  if (embeddingsMatch) {
+    await handleEmbeddings(embeddingsMatch[1]?.trim() ?? "", options);
     return true;
   }
 
@@ -697,6 +713,183 @@ function handleQuantization(
       `${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exitCode = 1;
+  }
+}
+
+function stripEmbedText(raw: string): string {
+  let text = raw.trim();
+  if (
+    (text.startsWith('"') && text.endsWith('"')) ||
+    (text.startsWith("'") && text.endsWith("'"))
+  ) {
+    text = text.slice(1, -1);
+  }
+  return text;
+}
+
+async function handleEmbed(
+  rest: string,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+  let store = false;
+  let collection = "general";
+  let source: string | undefined;
+  const textParts: string[] = [];
+
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]!;
+    if (p === "--store") {
+      store = true;
+      continue;
+    }
+    if (p === "--collection" && parts[i + 1]) {
+      collection = parts[++i]!;
+      continue;
+    }
+    if (p === "--source" && parts[i + 1]) {
+      source = parts[++i]!;
+      continue;
+    }
+    textParts.push(p);
+  }
+
+  const text = stripEmbedText(textParts.join(" "));
+  if (!text) {
+    process.stderr.write(
+      'Usage: atlas ai embed [--store] [--collection memory] [--source note] "<text>"\n',
+    );
+    process.exitCode = 2;
+    return;
+  }
+
+  const session = openEmbeddingSession(options);
+  try {
+    if (store) {
+      const record = await session.service.embedAndStore(text, {
+        collection,
+        source,
+      });
+      process.stdout.write(
+        [
+          `Stored embedding: ${record.id}`,
+          `Provider: ${record.provider} (independent of chat)`,
+          `Model: ${record.modelId}`,
+          `Dimensions: ${record.dimensions}`,
+          `Collection: ${record.collection}`,
+          ...(record.source ? [`Source: ${record.source}`] : []),
+        ].join("\n") + "\n",
+      );
+    } else {
+      const result = await session.service.embed(text);
+      const preview = result.embedding
+        .slice(0, 8)
+        .map((v) => v.toFixed(4))
+        .join(", ");
+      process.stdout.write(
+        [
+          `Embedding OK (${result.provider})`,
+          `Model: ${result.modelId}`,
+          `Dimensions: ${result.dimensions}`,
+          `Duration: ${result.durationMs}ms`,
+          `Preview: [${preview}, …]`,
+        ].join("\n") + "\n",
+      );
+    }
+    process.exitCode = 0;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  } finally {
+    session.close();
+  }
+}
+
+async function handleEmbeddings(
+  rest: string,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+  const cmd = parts[0]?.toLowerCase();
+  const session = openEmbeddingSession(options);
+
+  try {
+    if (!cmd || cmd === "list") {
+      const collection = parts[1];
+      const rows = session.service.list(
+        collection ? { collection, limit: 50 } : { limit: 50 },
+      );
+      if (rows.length === 0) {
+        process.stdout.write(
+          'No stored embeddings. Use: atlas ai embed --store "…"\n',
+        );
+      } else {
+        process.stdout.write(
+          [
+            `Embeddings (${rows.length}):`,
+            ...rows.map(
+              (r) =>
+                `- ${r.id} [${r.collection}] dims=${r.dimensions} model=${r.modelId}\n  ${r.content.slice(0, 80)}${r.content.length > 80 ? "…" : ""}`,
+            ),
+          ].join("\n") + "\n",
+        );
+      }
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "search") {
+      const query = stripEmbedText(parts.slice(1).join(" "));
+      if (!query) {
+        throw new Error('Usage: atlas ai embeddings search "<query>"');
+      }
+      const matches = await session.service.findSimilar(query, { limit: 5 });
+      if (matches.length === 0) {
+        process.stdout.write("No similar embeddings found.\n");
+      } else {
+        process.stdout.write(
+          [
+            `Similar (${matches.length}):`,
+            ...matches.map(
+              (m) =>
+                `- [${m.score.toFixed(3)}] ${m.record.id} (${m.record.collection})\n  ${m.record.content.slice(0, 100)}`,
+            ),
+          ].join("\n") + "\n",
+        );
+      }
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "remove" || cmd === "delete") {
+      const id = parts[1];
+      if (!id) {
+        throw new Error("Usage: atlas ai embeddings remove <id>");
+      }
+      const ok = session.service.remove(id);
+      process.stdout.write(ok ? `Removed ${id}\n` : `Not found: ${id}\n`);
+      process.exitCode = ok ? 0 : 1;
+      return;
+    }
+
+    process.stderr.write(
+      [
+        "Usage:",
+        "  atlas ai embeddings list [collection]",
+        '  atlas ai embeddings search "<query>"',
+        "  atlas ai embeddings remove <id>",
+      ].join("\n") + "\n",
+    );
+    process.exitCode = 2;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  } finally {
+    session.close();
   }
 }
 

@@ -142,6 +142,31 @@ describe("AtlasDatabase", () => {
 
     atlas.close();
   });
+
+  it("stores embedding vectors for search/memory consumers", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:" });
+    const embedding = Buffer.alloc(8);
+    embedding.writeFloatLE(0.25, 0);
+    embedding.writeFloatLE(-0.5, 4);
+
+    const row = atlas.embeddings.upsert({
+      content: "Atlas prefers local embeddings",
+      embedding,
+      dimensions: 2,
+      modelId: "mock-embed-384",
+      provider: "mock-embeddings",
+      collection: "memory",
+      source: "test",
+      metadata: { kind: "note" },
+    });
+
+    expect(row.dimensions).toBe(2);
+    expect(atlas.embeddings.list({ collection: "memory" })).toHaveLength(1);
+    expect(atlas.embeddings.get(row.id)?.content).toContain("local embeddings");
+    expect(atlas.embeddings.remove(row.id)).toBe(true);
+
+    atlas.close();
+  });
 });
 
 describe("TaskHistoryService", () => {

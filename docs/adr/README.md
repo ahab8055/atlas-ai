@@ -57,6 +57,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0031](./0031-inference-configuration.md)               | Inference configuration system          | Accepted |
 | [0032](./0032-model-runtime-manager.md)                 | Model runtime manager                   | Accepted |
 | [0033](./0033-quantization-support.md)                  | GGUF quantization support               | Accepted |
+| [0034](./0034-embedding-model-integration.md)           | Embedding model integration             | Accepted |
 
 ## Naming
 

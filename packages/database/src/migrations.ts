@@ -63,6 +63,28 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     `);
   }
 
+  if (version < 4) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS embeddings (
+        id TEXT PRIMARY KEY,
+        content TEXT NOT NULL,
+        embedding BLOB NOT NULL,
+        dimensions INTEGER NOT NULL,
+        model_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        collection TEXT NOT NULL DEFAULT 'general',
+        source TEXT,
+        metadata TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_embeddings_collection ON embeddings(collection);
+      CREATE INDEX IF NOT EXISTS idx_embeddings_model ON embeddings(model_id);
+      CREATE INDEX IF NOT EXISTS idx_embeddings_source ON embeddings(source);
+      CREATE INDEX IF NOT EXISTS idx_embeddings_updated ON embeddings(updated_at);
+    `);
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

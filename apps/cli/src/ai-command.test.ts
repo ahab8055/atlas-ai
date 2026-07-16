@@ -30,6 +30,8 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai inference");
       expect(writes.join("")).toContain("atlas ai runtime");
       expect(writes.join("")).toContain("atlas ai quantization");
+      expect(writes.join("")).toContain("atlas ai embed");
+      expect(writes.join("")).toContain("atlas ai embeddings");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -282,6 +284,28 @@ describe("ai CLI command", () => {
       expect(text).toMatch(/Quantization recommendation/);
       expect(text).toMatch(/Preferred levels:/);
       expect(text).toMatch(/tradeoffs/i);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("embed generates a local vector without chat provider", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand('ai embed "hello embeddings"', {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toMatch(/Embedding OK/);
+      expect(text).toMatch(/mock-embeddings/);
+      expect(text).toMatch(/Dimensions:/);
     } finally {
       process.stdout.write = originalWrite;
     }

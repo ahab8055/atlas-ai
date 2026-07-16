@@ -4,6 +4,7 @@ import {
   type OpenDatabaseOptions,
   type SqliteDatabase,
 } from "./client.js";
+import { EmbeddingsRepository } from "./repositories/embeddings.js";
 import { ExecutionHistoryRepository } from "./repositories/execution-history.js";
 import { ModelsRepository } from "./repositories/models.js";
 import { SystemConfigRepository } from "./repositories/system-config.js";
@@ -20,6 +21,7 @@ export class AtlasDatabase {
   readonly userPreferences: UserPreferencesRepository;
   readonly tools: ToolsRepository;
   readonly models: ModelsRepository;
+  readonly embeddings: EmbeddingsRepository;
   readonly executionHistory: ExecutionHistoryRepository;
   /** UI-oriented task history tracking (query + display DTOs). */
   readonly taskHistory: TaskHistoryService;
@@ -32,6 +34,7 @@ export class AtlasDatabase {
     this.userPreferences = new UserPreferencesRepository(db);
     this.tools = new ToolsRepository(db);
     this.models = new ModelsRepository(db);
+    this.embeddings = new EmbeddingsRepository(db);
     this.executionHistory = new ExecutionHistoryRepository(db);
     this.taskHistory = new TaskHistoryService(this.executionHistory);
   }
