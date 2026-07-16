@@ -186,6 +186,24 @@ export {
 } from "./model-router/index.js";
 
 export {
+  ModelRuntimeManager,
+  buildMemoryState,
+  createModelRuntimeManager,
+  defaultMemoryBudgetBytes,
+  estimateModelMemoryBytes,
+  formatBytesShort,
+  formatRuntimeSnapshot,
+  sumEstimatedMemory,
+  type InferenceSession,
+  type InferenceSessionStatus,
+  type LoadedModelState,
+  type ModelRuntimeManagerOptions,
+  type ModelRuntimePhase,
+  type ModelRuntimeSnapshot,
+  type RuntimeMemoryState,
+} from "./model-runtime/index.js";
+
+export {
   DEFAULT_INFERENCE_PARAMS,
   inferenceParamsToApiBody,
   mergeInferenceParams,

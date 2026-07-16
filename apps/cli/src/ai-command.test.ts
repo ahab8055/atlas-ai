@@ -28,6 +28,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai check");
       expect(writes.join("")).toContain("atlas ai route");
       expect(writes.join("")).toContain("atlas ai inference");
+      expect(writes.join("")).toContain("atlas ai runtime");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -238,6 +239,28 @@ describe("ai CLI command", () => {
       expect(text).toMatch(/maxTokens:/);
       expect(text).toMatch(/contextLength:/);
       expect(text).toMatch(/stream:/);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("runtime shows phase and memory tracking", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand("ai runtime", {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toMatch(/Runtime:/);
+      expect(text).toMatch(/Memory:/);
+      expect(text).toMatch(/Open sessions:/);
     } finally {
       process.stdout.write = originalWrite;
     }

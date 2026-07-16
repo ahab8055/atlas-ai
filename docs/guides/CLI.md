@@ -95,6 +95,8 @@ pnpm atlas ai route "Summarize this note"
 pnpm atlas ai ask "hello"
 pnpm atlas ai inference
 pnpm atlas ai inference set temperature=0.3 maxTokens=512
+pnpm atlas ai runtime
+pnpm atlas ai runtime load mock-general
 ```
 
 ```bash

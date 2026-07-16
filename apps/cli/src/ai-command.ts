@@ -11,6 +11,7 @@ import {
   formatCompatibilityReport,
   formatInferenceConfig,
   formatRoutingDecision,
+  formatRuntimeSnapshot,
   listResourceProfiles,
   recommendModelsForProfile,
   routeModel,
@@ -152,6 +153,9 @@ function printAiHelp(): void {
       "  atlas ai route --model <id> … Manual model selection (explain only)",
       "  atlas ai inference           Show inference settings (temp/tokens/context/stream)",
       "  atlas ai inference set …     Set global or --model overrides (persisted)",
+      "  atlas ai runtime             Show loaded models, sessions, memory budget",
+      "  atlas ai runtime load|unload Manage model load/unload",
+      "  atlas ai runtime reclaim     Unload idle models (no open sessions)",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Route + load model and generate a reply',
       "",
@@ -264,6 +268,12 @@ export async function tryHandleAiCommand(
   const inferenceMatch = /^ai\s+inference(?:\s+(.*))?$/is.exec(trimmed);
   if (inferenceMatch) {
     handleInference(inferenceMatch[1]?.trim() ?? "");
+    return true;
+  }
+
+  const runtimeMatch = /^ai\s+runtime(?:\s+(.*))?$/is.exec(trimmed);
+  if (runtimeMatch) {
+    await handleRuntime(runtimeMatch[1]?.trim() ?? "", options);
     return true;
   }
 
@@ -748,6 +758,11 @@ async function handleLoad(
     enforceCompatibility: true,
   });
   try {
+    const hw = detectHardware({ skipGpuProbe: true });
+    runtime.getModelRuntime().setHostMemory({
+      totalBytes: hw.memory.totalBytes,
+      freeBytes: hw.memory.freeBytes,
+    });
     const loaded = await runtime.loadModel(modelId ?? config.ai.defaultModelId);
     process.stdout.write(
       [
@@ -756,9 +771,142 @@ async function handleLoad(
         `Status: ${loaded.status}`,
         ...(loaded.path ? [`Path: ${loaded.path}`] : []),
         `Provider: ${loaded.provider}`,
+        formatRuntimeSnapshot(runtime.getRuntimeSnapshot()),
       ].join("\n") + "\n",
     );
     process.exitCode = 0;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  }
+}
+
+async function handleRuntime(
+  rest: string,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const config = loadConfig();
+  const runtime = createAiRuntimeFromConfig(undefined, {
+    ...options,
+    enforceCompatibility: true,
+  });
+  const hw = detectHardware({ skipGpuProbe: true });
+  runtime.getModelRuntime().setHostMemory({
+    totalBytes: hw.memory.totalBytes,
+    freeBytes: hw.memory.freeBytes,
+  });
+  if (
+    runtime.getModelRuntime().getSnapshot().memory.budgetBytes === undefined
+  ) {
+    runtime
+      .getModelRuntime()
+      .setMemoryBudgetBytes(Math.floor(hw.memory.totalBytes * 0.5));
+  }
+
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+  const cmd = parts[0]?.toLowerCase();
+
+  try {
+    if (!cmd || cmd === "status" || cmd === "show") {
+      process.stdout.write(
+        `${formatRuntimeSnapshot(runtime.getRuntimeSnapshot())}\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "load") {
+      const modelId = parts[1] ?? config.ai.defaultModelId;
+      const loaded = await runtime.loadModel(modelId);
+      process.stdout.write(
+        `Loaded: ${loaded.id}\n${formatRuntimeSnapshot(runtime.getRuntimeSnapshot())}\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "unload") {
+      await runtime.unloadModel(parts[1]);
+      process.stdout.write(
+        `Unloaded${parts[1] ? `: ${parts[1]}` : ""}\n${formatRuntimeSnapshot(runtime.getRuntimeSnapshot())}\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "reclaim" || cmd === "gc") {
+      const unloaded = await runtime.reclaimIdleModels();
+      process.stdout.write(
+        [
+          unloaded.length > 0
+            ? `Reclaimed: ${unloaded.join(", ")}`
+            : "Reclaimed: (none idle)",
+          formatRuntimeSnapshot(runtime.getRuntimeSnapshot()),
+        ].join("\n") + "\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "sessions") {
+      const sessions = runtime.getModelRuntime().listSessions();
+      if (sessions.length === 0) {
+        process.stdout.write("Sessions: (none)\n");
+      } else {
+        process.stdout.write(
+          [
+            "Sessions:",
+            ...sessions.map(
+              (s) =>
+                `- ${s.id} [${s.status}] model=${s.modelId} inferences=${s.inferenceCount}`,
+            ),
+          ].join("\n") + "\n",
+        );
+      }
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "session" && parts[1]?.toLowerCase() === "start") {
+      const modelId = parts[2] ?? config.ai.defaultModelId;
+      const session = await runtime.createInferenceSession(modelId);
+      process.stdout.write(
+        `Session started: ${session.id} (model=${session.modelId})\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "session" && parts[1]?.toLowerCase() === "end") {
+      const sessionId = parts[2];
+      if (!sessionId) {
+        throw new Error("Usage: atlas ai runtime session end <sessionId>");
+      }
+      const ok = runtime.endInferenceSession(sessionId);
+      process.stdout.write(
+        ok
+          ? `Session closed: ${sessionId}\n`
+          : `Session not found: ${sessionId}\n`,
+      );
+      process.exitCode = ok ? 0 : 1;
+      return;
+    }
+
+    process.stderr.write(
+      [
+        "Usage:",
+        "  atlas ai runtime",
+        "  atlas ai runtime load [modelId]",
+        "  atlas ai runtime unload [modelId]",
+        "  atlas ai runtime reclaim",
+        "  atlas ai runtime sessions",
+        "  atlas ai runtime session start [modelId]",
+        "  atlas ai runtime session end <sessionId>",
+      ].join("\n") + "\n",
+    );
+    process.exitCode = 2;
   } catch (error) {
     process.stderr.write(
       `${error instanceof Error ? error.message : String(error)}\n`,

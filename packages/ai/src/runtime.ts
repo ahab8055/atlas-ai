@@ -15,6 +15,13 @@ import {
 import type { ModelCompatibilityResult } from "./model-compatibility/types.js";
 import type { ModelRequirements } from "./model-registry/types.js";
 import type { RegisteredModel } from "./model-registry/types.js";
+import {
+  createModelRuntimeManager,
+  type InferenceSession,
+  type ModelRuntimeManager,
+  type ModelRuntimeManagerOptions,
+  type ModelRuntimeSnapshot,
+} from "./model-runtime/index.js";
 import { routeModel } from "./model-router/router.js";
 import type { RoutingDecision } from "./model-router/types.js";
 import type { InferenceProvider } from "./provider.js";
@@ -70,6 +77,11 @@ export interface AiRuntimeCreateOptions extends AiRuntimeOptions {
   router?: RuntimeRouterOptions;
   /** Inference settings manager (per-model overrides + safe storage). */
   inferenceConfig?: InferenceConfigManager;
+  /** Model load/unload / session / memory manager options. */
+  modelRuntime?: ModelRuntimeManagerOptions & {
+    /** Inject a pre-built manager (tests). */
+    manager?: ModelRuntimeManager;
+  };
 }
 
 /**
@@ -85,6 +97,8 @@ export class AiRuntime {
   private readonly compatibility?: RuntimeCompatibilityOptions;
   private readonly router?: RuntimeRouterOptions;
   private readonly inferenceConfig?: InferenceConfigManager;
+  private modelRuntime: ModelRuntimeManager;
+  private readonly modelRuntimeOptions?: ModelRuntimeManagerOptions;
 
   constructor(
     provider: InferenceProvider,
@@ -95,6 +109,8 @@ export class AiRuntime {
       compatibility?: RuntimeCompatibilityOptions;
       router?: RuntimeRouterOptions;
       inferenceConfig?: InferenceConfigManager;
+      modelRuntime?: ModelRuntimeManager;
+      modelRuntimeOptions?: ModelRuntimeManagerOptions;
     },
   ) {
     this.provider = provider;
@@ -104,6 +120,16 @@ export class AiRuntime {
     this.compatibility = options.compatibility;
     this.router = options.router;
     this.inferenceConfig = options.inferenceConfig;
+    this.modelRuntimeOptions = options.modelRuntimeOptions;
+    this.modelRuntime =
+      options.modelRuntime ??
+      createModelRuntimeManager(provider, {
+        ...options.modelRuntimeOptions,
+        resolveSizeBytes:
+          options.modelRuntimeOptions?.resolveSizeBytes ??
+          ((modelId: string) =>
+            options.compatibility?.resolve?.(modelId)?.sizeBytes),
+      });
   }
 
   getProviderId(): string {
@@ -121,6 +147,50 @@ export class AiRuntime {
   useProvider(providerId: string): void {
     this.provider = this.registry.require(providerId);
     this.activeModel = undefined;
+    this.modelRuntime = createModelRuntimeManager(this.provider, {
+      ...this.modelRuntimeOptions,
+      resolveSizeBytes:
+        this.modelRuntimeOptions?.resolveSizeBytes ??
+        ((modelId: string) =>
+          this.compatibility?.resolve?.(modelId)?.sizeBytes),
+    });
+  }
+
+  getModelRuntime(): ModelRuntimeManager {
+    return this.modelRuntime;
+  }
+
+  getRuntimeSnapshot(): ModelRuntimeSnapshot {
+    return this.modelRuntime.getSnapshot();
+  }
+
+  async createInferenceSession(modelId?: string): Promise<InferenceSession> {
+    const id = modelId ?? this.defaultModelId;
+    if (!id) {
+      throw new AiRuntimeError(
+        "No model id provided and no default configured",
+        { code: "model_id_required", provider: this.provider.id },
+      );
+    }
+    this.enforceCompatibility(id);
+    this.applyInferenceToProvider(id);
+    const session = await this.modelRuntime.createSession(id);
+    this.activeModel = this.modelRuntime
+      .getSnapshot()
+      .loaded.find((m) => m.modelId === id)?.model;
+    return session;
+  }
+
+  endInferenceSession(sessionId: string): boolean {
+    return this.modelRuntime.endSession(sessionId);
+  }
+
+  async reclaimIdleModels(): Promise<string[]> {
+    const unloaded = await this.modelRuntime.reclaimIdle();
+    if (this.activeModel && unloaded.includes(this.activeModel.id)) {
+      this.activeModel = undefined;
+    }
+    return unloaded;
   }
 
   async health(): Promise<RuntimeHealth> {
@@ -202,7 +272,7 @@ export class AiRuntime {
     }
     this.enforceCompatibility(id);
     this.applyInferenceToProvider(id);
-    this.activeModel = await this.provider.load(id);
+    this.activeModel = await this.modelRuntime.ensureLoaded(id);
     this.logger?.info("AI model loaded", {
       category: "ai",
       context: {
@@ -213,15 +283,25 @@ export class AiRuntime {
     return { ...this.activeModel };
   }
 
-  async unloadModel(): Promise<void> {
-    await this.provider.unload();
-    this.activeModel = undefined;
+  async unloadModel(modelId?: string): Promise<void> {
+    await this.modelRuntime.unload(modelId);
+    if (
+      !modelId ||
+      this.activeModel?.id === modelId ||
+      !this.modelRuntime.getActiveModelId()
+    ) {
+      this.activeModel = undefined;
+    }
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
     const modelId = await this.resolveModelId(req);
     await this.ensureLoaded(modelId);
-    const enriched = this.applyRequestInference(req, modelId);
+    const id = modelId ?? this.activeModel?.id;
+    const enriched = this.applyRequestInference(req, id);
+    if (id) {
+      this.modelRuntime.beginInference(id);
+    }
     try {
       return await this.provider.generate(enriched);
     } catch (error) {
@@ -231,14 +311,28 @@ export class AiRuntime {
         context: { provider: this.provider.id, modelId: enriched.modelId },
       });
       throw error;
+    } finally {
+      if (id) {
+        this.modelRuntime.endInference(id);
+      }
     }
   }
 
   async *stream(req: GenerateRequest): AsyncGenerator<StreamChunk> {
     const modelId = await this.resolveModelId(req);
     await this.ensureLoaded(modelId);
-    const enriched = this.applyRequestInference(req, modelId);
-    yield* this.provider.stream(enriched);
+    const id = modelId ?? this.activeModel?.id;
+    const enriched = this.applyRequestInference(req, id);
+    if (id) {
+      this.modelRuntime.beginInference(id);
+    }
+    try {
+      yield* this.provider.stream(enriched);
+    } finally {
+      if (id) {
+        this.modelRuntime.endInference(id);
+      }
+    }
   }
 
   private applyRequestInference(
@@ -340,7 +434,7 @@ export class AiRuntime {
     if (modelId) {
       this.enforceCompatibility(modelId);
       this.applyInferenceToProvider(modelId);
-      this.activeModel = await this.provider.load(modelId);
+      this.activeModel = await this.modelRuntime.ensureLoaded(modelId);
       return;
     }
     if (this.activeModel) {
@@ -349,7 +443,9 @@ export class AiRuntime {
     if (this.defaultModelId) {
       this.enforceCompatibility(this.defaultModelId);
       this.applyInferenceToProvider(this.defaultModelId);
-      this.activeModel = await this.provider.load(this.defaultModelId);
+      this.activeModel = await this.modelRuntime.ensureLoaded(
+        this.defaultModelId,
+      );
       return;
     }
     throw AiRuntimeError.modelNotLoaded(this.provider.id);
@@ -406,6 +502,9 @@ export function createAiRuntime(
       dataDir: options.dataDir,
     });
 
+  const { manager: injectedManager, ...modelRuntimeOptions } =
+    options.modelRuntime ?? {};
+
   return new AiRuntime(provider, {
     registry,
     logger: options.logger,
@@ -413,6 +512,8 @@ export function createAiRuntime(
     compatibility,
     router: options.router,
     inferenceConfig,
+    modelRuntime: injectedManager,
+    modelRuntimeOptions,
   });
 }
 
