@@ -93,6 +93,8 @@ pnpm atlas ai install ./model.gguf general
 pnpm atlas ai check general/model
 pnpm atlas ai route "Summarize this note"
 pnpm atlas ai ask "hello"
+pnpm atlas ai inference
+pnpm atlas ai inference set temperature=0.3 maxTokens=512
 ```
 
 ```bash

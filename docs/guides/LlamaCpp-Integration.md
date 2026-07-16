@@ -27,7 +27,8 @@ Related: [Local-AI-Runtime.md](./Local-AI-Runtime.md), [ADR-0023](../adr/0023-ll
     "maxTokens": 256,
     "topP": 0.9,
     "topK": 40,
-    "repeatPenalty": 1.1
+    "repeatPenalty": 1.1,
+    "stream": true
   },
   "hardware": {
     "acceleration": "cpu",
@@ -48,6 +49,8 @@ Related: [Local-AI-Runtime.md](./Local-AI-Runtime.md), [ADR-0023](../adr/0023-ll
 | `manageServer: true`  | Atlas spawns `llama-server -m … -ngl 0` (CPU) on `load`                            |
 
 GPU prep: set `"acceleration": "gpu"` and `"gpuLayers": N` (e.g. 32). CPU mode always forces `ngl=0`.
+
+Per-model temperature / token / context / stream overrides: see [Inference-Configuration.md](./Inference-Configuration.md).
 
 Detect a suggested profile with `pnpm atlas ai hardware` (see [Hardware-Detection.md](./Hardware-Detection.md)); config is not overwritten automatically.
 

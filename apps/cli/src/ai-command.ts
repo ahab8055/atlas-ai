@@ -2,17 +2,21 @@ import { loadConfig } from "@atlas-ai/config";
 import {
   checkModelCompatibility,
   createAiRuntime,
+  createInferenceConfigManager,
   createModelInstaller,
   createModelStorageManager,
+  configFromAtlasDefaults,
   detectHardware,
   evaluateModelSuitability,
   formatCompatibilityReport,
+  formatInferenceConfig,
   formatRoutingDecision,
   listResourceProfiles,
   recommendModelsForProfile,
   routeModel,
   InferenceProviderRegistry,
   type AiRuntime,
+  type InferenceConfigPatch,
   type ModelCategory,
   type ModelInfo,
   type RegisteredModel,
@@ -93,6 +97,7 @@ export function createAiRuntimeFromConfig(
     endpoint: config.ai.endpoint,
     defaultModelId: config.ai.defaultModelId,
     modelsDir: config.paths.modelsDir,
+    dataDir: config.paths.dataDir,
     inference: config.ai.inference,
     hardware: config.ai.hardware,
     llamaCpp: config.ai.llamaCpp,
@@ -145,11 +150,14 @@ function printAiHelp(): void {
       "  atlas ai check [modelId]     Verify RAM/CPU/GPU/storage compatibility",
       '  atlas ai route "<prompt>"    Explain automatic model selection for a task',
       "  atlas ai route --model <id> … Manual model selection (explain only)",
+      "  atlas ai inference           Show inference settings (temp/tokens/context/stream)",
+      "  atlas ai inference set …     Set global or --model overrides (persisted)",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Route + load model and generate a reply',
       "",
       "Config: ai.provider, ai.endpoint, ai.defaultModelId, ai.inference, ai.hardware, ai.llamaCpp",
       "Env: ATLAS_AI_PROVIDER, ATLAS_AI_ENDPOINT, ATLAS_AI_DEFAULT_MODEL,",
+      "     ATLAS_AI_TEMPERATURE, ATLAS_AI_MAX_TOKENS, ATLAS_AI_CONTEXT_SIZE, ATLAS_AI_STREAM,",
       "     ATLAS_AI_ACCELERATION, ATLAS_AI_GPU_LAYERS, ATLAS_AI_MANAGE_SERVER",
     ].join("\n") + "\n",
   );
@@ -253,6 +261,12 @@ export async function tryHandleAiCommand(
     return true;
   }
 
+  const inferenceMatch = /^ai\s+inference(?:\s+(.*))?$/is.exec(trimmed);
+  if (inferenceMatch) {
+    handleInference(inferenceMatch[1]?.trim() ?? "");
+    return true;
+  }
+
   const loadMatch = /^ai\s+load(?:\s+(\S+))?\s*$/i.exec(trimmed);
   if (loadMatch) {
     await handleLoad(loadMatch[1], options);
@@ -291,7 +305,7 @@ async function handleStatus(): Promise<void> {
     `Default model: ${config.ai.defaultModelId}`,
     `Models dir: ${config.paths.modelsDir}`,
     `Acceleration: ${hw.acceleration} (gpuLayers=${hw.gpuLayers}, threads=${hw.threads}, ctx=${hw.contextSize})`,
-    `Inference: temp=${inf.temperature} maxTokens=${inf.maxTokens} topP=${inf.topP} topK=${inf.topK} repeatPenalty=${inf.repeatPenalty}`,
+    `Inference: temp=${inf.temperature} maxTokens=${inf.maxTokens} topP=${inf.topP} topK=${inf.topK} repeatPenalty=${inf.repeatPenalty} stream=${inf.stream}`,
     `Manage llama-server: ${config.ai.llamaCpp.manageServer ? "yes" : "no"} (${config.ai.llamaCpp.binary})`,
     `Available providers: ${runtime.listProviders().join(", ")}`,
     ...(active
@@ -753,6 +767,150 @@ async function handleLoad(
   }
 }
 
+function openInferenceManager() {
+  const config = loadConfig();
+  return createInferenceConfigManager({
+    base: configFromAtlasDefaults({
+      inference: config.ai.inference,
+      contextLength: config.ai.hardware.contextSize,
+    }),
+    dataDir: config.paths.dataDir,
+  });
+}
+
+function parseInferenceKv(args: string[]): InferenceConfigPatch {
+  const patch: InferenceConfigPatch = {};
+  for (const arg of args) {
+    const eq = arg.indexOf("=");
+    if (eq <= 0) {
+      throw new Error(`Expected key=value, got: ${arg}`);
+    }
+    const key = arg.slice(0, eq);
+    const value = arg.slice(eq + 1);
+    switch (key) {
+      case "temperature":
+      case "temp":
+        patch.temperature = Number(value);
+        break;
+      case "maxTokens":
+      case "max_tokens":
+        patch.maxTokens = Number(value);
+        break;
+      case "contextLength":
+      case "context":
+      case "contextSize":
+        patch.contextLength = Number(value);
+        break;
+      case "topP":
+      case "top_p":
+        patch.topP = Number(value);
+        break;
+      case "topK":
+      case "top_k":
+        patch.topK = Number(value);
+        break;
+      case "repeatPenalty":
+      case "repeat_penalty":
+        patch.repeatPenalty = Number(value);
+        break;
+      case "stream":
+        patch.stream = value === "true" || value === "1";
+        break;
+      default:
+        throw new Error(`Unknown inference key: ${key}`);
+    }
+  }
+  return patch;
+}
+
+function handleInference(rest: string): void {
+  const manager = openInferenceManager();
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+
+  try {
+    if (parts.length === 0 || parts[0] === "show" || parts[0] === "get") {
+      const modelId =
+        parts[0] === "get" || parts[0] === "show" ? parts[1] : undefined;
+      const resolved = manager.resolve(modelId);
+      const modelOverrides = manager.listModelOverrides();
+      const lines = [
+        formatInferenceConfig(resolved),
+        `Store: ${manager.getStorePath()}`,
+        ...(modelOverrides.length > 0
+          ? [`Model overrides: ${modelOverrides.join(", ")}`]
+          : ["Model overrides: (none)"]),
+      ];
+      process.stdout.write(`${lines.join("\n")}\n`);
+      process.exitCode = 0;
+      return;
+    }
+
+    if (parts[0] === "set") {
+      let modelId: string | undefined;
+      const kvArgs = parts.slice(1);
+      const modelFlag = kvArgs.indexOf("--model");
+      if (modelFlag >= 0) {
+        modelId = kvArgs[modelFlag + 1];
+        if (!modelId) {
+          throw new Error(
+            "Usage: atlas ai inference set --model <id> key=value …",
+          );
+        }
+        kvArgs.splice(modelFlag, 2);
+      }
+      if (kvArgs.length === 0) {
+        throw new Error(
+          "Usage: atlas ai inference set [--model <id>] temperature=0.7 maxTokens=256 …",
+        );
+      }
+      const patch = parseInferenceKv(kvArgs);
+      const resolved = modelId
+        ? manager.setForModel(modelId, patch)
+        : manager.setGlobal(patch);
+      process.stdout.write(`${formatInferenceConfig(resolved)}\n`);
+      process.stdout.write(`Saved to ${manager.getStorePath()}\n`);
+      process.exitCode = 0;
+      return;
+    }
+
+    if (parts[0] === "reset") {
+      const modelFlag = parts.indexOf("--model");
+      if (modelFlag >= 0) {
+        const modelId = parts[modelFlag + 1];
+        if (!modelId) {
+          throw new Error("Usage: atlas ai inference reset --model <id>");
+        }
+        manager.clearForModel(modelId);
+        process.stdout.write(`Cleared overrides for ${modelId}\n`);
+      } else if (parts[1] === "global") {
+        manager.clearGlobal();
+        process.stdout.write("Cleared global overrides\n");
+      } else {
+        manager.resetAll();
+        process.stdout.write("Cleared all persisted inference overrides\n");
+      }
+      process.exitCode = 0;
+      return;
+    }
+
+    process.stderr.write(
+      [
+        "Usage:",
+        "  atlas ai inference",
+        "  atlas ai inference get [modelId]",
+        "  atlas ai inference set [--model <id>] temperature=0.7 maxTokens=512 contextLength=8192 stream=true",
+        "  atlas ai inference reset [--model <id>|global]",
+      ].join("\n") + "\n",
+    );
+    process.exitCode = 2;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  }
+}
+
 async function handleAsk(
   promptRaw: string,
   options: ModelRegistryCliOptions = { enableDatabase: true },
@@ -774,14 +932,30 @@ async function handleAsk(
     if (process.env.ATLAS_CLI_DEBUG === "1") {
       process.stderr.write(`${formatRoutingDecision(decision)}\n`);
     }
-    const result = await runtime.generate({
-      messages: [{ role: "user", content: prompt }],
-    });
-    process.stdout.write(`${result.text}\n`);
-    if (process.env.ATLAS_CLI_DEBUG === "1") {
-      process.stderr.write(
-        `[ai] provider=${result.provider} model=${result.modelId} ${result.durationMs}ms\n`,
-      );
+    const modelId = decision.modelId;
+    const messages = [{ role: "user" as const, content: prompt }];
+    if (runtime.prefersStreaming(modelId)) {
+      let text = "";
+      for await (const chunk of runtime.stream({ messages, modelId })) {
+        if (chunk.text) {
+          process.stdout.write(chunk.text);
+          text += chunk.text;
+        }
+      }
+      if (!text.endsWith("\n")) {
+        process.stdout.write("\n");
+      }
+      if (process.env.ATLAS_CLI_DEBUG === "1") {
+        process.stderr.write(`[ai] streamed model=${modelId ?? "(default)"}\n`);
+      }
+    } else {
+      const result = await runtime.generate({ messages, modelId });
+      process.stdout.write(`${result.text}\n`);
+      if (process.env.ATLAS_CLI_DEBUG === "1") {
+        process.stderr.write(
+          `[ai] provider=${result.provider} model=${result.modelId} ${result.durationMs}ms\n`,
+        );
+      }
     }
     process.exitCode = 0;
   } catch (error) {

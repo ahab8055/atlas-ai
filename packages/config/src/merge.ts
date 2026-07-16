@@ -134,6 +134,7 @@ function mergeInference(
     topP: asNumber(patch.topP, base.topP),
     topK: asNumber(patch.topK, base.topK),
     repeatPenalty: asNumber(patch.repeatPenalty, base.repeatPenalty),
+    stream: asBoolean(patch.stream, base.stream),
   };
 }
 
@@ -261,6 +262,10 @@ export function applyEnvOverrides(
         topP: config.ai.inference.topP,
         topK: config.ai.inference.topK,
         repeatPenalty: config.ai.inference.repeatPenalty,
+        stream:
+          envVars.ATLAS_AI_STREAM !== undefined
+            ? envVars.ATLAS_AI_STREAM === "true"
+            : config.ai.inference.stream,
       },
       hardware: {
         acceleration:
@@ -276,7 +281,10 @@ export function applyEnvOverrides(
           envVars.ATLAS_AI_GPU_LAYERS !== undefined
             ? Number(envVars.ATLAS_AI_GPU_LAYERS)
             : config.ai.hardware.gpuLayers,
-        contextSize: config.ai.hardware.contextSize,
+        contextSize:
+          envVars.ATLAS_AI_CONTEXT_SIZE !== undefined
+            ? Number(envVars.ATLAS_AI_CONTEXT_SIZE)
+            : config.ai.hardware.contextSize,
       },
       llamaCpp: {
         manageServer:

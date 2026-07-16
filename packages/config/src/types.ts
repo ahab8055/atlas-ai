@@ -31,6 +31,8 @@ export interface AtlasAiInferenceConfig {
   topP: number;
   topK: number;
   repeatPenalty: number;
+  /** Prefer streaming responses when the caller supports it. */
+  stream: boolean;
 }
 
 export interface AtlasAiHardwareConfig {

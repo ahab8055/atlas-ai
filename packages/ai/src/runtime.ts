@@ -2,6 +2,13 @@ import type { Logger } from "@atlas-ai/logging";
 
 import { AiRuntimeError } from "./errors.js";
 import {
+  configFromAtlasDefaults,
+  createInferenceConfigManager,
+  type InferenceConfigManager,
+  type InferenceConfigPatch,
+  type ResolvedInferenceConfig,
+} from "./inference-config/index.js";
+import {
   assertModelCompatible,
   checkModelCompatibility,
 } from "./model-compatibility/checker.js";
@@ -61,6 +68,8 @@ export interface AiRuntimeCreateOptions extends AiRuntimeOptions {
   compatibility?: RuntimeCompatibilityOptions;
   /** Automatic model selection (Architecture/25 Model Router). */
   router?: RuntimeRouterOptions;
+  /** Inference settings manager (per-model overrides + safe storage). */
+  inferenceConfig?: InferenceConfigManager;
 }
 
 /**
@@ -75,6 +84,7 @@ export class AiRuntime {
   private readonly defaultModelId?: string;
   private readonly compatibility?: RuntimeCompatibilityOptions;
   private readonly router?: RuntimeRouterOptions;
+  private readonly inferenceConfig?: InferenceConfigManager;
 
   constructor(
     provider: InferenceProvider,
@@ -84,6 +94,7 @@ export class AiRuntime {
       defaultModelId?: string;
       compatibility?: RuntimeCompatibilityOptions;
       router?: RuntimeRouterOptions;
+      inferenceConfig?: InferenceConfigManager;
     },
   ) {
     this.provider = provider;
@@ -92,6 +103,7 @@ export class AiRuntime {
     this.defaultModelId = options.defaultModelId;
     this.compatibility = options.compatibility;
     this.router = options.router;
+    this.inferenceConfig = options.inferenceConfig;
   }
 
   getProviderId(): string {
@@ -157,6 +169,26 @@ export class AiRuntime {
     });
   }
 
+  /** Resolve effective inference settings (global or per-model). */
+  getInferenceConfig(modelId?: string): ResolvedInferenceConfig | undefined {
+    if (!this.inferenceConfig) {
+      return undefined;
+    }
+    return this.inferenceConfig.resolve(
+      modelId ?? this.activeModel?.id ?? this.defaultModelId,
+    );
+  }
+
+  getInferenceConfigManager(): InferenceConfigManager | undefined {
+    return this.inferenceConfig;
+  }
+
+  /** Whether streaming is preferred for this model / defaults. */
+  prefersStreaming(modelId?: string): boolean {
+    const resolved = this.getInferenceConfig(modelId);
+    return resolved?.config.stream ?? true;
+  }
+
   async loadModel(modelId?: string): Promise<ModelInfo> {
     const id = modelId ?? this.defaultModelId;
     if (!id) {
@@ -169,6 +201,7 @@ export class AiRuntime {
       );
     }
     this.enforceCompatibility(id);
+    this.applyInferenceToProvider(id);
     this.activeModel = await this.provider.load(id);
     this.logger?.info("AI model loaded", {
       category: "ai",
@@ -188,13 +221,14 @@ export class AiRuntime {
   async generate(req: GenerateRequest): Promise<GenerateResult> {
     const modelId = await this.resolveModelId(req);
     await this.ensureLoaded(modelId);
+    const enriched = this.applyRequestInference(req, modelId);
     try {
-      return await this.provider.generate({ ...req, modelId });
+      return await this.provider.generate(enriched);
     } catch (error) {
       this.logger?.error("AI generate failed", {
         category: "ai",
         error,
-        context: { provider: this.provider.id, modelId: req.modelId },
+        context: { provider: this.provider.id, modelId: enriched.modelId },
       });
       throw error;
     }
@@ -203,7 +237,57 @@ export class AiRuntime {
   async *stream(req: GenerateRequest): AsyncGenerator<StreamChunk> {
     const modelId = await this.resolveModelId(req);
     await this.ensureLoaded(modelId);
-    yield* this.provider.stream({ ...req, modelId });
+    const enriched = this.applyRequestInference(req, modelId);
+    yield* this.provider.stream(enriched);
+  }
+
+  private applyRequestInference(
+    req: GenerateRequest,
+    modelId?: string,
+  ): GenerateRequest {
+    const id = modelId ?? req.modelId;
+    if (!this.inferenceConfig) {
+      return { ...req, modelId: id };
+    }
+    const resolved = this.inferenceConfig.resolve(id, {
+      temperature: req.temperature,
+      maxTokens: req.maxTokens,
+      topP: req.topP,
+      topK: req.topK,
+      repeatPenalty: req.repeatPenalty,
+      stop: req.stop,
+    });
+    const c = resolved.config;
+    return {
+      ...req,
+      modelId: id,
+      temperature: c.temperature,
+      maxTokens: c.maxTokens,
+      topP: c.topP,
+      topK: c.topK,
+      repeatPenalty: c.repeatPenalty,
+      stop: c.stop,
+    };
+  }
+
+  private applyInferenceToProvider(modelId: string): void {
+    if (!this.inferenceConfig) {
+      return;
+    }
+    const { config } = this.inferenceConfig.resolve(modelId);
+    const patchable = this.provider as InferenceProvider & {
+      setInferenceDefaults?: (patch: InferenceConfigPatch) => void;
+      setHardwareProfile?: (patch: { contextSize?: number }) => void;
+    };
+    patchable.setInferenceDefaults?.({
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+      topP: config.topP,
+      topK: config.topK,
+      repeatPenalty: config.repeatPenalty,
+      stop: config.stop,
+    });
+    patchable.setHardwareProfile?.({ contextSize: config.contextLength });
   }
 
   private async resolveModelId(
@@ -255,6 +339,7 @@ export class AiRuntime {
   private async ensureLoaded(modelId?: string): Promise<void> {
     if (modelId) {
       this.enforceCompatibility(modelId);
+      this.applyInferenceToProvider(modelId);
       this.activeModel = await this.provider.load(modelId);
       return;
     }
@@ -263,6 +348,7 @@ export class AiRuntime {
     }
     if (this.defaultModelId) {
       this.enforceCompatibility(this.defaultModelId);
+      this.applyInferenceToProvider(this.defaultModelId);
       this.activeModel = await this.provider.load(this.defaultModelId);
       return;
     }
@@ -310,12 +396,23 @@ export function createAiRuntime(
         }
       : undefined;
 
+  const inferenceConfig =
+    options.inferenceConfig ??
+    createInferenceConfigManager({
+      base: configFromAtlasDefaults({
+        inference: options.inference,
+        contextLength: options.hardware?.contextSize,
+      }),
+      dataDir: options.dataDir,
+    });
+
   return new AiRuntime(provider, {
     registry,
     logger: options.logger,
     defaultModelId: options.defaultModelId,
     compatibility,
     router: options.router,
+    inferenceConfig,
   });
 }
 

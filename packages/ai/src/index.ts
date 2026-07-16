@@ -191,3 +191,28 @@ export {
   mergeInferenceParams,
   type InferenceParams,
 } from "./inference-params.js";
+
+export {
+  DEFAULT_INFERENCE_CONFIG,
+  INFERENCE_CONFIG_BOUNDS,
+  INFERENCE_SETTINGS_FILENAME,
+  InferenceConfigManager,
+  configFromAtlasDefaults,
+  createFileInferenceSettingsStore,
+  createInferenceConfigManager,
+  createMemoryInferenceSettingsStore,
+  emptyStoredSettings,
+  formatInferenceConfig,
+  inferenceSettingsPath,
+  mergeInferenceConfig,
+  resolveInferenceConfig,
+  sanitizeInferencePatch,
+  sanitizeStoredSettings,
+  toInferenceParams,
+  type InferenceConfig,
+  type InferenceConfigManagerOptions,
+  type InferenceConfigPatch,
+  type InferenceSettingsStore,
+  type ResolvedInferenceConfig,
+  type StoredInferenceSettings,
+} from "./inference-config/index.js";

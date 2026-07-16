@@ -27,6 +27,7 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       topP: 0.9,
       topK: 40,
       repeatPenalty: 1.1,
+      stream: true,
     },
     hardware: {
       acceleration: "cpu",

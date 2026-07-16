@@ -27,6 +27,19 @@ describe("applyEnvOverrides", () => {
     });
     expect(next.logLevel).toBe("debug");
   });
+
+  it("overrides inference temperature tokens context and stream", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_AI_TEMPERATURE: "0.2",
+      ATLAS_AI_MAX_TOKENS: "512",
+      ATLAS_AI_CONTEXT_SIZE: "8192",
+      ATLAS_AI_STREAM: "false",
+    });
+    expect(next.ai.inference.temperature).toBe(0.2);
+    expect(next.ai.inference.maxTokens).toBe(512);
+    expect(next.ai.inference.stream).toBe(false);
+    expect(next.ai.hardware.contextSize).toBe(8192);
+  });
 });
 
 describe("loadConfig", () => {

@@ -88,6 +88,7 @@ export interface AiRuntimeOptions {
     topP?: number;
     topK?: number;
     repeatPenalty?: number;
+    stream?: boolean;
   };
   /** CPU (default) or GPU acceleration profile. */
   hardware?: {
@@ -96,6 +97,8 @@ export interface AiRuntimeOptions {
     gpuLayers?: number;
     contextSize?: number;
   };
+  /** Persist per-model inference overrides under this directory. */
+  dataDir?: string;
   /** llama.cpp process management. */
   llamaCpp?: {
     manageServer?: boolean;

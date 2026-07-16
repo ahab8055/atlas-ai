@@ -54,6 +54,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0028](./0028-model-installation-workflow.md)           | Model installation workflow             | Accepted |
 | [0029](./0029-model-compatibility-checker.md)           | Model compatibility checker             | Accepted |
 | [0030](./0030-model-router.md)                          | Model router system                     | Accepted |
+| [0031](./0031-inference-configuration.md)               | Inference configuration system          | Accepted |
 
 ## Naming
 
