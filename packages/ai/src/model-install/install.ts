@@ -268,6 +268,15 @@ export class ModelInstaller {
         );
       }
 
+      const quantLevel = finalValidation.quantization;
+      const caps = [...(input.capabilities ?? ["chat", "local"])];
+      if (finalValidation.quantized && !caps.includes("quantized")) {
+        caps.push("quantized");
+      }
+      if (quantLevel && !caps.includes(quantLevel.toLowerCase())) {
+        caps.push(quantLevel.toLowerCase());
+      }
+
       const registerInput: RegisterModelInput = {
         id: modelId,
         name: input.name ?? modelId,
@@ -276,10 +285,12 @@ export class ModelInstaller {
         format: "gguf",
         sizeBytes: finalValidation.sizeBytes,
         contextLength: input.contextLength ?? this.defaultContextLength,
-        capabilities: input.capabilities ?? ["chat", "local"],
-        requirements: input.requirements ?? {
+        capabilities: caps,
+        requirements: {
           acceleration: "cpu",
           notes: "Installed via Atlas model installation workflow",
+          ...(quantLevel ? { quantization: quantLevel } : {}),
+          ...input.requirements,
         },
         location: destination,
         status: "available",

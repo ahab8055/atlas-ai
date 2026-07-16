@@ -3,6 +3,11 @@
  */
 import type { ModelRequirements } from "../model-registry/types.js";
 import {
+  detectQuantization,
+  recommendQuantization,
+  scoreQuantizationFit,
+} from "../quantization/index.js";
+import {
   getResourceProfile,
   normalizeResourceProfileId,
   sizeClassFromBytes,
@@ -22,6 +27,8 @@ export interface RecommendableModel {
   status?: string;
   provider?: string;
   format?: string;
+  /** Detected or declared GGUF quantization (e.g. Q4_K_M). */
+  quantization?: string;
 }
 
 export interface ModelRecommendation<
@@ -32,6 +39,7 @@ export interface ModelRecommendation<
   score: number;
   reasons: string[];
   sizeClass?: ModelSizeClass;
+  quantization?: string;
 }
 
 export interface RecommendModelsOptions {
@@ -182,12 +190,27 @@ export function recommendModelsForProfile<T extends RecommendableModel>(
       reasons.push(`capabilities: ${matchedCaps.join(",")}`);
     }
 
+    const explicitQuant =
+      model.quantization ??
+      (typeof model.requirements?.quantization === "string"
+        ? String(model.requirements.quantization)
+        : undefined);
+    const quantInfo = detectQuantization(model.id, explicitQuant);
+    const quantRec = recommendQuantization({
+      profileId,
+      hardware: options.hardware,
+    });
+    const quantFit = scoreQuantizationFit(quantInfo, quantRec);
+    score += quantFit.score;
+    reasons.push(`quant: ${quantFit.reason}`);
+
     results.push({
       model,
       profileId,
       score,
       reasons,
       sizeClass: modelClass,
+      quantization: quantInfo.level,
     });
   }
 

@@ -204,6 +204,26 @@ export {
 } from "./model-runtime/index.js";
 
 export {
+  QUANTIZATION_TRADEOFFS,
+  detectQuantization,
+  familyForLevel,
+  formatQuantizationInfo,
+  formatQuantizationRecommendation,
+  formatQuantizationTradeoffs,
+  isQuantizedGguf,
+  normalizeQuantLevel,
+  recommendQuantization,
+  scoreQuantizationFit,
+  tradeoffForFamily,
+  type QuantizationFamily,
+  type QuantizationInfo,
+  type QuantizationLevel,
+  type QuantizationRecommendation,
+  type QuantizationTradeoff,
+  type RecommendQuantizationOptions,
+} from "./quantization/index.js";
+
+export {
   DEFAULT_INFERENCE_PARAMS,
   inferenceParamsToApiBody,
   mergeInferenceParams,

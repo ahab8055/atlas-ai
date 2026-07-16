@@ -29,6 +29,7 @@ Practical guides for contributing to Atlas AI.
 | [Model-Router.md](./Model-Router.md)                             | Automatic model selection per task         |
 | [Inference-Configuration.md](./Inference-Configuration.md)       | Temperature, tokens, context, streaming    |
 | [Model-Runtime-Manager.md](./Model-Runtime-Manager.md)           | Load/unload, sessions, memory budget       |
+| [Quantization.md](./Quantization.md)                             | GGUF quant detect, recommend, tradeoffs    |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)             | GGUF load, CPU/GPU, inference params       |
 | [Intent-Detection.md](./Intent-Detection.md)                     | Intent categories, params, registry        |
 | [Context-Management.md](./Context-Management.md)                 | Context sources before execution           |

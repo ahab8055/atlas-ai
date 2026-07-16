@@ -2,6 +2,7 @@
  * Discover local GGUF installs and map them to registry entries.
  */
 import { listStoredGgufFiles } from "../model-storage/scan.js";
+import { detectQuantization } from "../quantization/detect.js";
 import type { RegisterModelInput } from "./types.js";
 
 export interface ScanInstalledModelsOptions {
@@ -37,6 +38,17 @@ export function scanInstalledGgufModels(
       capabilities.push("speech");
     }
 
+    const quant = detectQuantization(file.path || file.id);
+    if (quant.quantized && !capabilities.includes("quantized")) {
+      capabilities.push("quantized");
+    }
+    if (quant.level) {
+      const tag = quant.level.toLowerCase();
+      if (!capabilities.includes(tag)) {
+        capabilities.push(tag);
+      }
+    }
+
     return {
       id: file.id,
       name: file.id,
@@ -49,6 +61,10 @@ export function scanInstalledGgufModels(
       requirements: {
         acceleration: "cpu" as const,
         notes: "GGUF via llama.cpp; GPU optional via hardware.gpuLayers",
+        ...(quant.level ? { quantization: quant.level } : {}),
+        ...(quant.family !== "unknown"
+          ? { quantizationFamily: quant.family }
+          : {}),
       },
       location: file.path,
       status: file.validation.ok ? ("available" as const) : ("error" as const),

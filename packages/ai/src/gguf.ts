@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { AiRuntimeError } from "./errors.js";
 import { resolveStoredModelPath } from "./model-storage/scan.js";
+import { detectQuantization } from "./quantization/detect.js";
 
 /** GGUF magic is ASCII "GGUF" (little-endian uint32 0x46554747). */
 export const GGUF_MAGIC = "GGUF";
@@ -15,6 +16,9 @@ export interface GgufValidationResult {
   path: string;
   sizeBytes?: number;
   reason?: string;
+  /** Detected from filename when present (e.g. Q4_K_M). */
+  quantization?: string;
+  quantized?: boolean;
 }
 
 /**
@@ -53,7 +57,14 @@ export function validateGgufFile(filePath: string): GgufValidationResult {
         reason: `expected GGUF magic, found ${JSON.stringify(magic)}`,
       };
     }
-    return { ok: true, path: filePath, sizeBytes };
+    const quant = detectQuantization(filePath);
+    return {
+      ok: true,
+      path: filePath,
+      sizeBytes,
+      quantization: quant.level,
+      quantized: quant.quantized,
+    };
   } finally {
     closeSync(fd);
   }

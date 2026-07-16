@@ -14,6 +14,11 @@ import {
   formatRuntimeSnapshot,
   listResourceProfiles,
   recommendModelsForProfile,
+  recommendQuantization,
+  detectQuantization,
+  formatQuantizationInfo,
+  formatQuantizationRecommendation,
+  formatQuantizationTradeoffs,
   routeModel,
   InferenceProviderRegistry,
   type AiRuntime,
@@ -156,6 +161,7 @@ function printAiHelp(): void {
       "  atlas ai runtime             Show loaded models, sessions, memory budget",
       "  atlas ai runtime load|unload Manage model load/unload",
       "  atlas ai runtime reclaim     Unload idle models (no open sessions)",
+      "  atlas ai quantization        Detect/recommend GGUF quant levels + tradeoffs",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Route + load model and generate a reply',
       "",
@@ -274,6 +280,12 @@ export async function tryHandleAiCommand(
   const runtimeMatch = /^ai\s+runtime(?:\s+(.*))?$/is.exec(trimmed);
   if (runtimeMatch) {
     await handleRuntime(runtimeMatch[1]?.trim() ?? "", options);
+    return true;
+  }
+
+  const quantMatch = /^ai\s+quant(?:ization)?(?:\s+(.*))?$/is.exec(trimmed);
+  if (quantMatch) {
+    handleQuantization(quantMatch[1]?.trim() ?? "", options);
     return true;
   }
 
@@ -607,13 +619,84 @@ function handleRecommend(options: ModelRegistryCliOptions): void {
           r.model.sizeBytes !== undefined
             ? ` ${(r.model.sizeBytes / (1024 * 1024)).toFixed(1)}MiB`
             : "";
-        return `- [${r.score}] ${r.model.id}${size}${r.sizeClass ? ` class=${r.sizeClass}` : ""}\n  ${r.reasons.join("; ")}`;
+        const quant = r.quantization ? ` quant=${r.quantization}` : "";
+        return `- [${r.score}] ${r.model.id}${size}${r.sizeClass ? ` class=${r.sizeClass}` : ""}${quant}\n  ${r.reasons.join("; ")}`;
       }),
     ];
     process.stdout.write(`${lines.join("\n")}\n`);
     process.exitCode = 0;
   } finally {
     session.close();
+  }
+}
+
+function handleQuantization(
+  rest: string,
+  options: ModelRegistryCliOptions,
+): void {
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+  const cmd = parts[0]?.toLowerCase();
+  const detected = detectHardware({ skipGpuProbe: true });
+
+  try {
+    if (!cmd || cmd === "recommend" || cmd === "rec") {
+      const rec = recommendQuantization({ hardware: detected });
+      process.stdout.write(`${formatQuantizationRecommendation(rec)}\n`);
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "tradeoffs" || cmd === "tradeoff") {
+      process.stdout.write(`${formatQuantizationTradeoffs()}\n`);
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "detect" || cmd === "info") {
+      const target = parts[1];
+      if (!target) {
+        throw new Error(
+          "Usage: atlas ai quantization detect <modelId-or-filename>",
+        );
+      }
+      const session = openModelRegistrySession(options);
+      try {
+        session.registry.syncFromDisk();
+        const registered =
+          session.registry.get(target) ??
+          session.registry
+            .list()
+            .find((m) => m.id.endsWith(`/${target}`) || m.id === target);
+        const explicit =
+          typeof registered?.requirements?.quantization === "string"
+            ? String(registered.requirements.quantization)
+            : undefined;
+        const info = detectQuantization(
+          registered?.location ?? registered?.id ?? target,
+          explicit,
+        );
+        process.stdout.write(`${formatQuantizationInfo(info)}\n`);
+        process.exitCode = info.family === "unknown" ? 1 : 0;
+      } finally {
+        session.close();
+      }
+      return;
+    }
+
+    process.stderr.write(
+      [
+        "Usage:",
+        "  atlas ai quantization              Recommend levels for this machine",
+        "  atlas ai quantization detect <id>  Identify quant from model id/path",
+        "  atlas ai quantization tradeoffs    Document size/speed/quality tradeoffs",
+      ].join("\n") + "\n",
+    );
+    process.exitCode = 2;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
   }
 }
 
