@@ -2,9 +2,17 @@
  * Hardware detection domain types (Architecture/25 Hardware Detection System).
  */
 import type { HardwareProfile } from "../hardware.js";
+import type {
+  ResourceProfileDefinition,
+  ResourceProfileId,
+} from "./resource-profiles.js";
 
-/** Architecture/25 resource tiers for model selection. */
-export type HardwareTier = "low" | "standard" | "high";
+/**
+ * Device capability profile id.
+ * Prefer `ResourceProfileId` (`low` | `balanced` | `performance`).
+ * Legacy aliases `standard` / `high` are normalized at classify time.
+ */
+export type HardwareTier = ResourceProfileId;
 
 export interface DetectedCpu {
   model: string;
@@ -50,8 +58,15 @@ export interface DetectedHardware {
   gpus: DetectedGpu[];
   /** True when at least one usable GPU / accelerator is present. */
   gpuAvailable: boolean;
-  /** Architecture/25 Low / Standard / High profile. */
-  tier: HardwareTier;
+  /**
+   * Active resource profile id (`low` | `balanced` | `performance`).
+   * Same value as `tier` (legacy field name).
+   */
+  profileId: ResourceProfileId;
+  /** @deprecated Use `profileId`. */
+  tier: ResourceProfileId;
+  /** Full profile definition (categories + model guidance). */
+  profile: ResourceProfileDefinition;
   /** Suggested llama.cpp inference profile from detection. */
   inferenceProfile: HardwareProfile;
   notes: string[];

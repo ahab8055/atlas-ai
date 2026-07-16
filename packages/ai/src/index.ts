@@ -98,12 +98,22 @@ export {
 } from "./hardware.js";
 
 export {
+  RESOURCE_CATEGORIES,
+  RESOURCE_PROFILES,
+  RESOURCE_PROFILE_IDS,
   classifyHardwareTier,
+  classifyResourceProfile,
   createNodeSystemProbe,
   detectHardware,
   detectGpus,
   evaluateModelSuitability,
+  getResourceProfile,
+  listResourceProfiles,
+  normalizeResourceProfileId,
+  recommendModelsForProfile,
+  resolveActiveResourceProfile,
   selectSuitableModels,
+  sizeClassFromBytes,
   suggestInferenceProfile,
   type CommandResult,
   type DetectHardwareOptions,
@@ -113,7 +123,14 @@ export {
   type DetectedMemory,
   type DetectedOs,
   type HardwareTier,
+  type ModelRecommendation,
+  type ModelSizeClass,
   type ModelSuitabilityResult,
+  type RecommendModelsOptions,
+  type RecommendableModel,
+  type ResourceCategory,
+  type ResourceProfileDefinition,
+  type ResourceProfileId,
   type SystemProbe,
 } from "./hardware-detection/index.js";
 

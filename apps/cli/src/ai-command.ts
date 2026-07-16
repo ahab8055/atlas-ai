@@ -4,6 +4,8 @@ import {
   createModelStorageManager,
   detectHardware,
   evaluateModelSuitability,
+  listResourceProfiles,
+  recommendModelsForProfile,
   InferenceProviderRegistry,
   type AiRuntime,
   type ModelInfo,
@@ -55,7 +57,9 @@ function printAiHelp(): void {
       "  atlas ai storage             Ensure layout + show storage usage",
       "  atlas ai validate            Validate stored model files",
       "  atlas ai remove <modelId>    Delete a model file (+ unregister)",
-      "  atlas ai hardware           Detect CPU/RAM/GPU/OS + suggest profile",
+      "  atlas ai hardware           Detect CPU/RAM/GPU/OS + active profile",
+      "  atlas ai profiles           List low/balanced/performance profiles",
+      "  atlas ai recommend          Recommend models for this machine",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Load default model and generate a reply',
       "",
@@ -120,7 +124,19 @@ export async function tryHandleAiCommand(
 
   const hardwareMatch = /^ai\s+hardware\s*$/i.exec(trimmed);
   if (hardwareMatch) {
-    handleHardware();
+    handleHardware(options);
+    return true;
+  }
+
+  const profilesMatch = /^ai\s+profiles\s*$/i.exec(trimmed);
+  if (profilesMatch) {
+    handleProfiles();
+    return true;
+  }
+
+  const recommendMatch = /^ai\s+recommend\s*$/i.exec(trimmed);
+  if (recommendMatch) {
+    handleRecommend(options);
     return true;
   }
 
@@ -214,7 +230,7 @@ async function handleModels(options: ModelRegistryCliOptions): Promise<void> {
         ),
       );
       process.stdout.write(
-        `Registered models (${source}, tier=${hardware.tier}):\n${lines.join("\n")}\n`,
+        `Registered models (${source}, profile=${hardware.profileId}):\n${lines.join("\n")}\n`,
       );
       process.exitCode = 0;
       return;
@@ -358,7 +374,7 @@ function handleRemove(modelId: string, options: ModelRegistryCliOptions): void {
   process.exitCode = 1;
 }
 
-function handleHardware(): void {
+function handleHardware(options: ModelRegistryCliOptions): void {
   const config = loadConfig();
   const detected = detectHardware({
     contextSize: config.ai.hardware.contextSize,
@@ -373,6 +389,25 @@ function handleHardware(): void {
           return `  - ${gpu.name} (${kind}${vram})`;
         });
 
+  const session = openModelRegistrySession(options);
+  let recommendLines: string[] = [];
+  try {
+    session.registry.syncFromDisk();
+    const recs = recommendModelsForProfile(session.registry.list(), {
+      hardware: detected,
+      limit: 5,
+    });
+    recommendLines =
+      recs.length === 0
+        ? ["  (no registered models — run atlas ai register)"]
+        : recs.map(
+            (r) =>
+              `  ${r.score}\t${r.model.id}${r.sizeClass ? ` [${r.sizeClass}]` : ""} — ${r.reasons[0] ?? ""}`,
+          );
+  } finally {
+    session.close();
+  }
+
   const lines = [
     `Detected at: ${detected.detectedAt}`,
     `OS: ${detected.os.type} ${detected.os.release} (${detected.os.platform}/${detected.os.arch})`,
@@ -383,13 +418,66 @@ function handleHardware(): void {
     `GPU available: ${detected.gpuAvailable ? "yes" : "no"}`,
     "GPUs:",
     ...gpuLines,
-    `Resource tier: ${detected.tier}`,
+    `Hardware profile: ${detected.profile.label} (${detected.profileId})`,
+    `Architecture name: ${detected.profile.architectureName}`,
+    `Model guidance: size=${detected.profile.modelGuidance.sizeClass}, maxMinRam=${detected.profile.modelGuidance.maxMinRamGb}GB`,
     `Suggested inference: acceleration=${detected.inferenceProfile.acceleration} threads=${detected.inferenceProfile.threads ?? 0} gpuLayers=${detected.inferenceProfile.gpuLayers} contextSize=${detected.inferenceProfile.contextSize}`,
     `Configured inference: acceleration=${config.ai.hardware.acceleration} threads=${config.ai.hardware.threads} gpuLayers=${config.ai.hardware.gpuLayers} contextSize=${config.ai.hardware.contextSize}`,
+    "Recommended models:",
+    ...recommendLines,
     ...detected.notes.map((note) => `Note: ${note}`),
   ];
   process.stdout.write(`${lines.join("\n")}\n`);
   process.exitCode = 0;
+}
+
+function handleProfiles(): void {
+  const lines = ["Hardware profiles (Architecture/25):"];
+  for (const profile of listResourceProfiles()) {
+    lines.push(
+      `- ${profile.id} — ${profile.label} (${profile.architectureName})`,
+      `  ${profile.description}`,
+      `  categories: memory≥${profile.categories.memory.minRamGb}GB, gpu.required=${profile.categories.gpu.required}, accel=${profile.categories.acceleration.preferred}`,
+      `  recommends: ${profile.modelGuidance.sizeClass} models (maxMinRam ${profile.modelGuidance.maxMinRamGb}GB)`,
+    );
+  }
+  process.stdout.write(`${lines.join("\n")}\n`);
+  process.exitCode = 0;
+}
+
+function handleRecommend(options: ModelRegistryCliOptions): void {
+  const detected = detectHardware();
+  const session = openModelRegistrySession(options);
+  try {
+    session.registry.syncFromDisk();
+    const models = session.registry.list();
+    const recs = recommendModelsForProfile(models, {
+      hardware: detected,
+      limit: 10,
+    });
+    if (recs.length === 0) {
+      process.stdout.write(
+        `No recommendations for profile ${detected.profileId}. Register models with: atlas ai register\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+    const lines = [
+      `Profile: ${detected.profile.label} (${detected.profileId})`,
+      `Recommendations (${recs.length}):`,
+      ...recs.map((r) => {
+        const size =
+          r.model.sizeBytes !== undefined
+            ? ` ${(r.model.sizeBytes / (1024 * 1024)).toFixed(1)}MiB`
+            : "";
+        return `- [${r.score}] ${r.model.id}${size}${r.sizeClass ? ` class=${r.sizeClass}` : ""}\n  ${r.reasons.join("; ")}`;
+      }),
+    ];
+    process.stdout.write(`${lines.join("\n")}\n`);
+    process.exitCode = 0;
+  } finally {
+    session.close();
+  }
 }
 
 async function handleLoad(modelId?: string): Promise<void> {

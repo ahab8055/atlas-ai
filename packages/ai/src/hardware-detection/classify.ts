@@ -1,6 +1,10 @@
 /**
- * Architecture/25 Low / Standard / High hardware profiles.
+ * Classify host into low / balanced / performance profiles (Architecture/25).
  */
+import {
+  normalizeResourceProfileId,
+  type ResourceProfileId,
+} from "./resource-profiles.js";
 import type { DetectedGpu, HardwareTier } from "./types.js";
 
 export interface ClassifyInput {
@@ -23,13 +27,15 @@ function maxVramGb(gpus: DetectedGpu[]): number {
 }
 
 /**
- * Classify host into Architecture/25 resource tiers.
+ * Classify device capability into a resource profile.
  *
- * - Low: ~8GB RAM, CPU-only → small quantized models
- * - Standard: ~16–32GB, GPU available → medium models
- * - High: ~64GB+ or strong dedicated GPU → large models
+ * - low: ~8GB RAM, CPU-only → small quantized models
+ * - balanced: ~16–32GB, GPU available → medium models (Arch "Standard")
+ * - performance: ~64GB+ or strong dedicated GPU → large models
  */
-export function classifyHardwareTier(input: ClassifyInput): HardwareTier {
+export function classifyResourceProfile(
+  input: ClassifyInput,
+): ResourceProfileId {
   const { totalRamGb, gpus } = input;
   const gpuAvailable = gpus.some((gpu) => gpu.available);
   const dedicated = hasDedicatedGpu(gpus);
@@ -40,7 +46,7 @@ export function classifyHardwareTier(input: ClassifyInput): HardwareTier {
     (dedicated && vram >= 8 && totalRamGb >= 24) ||
     (totalRamGb >= 32 && dedicated && vram >= 12)
   ) {
-    return "high";
+    return "performance";
   }
 
   if (totalRamGb < 12 && !gpuAvailable) {
@@ -51,5 +57,15 @@ export function classifyHardwareTier(input: ClassifyInput): HardwareTier {
     return "low";
   }
 
-  return "standard";
+  return "balanced";
 }
+
+/**
+ * @deprecated Use `classifyResourceProfile`. Returns the same ids
+ * (`low` | `balanced` | `performance`).
+ */
+export function classifyHardwareTier(input: ClassifyInput): HardwareTier {
+  return classifyResourceProfile(input);
+}
+
+export { normalizeResourceProfileId };

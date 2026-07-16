@@ -1,10 +1,11 @@
 /**
  * Collect host hardware facts and build Architecture/25 profiles.
  */
-import { classifyHardwareTier } from "./classify.js";
+import { classifyResourceProfile } from "./classify.js";
 import { detectGpus } from "./gpu.js";
 import { createNodeSystemProbe, type SystemProbe } from "./probe.js";
 import { suggestInferenceProfile } from "./profile.js";
+import { getResourceProfile } from "./resource-profiles.js";
 import type { DetectedCpu, DetectedHardware, DetectedMemory } from "./types.js";
 
 export interface DetectHardwareOptions {
@@ -53,7 +54,7 @@ function detectMemory(probe: SystemProbe): DetectedMemory {
 }
 
 /**
- * Detect CPU, RAM, GPU/VRAM (best-effort), and OS; emit tier + inference profile.
+ * Detect CPU, RAM, GPU/VRAM (best-effort), and OS; emit profile + inference suggestion.
  */
 export function detectHardware(
   options: DetectHardwareOptions = {},
@@ -67,14 +68,15 @@ export function detectHardware(
     cpuModel: cpu.model,
   });
   const gpuAvailable = gpus.some((gpu) => gpu.available);
-  const tier = classifyHardwareTier({
+  const profileId = classifyResourceProfile({
     totalRamGb: memory.totalGb,
     gpus,
   });
+  const profile = getResourceProfile(profileId);
   const inferenceProfile = suggestInferenceProfile({
     cpuLogicalProcessors: cpu.logicalProcessors,
     gpus,
-    tier,
+    profileId,
     contextSize: options.contextSize,
     preferCpu: options.preferCpu,
   });
@@ -87,7 +89,9 @@ export function detectHardware(
       `GPU available; suggested ngl=${inferenceProfile.gpuLayers} (override via config.ai.hardware).`,
     );
   }
-  notes.push(`Resource tier: ${tier} (Architecture/25).`);
+  notes.push(
+    `Hardware profile: ${profile.label} (${profileId}) — ${profile.architectureName}.`,
+  );
 
   return {
     detectedAt: new Date().toISOString(),
@@ -102,7 +106,9 @@ export function detectHardware(
     memory,
     gpus,
     gpuAvailable,
-    tier,
+    profileId,
+    tier: profileId,
+    profile,
     inferenceProfile,
     notes,
   };

@@ -2,7 +2,7 @@ import os from "node:os";
 
 import { describe, expect, it } from "vitest";
 
-import { classifyHardwareTier } from "./classify.js";
+import { classifyResourceProfile, classifyHardwareTier } from "./classify.js";
 import { detectHardware } from "./detect.js";
 import type { SystemProbe } from "./probe.js";
 import {
@@ -10,6 +10,11 @@ import {
   selectSuitableModels,
   suggestInferenceProfile,
 } from "./profile.js";
+import { recommendModelsForProfile } from "./recommend.js";
+import {
+  listResourceProfiles,
+  RESOURCE_PROFILES,
+} from "./resource-profiles.js";
 import type { DetectedGpu } from "./types.js";
 
 function mockProbe(
@@ -73,7 +78,9 @@ describe("hardware detection", () => {
     expect(hardware.os.platform).toBe("darwin");
     expect(hardware.gpuAvailable).toBe(true);
     expect(hardware.gpus[0]?.vendor).toBe("Apple");
-    expect(hardware.tier).toBe("standard");
+    expect(hardware.profileId).toBe("balanced");
+    expect(hardware.tier).toBe("balanced");
+    expect(hardware.profile.label).toBe("Balanced");
     expect(hardware.inferenceProfile.acceleration).toBe("gpu");
     expect(hardware.inferenceProfile.gpuLayers).toBeGreaterThan(0);
   });
@@ -96,11 +103,12 @@ describe("hardware detection", () => {
     expect(hardware.gpus[0]?.name).toContain("4090");
     expect(hardware.gpus[0]?.vramGb).toBeGreaterThan(20);
     expect(hardware.gpus[0]?.integrated).toBe(false);
-    expect(hardware.tier).toBe("high");
+    expect(hardware.profileId).toBe("performance");
     expect(hardware.inferenceProfile.acceleration).toBe("gpu");
   });
 
-  it("classifies low-resource hosts as low tier with CPU profile", () => {
+  it("classifies low-resource hosts as low profile with CPU inference", () => {
+    expect(classifyResourceProfile({ totalRamGb: 8, gpus: [] })).toBe("low");
     expect(classifyHardwareTier({ totalRamGb: 8, gpus: [] })).toBe("low");
 
     const hardware = detectHardware({
@@ -108,9 +116,21 @@ describe("hardware detection", () => {
       skipGpuProbe: true,
       preferCpu: true,
     });
-    expect(hardware.tier).toBe("low");
+    expect(hardware.profileId).toBe("low");
     expect(hardware.inferenceProfile.acceleration).toBe("cpu");
     expect(hardware.inferenceProfile.gpuLayers).toBe(0);
+  });
+
+  it("defines low, balanced, and performance resource profiles", () => {
+    const profiles = listResourceProfiles();
+    expect(profiles.map((p) => p.id)).toEqual([
+      "low",
+      "balanced",
+      "performance",
+    ]);
+    expect(RESOURCE_PROFILES.low.modelGuidance.sizeClass).toBe("small");
+    expect(RESOURCE_PROFILES.balanced.architectureName).toBe("Standard");
+    expect(RESOURCE_PROFILES.performance.modelGuidance.sizeClass).toBe("large");
   });
 
   it("evaluates model suitability for selection logic", () => {
@@ -143,6 +163,46 @@ describe("hardware detection", () => {
     expect(selected.map((m) => m.id)).toEqual(["small"]);
   });
 
+  it("recommends models for the active hardware profile", () => {
+    const hardware = detectHardware({
+      probe: mockProbe({ totalmem: 16 * 1024 ** 3 }),
+      skipGpuProbe: true,
+      preferCpu: true,
+    });
+
+    const recommendations = recommendModelsForProfile(
+      [
+        {
+          id: "tiny",
+          sizeBytes: 1.5 * 1024 ** 3,
+          capabilities: ["chat", "local"],
+          requirements: { minRamGb: 4, acceleration: "cpu" },
+          status: "available",
+        },
+        {
+          id: "huge",
+          sizeBytes: 30 * 1024 ** 3,
+          capabilities: ["chat"],
+          requirements: { minRamGb: 48, acceleration: "gpu" },
+          status: "available",
+        },
+        {
+          id: "mid",
+          sizeBytes: 6 * 1024 ** 3,
+          capabilities: ["chat", "coding"],
+          requirements: { minRamGb: 12 },
+          status: "available",
+        },
+      ],
+      { hardware, limit: 5 },
+    );
+
+    expect(recommendations.length).toBeGreaterThan(0);
+    expect(recommendations[0]?.profileId).toBe(hardware.profileId);
+    expect(recommendations.map((r) => r.model.id)).toContain("tiny");
+    expect(recommendations.map((r) => r.model.id)).not.toContain("huge");
+  });
+
   it("suggests GPU layers from VRAM", () => {
     const gpus: DetectedGpu[] = [
       {
@@ -156,7 +216,7 @@ describe("hardware detection", () => {
     const profile = suggestInferenceProfile({
       cpuLogicalProcessors: 12,
       gpus,
-      tier: "standard",
+      profileId: "balanced",
     });
     expect(profile.acceleration).toBe("gpu");
     expect(profile.gpuLayers).toBe(40);

@@ -22,6 +22,8 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai validate");
       expect(writes.join("")).toContain("atlas ai remove");
       expect(writes.join("")).toContain("atlas ai hardware");
+      expect(writes.join("")).toContain("atlas ai profiles");
+      expect(writes.join("")).toContain("atlas ai recommend");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -124,7 +126,7 @@ describe("ai CLI command", () => {
     }
   });
 
-  it("hardware reports CPU RAM OS and resource tier", async () => {
+  it("hardware reports CPU RAM OS and resource profile", async () => {
     const writes: string[] = [];
     const originalWrite = process.stdout.write.bind(process.stdout);
     process.stdout.write = ((chunk: string | Uint8Array) => {
@@ -140,8 +142,31 @@ describe("ai CLI command", () => {
       const text = writes.join("");
       expect(text).toMatch(/CPU:/);
       expect(text).toMatch(/RAM:/);
-      expect(text).toMatch(/Resource tier:/);
+      expect(text).toMatch(/Hardware profile:/);
       expect(text).toMatch(/Suggested inference:/);
+      expect(text).toMatch(/Recommended models:/);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("profiles lists low balanced and performance", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand("ai profiles", {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toContain("low");
+      expect(text).toContain("balanced");
+      expect(text).toContain("performance");
     } finally {
       process.stdout.write = originalWrite;
     }

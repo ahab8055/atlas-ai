@@ -2,16 +2,16 @@
 
 Collects host CPU, RAM, GPU/VRAM, and OS facts for model selection (Architecture/25).
 
-Related: [Architecture/25](../Architecture/25-Model-Management-System.md), [Local-AI-Runtime.md](./Local-AI-Runtime.md), [LlamaCpp-Integration.md](./LlamaCpp-Integration.md), [Model-Registry.md](./Model-Registry.md), [ADR-0026](../adr/0026-hardware-detection.md), [`@atlas-ai/ai`](../../packages/ai/).
+Related: [Hardware-Profiles.md](./Hardware-Profiles.md), [Architecture/25](../Architecture/25-Model-Management-System.md), [Local-AI-Runtime.md](./Local-AI-Runtime.md), [LlamaCpp-Integration.md](./LlamaCpp-Integration.md), [Model-Registry.md](./Model-Registry.md), [ADR-0026](../adr/0026-hardware-detection.md), [ADR-0027](../adr/0027-hardware-profile-management.md), [`@atlas-ai/ai`](../../packages/ai/).
 
 ---
 
 ## Purpose
 
 - Detect **CPU**, **RAM**, **GPU**, **VRAM** (when reported), and **OS**.
-- Generate an Architecture/25 **resource tier** (`low` | `standard` | `high`).
+- Classify into a **hardware profile** (`low` | `balanced` | `performance`).
 - Suggest a llama.cpp **inference profile** (`acceleration`, `threads`, `gpuLayers`, `contextSize`).
-- Expose helpers so **model selection** can filter unsuitable models.
+- Feed **model recommendations** (see [Hardware-Profiles.md](./Hardware-Profiles.md)).
 
 ---
 
@@ -19,6 +19,8 @@ Related: [Architecture/25](../Architecture/25-Model-Management-System.md), [Loca
 
 ```bash
 pnpm atlas ai hardware
+pnpm atlas ai profiles
+pnpm atlas ai recommend
 pnpm atlas ai models    # annotates registry entries with fit=yes/no
 ```
 
@@ -30,13 +32,19 @@ pnpm atlas ai models    # annotates registry entries with fit=yes/no
 import {
   detectHardware,
   evaluateModelSuitability,
+  recommendModelsForProfile,
   selectSuitableModels,
 } from "@atlas-ai/ai";
 
 const hardware = detectHardware();
-console.log(hardware.tier, hardware.inferenceProfile);
+console.log(
+  hardware.profileId,
+  hardware.profile.label,
+  hardware.inferenceProfile,
+);
 
 const suitable = selectSuitableModels(registry.list(), hardware);
+const recs = recommendModelsForProfile(registry.list(), { hardware, limit: 5 });
 ```
 
 Inject a custom `SystemProbe` in tests to avoid real GPU shell calls.

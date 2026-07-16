@@ -3,10 +3,14 @@
  */
 import { DEFAULT_CPU_HARDWARE, type HardwareProfile } from "../hardware.js";
 import type { ModelRequirements } from "../model-registry/types.js";
+import {
+  getResourceProfile,
+  normalizeResourceProfileId,
+  type ResourceProfileId,
+} from "./resource-profiles.js";
 import type {
   DetectedHardware,
   DetectedGpu,
-  HardwareTier,
   ModelSuitabilityResult,
 } from "./types.js";
 
@@ -30,18 +34,19 @@ function maxVramGb(gpus: DetectedGpu[]): number | undefined {
 export function suggestInferenceProfile(input: {
   cpuLogicalProcessors: number;
   gpus: DetectedGpu[];
-  tier: HardwareTier;
+  tier?: ResourceProfileId | string;
+  profileId?: ResourceProfileId | string;
   contextSize?: number;
   /** Force CPU even when GPU is present. */
   preferCpu?: boolean;
 }): HardwareProfile {
+  const profileId = normalizeResourceProfileId(input.profileId ?? input.tier);
+  const defaults = getResourceProfile(profileId).defaultInference;
   const gpuAvailable =
     !input.preferCpu && input.gpus.some((gpu) => gpu.available);
   const threads =
     input.cpuLogicalProcessors > 0 ? input.cpuLogicalProcessors : 0;
-  const contextSize =
-    input.contextSize ??
-    (input.tier === "high" ? 8192 : input.tier === "low" ? 2048 : 4096);
+  const contextSize = input.contextSize ?? defaults.contextSize;
 
   if (!gpuAvailable) {
     return {
@@ -54,7 +59,7 @@ export function suggestInferenceProfile(input: {
   }
 
   const vram = maxVramGb(input.gpus);
-  let gpuLayers = 20;
+  let gpuLayers = defaults.gpuLayers;
   if (vram !== undefined) {
     if (vram >= 16) {
       gpuLayers = 99;
@@ -66,8 +71,7 @@ export function suggestInferenceProfile(input: {
       gpuLayers = 12;
     }
   } else if (input.gpus.some((g) => g.vendor === "Apple")) {
-    // Unified memory — offload many layers; llama.cpp Metal benefits.
-    gpuLayers = input.tier === "high" ? 99 : 40;
+    gpuLayers = profileId === "performance" ? 99 : 40;
   }
 
   return {
@@ -79,12 +83,15 @@ export function suggestInferenceProfile(input: {
 }
 
 /**
- * Whether a registered model's requirements fit the detected host.
- * Used by future Model Router / selection logic.
+ * Whether a registered model\'s requirements fit the detected host.
+ * Used by model recommendation / selection logic.
  */
 export function evaluateModelSuitability(
   requirements: ModelRequirements | undefined,
-  hardware: Pick<DetectedHardware, "memory" | "gpus" | "gpuAvailable" | "tier">,
+  hardware: Pick<
+    DetectedHardware,
+    "memory" | "gpus" | "gpuAvailable" | "tier"
+  > & { profileId?: ResourceProfileId },
 ): ModelSuitabilityResult {
   const reasons: string[] = [];
   const req = requirements ?? {};
