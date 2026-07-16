@@ -173,6 +173,28 @@ describe("model installation workflow", () => {
     }
   });
 
+  it("blocks URL install when offlineMode is enabled", async () => {
+    const root = join(tmpdir(), `atlas-install-offline-${Date.now()}`);
+    const modelsDir = join(root, "models");
+    mkdirSync(root, { recursive: true });
+
+    try {
+      const registry = createModelRegistry({ modelsDir });
+      const installer = createModelInstaller({ modelsDir, registry });
+      const result = await installer.install({
+        source: "https://example.com/models/demo.gguf",
+        category: "general",
+        offlineMode: true,
+        dryRun: true,
+      });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/offline/i);
+      expect(registry.list()).toHaveLength(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("downloads from URL via injected fetch and registers", async () => {
     const root = join(tmpdir(), `atlas-install-url-${Date.now()}`);
     const modelsDir = join(root, "models");
@@ -199,6 +221,7 @@ describe("model installation workflow", () => {
       const result = await installer.install({
         source: "https://example.com/models/demo.gguf",
         category: "general",
+        offlineMode: false,
       });
 
       expect(result.ok).toBe(true);

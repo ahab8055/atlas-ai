@@ -69,6 +69,7 @@ Stored in `config/*.json` and/or overridden with:
 | `ATLAS_PORT`                    | `config.server.port`                              |
 | `ATLAS_FEATURE_CLOUD_PROVIDERS` | `config.features.cloudProviders` (`true`/`false`) |
 | `ATLAS_FEATURE_TELEMETRY`       | `config.features.telemetry` (`true`/`false`)      |
+| `ATLAS_FEATURE_OFFLINE_MODE`    | `config.features.offlineMode` (`true`/`false`)    |
 
 Public frontend values may use `VITE_*` (e.g. `VITE_ATLAS_API_URL`) and must never include secrets.
 

@@ -67,6 +67,11 @@ export interface InstallModelInput {
   overwrite?: boolean;
   /** Skip download/copy; only run compatibility + storage checks. */
   dryRun?: boolean;
+  /**
+   * When true, block http(s) model installs (features.offlineMode).
+   * Loopback URLs remain allowed.
+   */
+  offlineMode?: boolean;
 }
 
 export interface InstallModelResult {

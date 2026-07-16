@@ -12,7 +12,8 @@
   },
   "features": {
     "cloudProviders": false,
-    "telemetry": false
+    "telemetry": false,
+    "offlineMode": true
   },
   "ai": {
     "provider": "mock",

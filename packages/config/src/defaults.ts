@@ -16,6 +16,7 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
   features: {
     cloudProviders: false,
     telemetry: false,
+    offlineMode: true,
   },
   ai: {
     provider: "mock",

@@ -23,6 +23,11 @@ export interface AtlasFeatureFlags {
   cloudProviders: boolean;
   /** Outbound product telemetry (off by default for privacy-first MVP). */
   telemetry: boolean;
+  /**
+   * When true (default), block internet-dependent AI ops (URL model install,
+   * cloud inference). Local mock / loopback llama.cpp remain allowed.
+   */
+  offlineMode: boolean;
 }
 
 export interface AtlasAiInferenceConfig {

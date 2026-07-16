@@ -104,6 +104,7 @@ function mergeFeatures(
   return {
     cloudProviders: asBoolean(patch.cloudProviders, base.cloudProviders),
     telemetry: asBoolean(patch.telemetry, base.telemetry),
+    offlineMode: asBoolean(patch.offlineMode, base.offlineMode),
   };
 }
 
@@ -244,6 +245,10 @@ export function applyEnvOverrides(
         envVars.ATLAS_FEATURE_TELEMETRY !== undefined
           ? envVars.ATLAS_FEATURE_TELEMETRY === "true"
           : config.features.telemetry,
+      offlineMode:
+        envVars.ATLAS_FEATURE_OFFLINE_MODE !== undefined
+          ? envVars.ATLAS_FEATURE_OFFLINE_MODE === "true"
+          : config.features.offlineMode,
     },
     ai: {
       provider: envVars.ATLAS_AI_PROVIDER ?? config.ai.provider,

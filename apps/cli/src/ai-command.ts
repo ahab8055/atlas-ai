@@ -15,6 +15,9 @@ import {
   formatRuntimeSnapshot,
   formatAiRuntimeMetrics,
   formatAiRuntimeRecentEvents,
+  formatOfflineModeStatus,
+  assessOfflineCapability,
+  probeInternetReachability,
   listResourceProfiles,
   recommendModelsForProfile,
   recommendQuantization,
@@ -151,6 +154,7 @@ function printAiHelp(): void {
     [
       "Atlas AI runtime commands:",
       "  atlas ai status              Probe local inference provider health",
+      "  atlas ai offline             Offline mode status + limitations",
       "  atlas ai models              List registered / available models",
       "  atlas ai register            Scan models/ and persist registry entries",
       "  atlas ai storage             Ensure layout + show storage usage",
@@ -211,6 +215,12 @@ export async function tryHandleAiCommand(
   const statusMatch = /^ai\s+(status|health)\s*$/i.exec(trimmed);
   if (statusMatch) {
     await handleStatus();
+    return true;
+  }
+
+  const offlineMatch = /^ai\s+offline\s*$/i.exec(trimmed);
+  if (offlineMatch) {
+    await handleOffline();
     return true;
   }
 
@@ -353,6 +363,18 @@ async function handleStatus(): Promise<void> {
   const hw = config.ai.hardware;
   const inf = config.ai.inference;
 
+  const internetReachable = await probeInternetReachability({
+    skip: process.env.ATLAS_OFFLINE_PROBE === "0" || config.env === "test",
+    timeoutMs: 1000,
+  });
+  const offline = assessOfflineCapability({
+    offlineMode: config.features.offlineMode,
+    cloudProvidersEnabled: config.features.cloudProviders,
+    localInferenceReady: health.ok,
+    providerId: health.provider,
+    internetReachable,
+  });
+
   const out = [
     `AI provider: ${health.provider}`,
     `Healthy: ${health.ok ? "yes" : "no"}`,
@@ -369,10 +391,31 @@ async function handleStatus(): Promise<void> {
       ? [`Active model: ${active.id}${active.path ? ` (${active.path})` : ""}`]
       : []),
     `Checked at: ${health.checkedAt}`,
+    "",
+    formatOfflineModeStatus(offline),
   ];
 
   process.stdout.write(`${out.join("\n")}\n`);
   process.exitCode = health.ok ? 0 : 1;
+}
+
+async function handleOffline(): Promise<void> {
+  const config = loadConfig();
+  const runtime = createAiRuntimeFromConfig();
+  const health = await runtime.health();
+  const internetReachable = await probeInternetReachability({
+    skip: process.env.ATLAS_OFFLINE_PROBE === "0" || config.env === "test",
+    timeoutMs: 1000,
+  });
+  const offline = assessOfflineCapability({
+    offlineMode: config.features.offlineMode,
+    cloudProvidersEnabled: config.features.cloudProviders,
+    localInferenceReady: health.ok,
+    providerId: health.provider,
+    internetReachable,
+  });
+  process.stdout.write(`${formatOfflineModeStatus(offline)}\n`);
+  process.exitCode = 0;
 }
 
 function formatRegisteredModel(
@@ -1127,6 +1170,7 @@ async function handleInstall(
       category,
       dryRun,
       proceedOnWarnings: true,
+      offlineMode: config.features.offlineMode,
       ...(category === "speech"
         ? { speechModality: speechModality ?? "stt" }
         : {}),

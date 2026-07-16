@@ -226,6 +226,24 @@ export {
 } from "./runtime-monitoring/index.js";
 
 export {
+  OFFLINE_LIMITATIONS,
+  assertNetworkOperationAllowed,
+  assessOfflineCapability,
+  blockedOperationsWhenOffline,
+  formatOfflineModeStatus,
+  isLoopbackHostname,
+  isLoopbackUrl,
+  probeInternetReachability,
+  type AssessOfflineCapabilityInput,
+  type InternetReachability,
+  type NetworkOperation,
+  type OfflineBlockedOperation,
+  type OfflineModeStatus,
+  type OfflinePolicyContext,
+  type ProbeInternetOptions,
+} from "./offline/index.js";
+
+export {
   QUANTIZATION_TRADEOFFS,
   detectQuantization,
   familyForLevel,

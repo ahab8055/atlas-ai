@@ -34,6 +34,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai embeddings");
       expect(writes.join("")).toContain("atlas ai speech");
       expect(writes.join("")).toContain("atlas ai metrics");
+      expect(writes.join("")).toContain("atlas ai offline");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -58,6 +59,7 @@ describe("ai CLI command", () => {
       expect(text).toMatch(/Healthy:\s*yes/);
       expect(text).toMatch(/Acceleration:\s*cpu/);
       expect(text).toContain("Available providers:");
+      expect(text).toContain("Offline mode");
     } finally {
       process.stdout.write = originalWrite;
       if (prevProvider === undefined) {

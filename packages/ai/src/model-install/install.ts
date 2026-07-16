@@ -20,6 +20,7 @@ import {
   speechDestinationPath,
 } from "../speech/storage.js";
 import type { SpeechModality } from "../speech/types.js";
+import { assertNetworkOperationAllowed } from "../offline/policy.js";
 import { checkInstallCompatibility } from "./compatibility.js";
 import { downloadModelFile, isHttpUrl } from "./download.js";
 import { checkInstallStorage, getFileSizeBytes } from "./storage-check.js";
@@ -90,6 +91,28 @@ export class ModelInstaller {
     }
 
     const sourceKind: InstallSourceKind = isHttpUrl(source) ? "url" : "file";
+    if (sourceKind === "url") {
+      try {
+        assertNetworkOperationAllowed(
+          "model_install_url",
+          { offlineMode: input.offlineMode === true },
+          { url: source },
+        );
+      } catch (error) {
+        if (
+          error instanceof AiRuntimeError &&
+          error.code === "offline_blocked"
+        ) {
+          return this.fail(
+            sourceKind,
+            source,
+            input.dryRun === true,
+            error.message,
+          );
+        }
+        throw error;
+      }
+    }
     const category = assertCategory(input.category);
     const proceedOnWarnings = input.proceedOnWarnings !== false;
     const blockOnErrors = input.blockOnErrors !== false;
