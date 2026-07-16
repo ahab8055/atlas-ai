@@ -97,6 +97,8 @@ pnpm atlas ai inference
 pnpm atlas ai inference set temperature=0.3 maxTokens=512
 pnpm atlas ai runtime
 pnpm atlas ai runtime load mock-general
+pnpm atlas ai metrics
+pnpm atlas ai metrics recent
 pnpm atlas ai quantization
 pnpm atlas ai quantization detect model-Q4_K_M.gguf
 pnpm atlas ai embed "How does login work?"

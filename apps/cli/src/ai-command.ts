@@ -13,6 +13,8 @@ import {
   formatInferenceConfig,
   formatRoutingDecision,
   formatRuntimeSnapshot,
+  formatAiRuntimeMetrics,
+  formatAiRuntimeRecentEvents,
   listResourceProfiles,
   recommendModelsForProfile,
   recommendQuantization,
@@ -168,6 +170,8 @@ function printAiHelp(): void {
       "  atlas ai runtime             Show loaded models, sessions, memory budget",
       "  atlas ai runtime load|unload Manage model load/unload",
       "  atlas ai runtime reclaim     Unload idle models (no open sessions)",
+      "  atlas ai metrics             AI load/inference/memory/error metrics",
+      "  atlas ai metrics recent      Recent metric events (this process)",
       "  atlas ai quantization        Detect/recommend GGUF quant levels + tradeoffs",
       '  atlas ai embed "<text>"      Generate a local embedding (mock or llama.cpp)',
       "  atlas ai embed --store …     Generate + persist for search/memory",
@@ -287,6 +291,12 @@ export async function tryHandleAiCommand(
   const runtimeMatch = /^ai\s+runtime(?:\s+(.*))?$/is.exec(trimmed);
   if (runtimeMatch) {
     await handleRuntime(runtimeMatch[1]?.trim() ?? "", options);
+    return true;
+  }
+
+  const metricsMatch = /^ai\s+metrics(?:\s+(.*))?$/is.exec(trimmed);
+  if (metricsMatch) {
+    await handleMetrics(metricsMatch[1]?.trim() ?? "", options);
     return true;
   }
 
@@ -1254,6 +1264,68 @@ async function handleLoad(
         formatRuntimeSnapshot(runtime.getRuntimeSnapshot()),
       ].join("\n") + "\n",
     );
+    process.exitCode = 0;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  }
+}
+
+async function handleMetrics(
+  rest: string,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const parts = rest.length > 0 ? rest.split(/\s+/).filter(Boolean) : [];
+  const cmd = parts[0]?.toLowerCase();
+  const runtime = createAiRuntimeFromConfig(undefined, {
+    ...options,
+    enforceCompatibility: true,
+  });
+  const hw = detectHardware({ skipGpuProbe: true });
+  runtime.getModelRuntime().setHostMemory({
+    totalBytes: hw.memory.totalBytes,
+    freeBytes: hw.memory.freeBytes,
+  });
+
+  try {
+    if (cmd === "help" || cmd === "--help" || cmd === "-h") {
+      process.stdout.write(
+        [
+          "AI runtime metrics (Architecture/15 / 25):",
+          "  atlas ai metrics           Aggregates + warnings (this process)",
+          "  atlas ai metrics recent    Recent metric events",
+          "",
+          "Note: metrics are process-scoped (same as atlas ai runtime).",
+          "Use after load/ask in the same process, or via AiRuntime.getMetrics().",
+        ].join("\n") + "\n",
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd === "recent" || cmd === "events") {
+      const limitRaw = parts[1];
+      const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 20;
+      process.stdout.write(
+        `${formatAiRuntimeRecentEvents(
+          runtime.getRecentMetricEvents(Number.isFinite(limit) ? limit : 20),
+        )}\n`,
+      );
+      process.exitCode = 0;
+      return;
+    }
+
+    if (cmd && cmd !== "show" && cmd !== "status") {
+      process.stderr.write(
+        `Unknown metrics command: ${cmd}\nUsage: atlas ai metrics [recent|help]\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+
+    process.stdout.write(`${formatAiRuntimeMetrics(runtime.getMetrics())}\n`);
     process.exitCode = 0;
   } catch (error) {
     process.stderr.write(

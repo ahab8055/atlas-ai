@@ -31,6 +31,13 @@ import {
 } from "./registry.js";
 import { LlamaCppProvider } from "./providers/llamacpp.js";
 import { MockInferenceProvider } from "./providers/mock.js";
+import {
+  createAiRuntimeMonitor,
+  type AiRuntimeMetricEvent,
+  type AiRuntimeMetrics,
+  type AiRuntimeMonitor,
+  type AiRuntimeMonitorOptions,
+} from "./runtime-monitoring/index.js";
 import type {
   AiRuntimeOptions,
   GenerateRequest,
@@ -82,6 +89,10 @@ export interface AiRuntimeCreateOptions extends AiRuntimeOptions {
     /** Inject a pre-built manager (tests). */
     manager?: ModelRuntimeManager;
   };
+  /** AI runtime metrics collector (default: in-process ring buffer). */
+  monitor?: AiRuntimeMonitor;
+  /** Options when creating the default monitor. */
+  monitorOptions?: AiRuntimeMonitorOptions;
 }
 
 /**
@@ -99,6 +110,7 @@ export class AiRuntime {
   private readonly inferenceConfig?: InferenceConfigManager;
   private modelRuntime: ModelRuntimeManager;
   private readonly modelRuntimeOptions?: ModelRuntimeManagerOptions;
+  private readonly monitor: AiRuntimeMonitor;
 
   constructor(
     provider: InferenceProvider,
@@ -111,6 +123,7 @@ export class AiRuntime {
       inferenceConfig?: InferenceConfigManager;
       modelRuntime?: ModelRuntimeManager;
       modelRuntimeOptions?: ModelRuntimeManagerOptions;
+      monitor?: AiRuntimeMonitor;
     },
   ) {
     this.provider = provider;
@@ -121,10 +134,15 @@ export class AiRuntime {
     this.router = options.router;
     this.inferenceConfig = options.inferenceConfig;
     this.modelRuntimeOptions = options.modelRuntimeOptions;
+    this.monitor =
+      options.monitor ??
+      options.modelRuntimeOptions?.monitor ??
+      createAiRuntimeMonitor();
     this.modelRuntime =
       options.modelRuntime ??
       createModelRuntimeManager(provider, {
         ...options.modelRuntimeOptions,
+        monitor: this.monitor,
         resolveSizeBytes:
           options.modelRuntimeOptions?.resolveSizeBytes ??
           ((modelId: string) =>
@@ -149,6 +167,7 @@ export class AiRuntime {
     this.activeModel = undefined;
     this.modelRuntime = createModelRuntimeManager(this.provider, {
       ...this.modelRuntimeOptions,
+      monitor: this.monitor,
       resolveSizeBytes:
         this.modelRuntimeOptions?.resolveSizeBytes ??
         ((modelId: string) =>
@@ -162,6 +181,19 @@ export class AiRuntime {
 
   getRuntimeSnapshot(): ModelRuntimeSnapshot {
     return this.modelRuntime.getSnapshot();
+  }
+
+  getMonitor(): AiRuntimeMonitor {
+    return this.monitor;
+  }
+
+  getMetrics(): AiRuntimeMetrics {
+    this.monitor.recordStatus(this.modelRuntime.getSnapshot());
+    return this.monitor.getMetrics();
+  }
+
+  getRecentMetricEvents(limit?: number): AiRuntimeMetricEvent[] {
+    return this.monitor.getRecentEvents(limit);
   }
 
   async createInferenceSession(modelId?: string): Promise<InferenceSession> {
@@ -272,15 +304,37 @@ export class AiRuntime {
     }
     this.enforceCompatibility(id);
     this.applyInferenceToProvider(id);
-    this.activeModel = await this.modelRuntime.ensureLoaded(id);
-    this.logger?.info("AI model loaded", {
-      category: "ai",
-      context: {
-        provider: this.provider.id,
-        modelId: this.activeModel.id,
-      },
-    });
-    return { ...this.activeModel };
+    try {
+      this.activeModel = await this.modelRuntime.ensureLoaded(id);
+      const loadMs = this.modelRuntime
+        .getSnapshot()
+        .loaded.find(
+          (m) => m.modelId === this.activeModel?.id,
+        )?.lastLoadDurationMs;
+      this.logger?.info("AI model loaded", {
+        category: "ai",
+        context: {
+          provider: this.provider.id,
+          modelId: this.activeModel.id,
+          durationMs: loadMs,
+        },
+      });
+      this.monitor.recordStatus(this.modelRuntime.getSnapshot());
+      return { ...this.activeModel };
+    } catch (error) {
+      const code = error instanceof AiRuntimeError ? error.code : undefined;
+      this.logger?.error("AI model load failed", {
+        category: "ai",
+        error,
+        context: {
+          provider: this.provider.id,
+          modelId: id,
+          code,
+        },
+      });
+      this.monitor.recordStatus(this.modelRuntime.getSnapshot());
+      throw error;
+    }
   }
 
   async unloadModel(modelId?: string): Promise<void> {
@@ -292,6 +346,7 @@ export class AiRuntime {
     ) {
       this.activeModel = undefined;
     }
+    this.monitor.recordStatus(this.modelRuntime.getSnapshot());
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
@@ -302,19 +357,62 @@ export class AiRuntime {
     if (id) {
       this.modelRuntime.beginInference(id);
     }
+    const started = Date.now();
     try {
-      return await this.provider.generate(enriched);
+      const result = await this.provider.generate(enriched);
+      this.monitor.recordInference({
+        modelId: result.modelId,
+        provider: this.provider.id,
+        ok: true,
+        durationMs: result.durationMs,
+        promptTokens: result.usage?.promptTokens,
+        completionTokens: result.usage?.completionTokens,
+        totalTokens: result.usage?.totalTokens,
+      });
+      this.logger?.info("AI generate completed", {
+        category: "ai",
+        context: {
+          provider: this.provider.id,
+          modelId: result.modelId,
+          durationMs: result.durationMs,
+          totalTokens: result.usage?.totalTokens,
+        },
+      });
+      return result;
     } catch (error) {
+      const durationMs = Math.max(0, Date.now() - started);
+      const code = error instanceof AiRuntimeError ? error.code : undefined;
+      const message = error instanceof Error ? error.message : String(error);
+      this.monitor.recordInference({
+        modelId: enriched.modelId ?? id,
+        provider: this.provider.id,
+        ok: false,
+        durationMs,
+        message,
+      });
+      this.monitor.recordError({
+        operation: "generate",
+        message,
+        modelId: enriched.modelId ?? id,
+        provider: this.provider.id,
+        code,
+      });
       this.logger?.error("AI generate failed", {
         category: "ai",
         error,
-        context: { provider: this.provider.id, modelId: enriched.modelId },
+        context: {
+          provider: this.provider.id,
+          modelId: enriched.modelId,
+          durationMs,
+          code,
+        },
       });
       throw error;
     } finally {
       if (id) {
         this.modelRuntime.endInference(id);
       }
+      this.monitor.recordStatus(this.modelRuntime.getSnapshot());
     }
   }
 
@@ -326,12 +424,58 @@ export class AiRuntime {
     if (id) {
       this.modelRuntime.beginInference(id);
     }
+    const started = Date.now();
     try {
       yield* this.provider.stream(enriched);
+      const durationMs = Math.max(0, Date.now() - started);
+      this.monitor.recordInference({
+        modelId: id,
+        provider: this.provider.id,
+        ok: true,
+        durationMs,
+      });
+      this.logger?.info("AI stream completed", {
+        category: "ai",
+        context: {
+          provider: this.provider.id,
+          modelId: id,
+          durationMs,
+        },
+      });
+    } catch (error) {
+      const durationMs = Math.max(0, Date.now() - started);
+      const code = error instanceof AiRuntimeError ? error.code : undefined;
+      const message = error instanceof Error ? error.message : String(error);
+      this.monitor.recordInference({
+        modelId: id,
+        provider: this.provider.id,
+        ok: false,
+        durationMs,
+        message,
+      });
+      this.monitor.recordError({
+        operation: "stream",
+        message,
+        modelId: id,
+        provider: this.provider.id,
+        code,
+      });
+      this.logger?.error("AI stream failed", {
+        category: "ai",
+        error,
+        context: {
+          provider: this.provider.id,
+          modelId: id,
+          durationMs,
+          code,
+        },
+      });
+      throw error;
     } finally {
       if (id) {
         this.modelRuntime.endInference(id);
       }
+      this.monitor.recordStatus(this.modelRuntime.getSnapshot());
     }
   }
 
@@ -505,6 +649,9 @@ export function createAiRuntime(
   const { manager: injectedManager, ...modelRuntimeOptions } =
     options.modelRuntime ?? {};
 
+  const monitor =
+    options.monitor ?? createAiRuntimeMonitor(options.monitorOptions);
+
   return new AiRuntime(provider, {
     registry,
     logger: options.logger,
@@ -513,7 +660,11 @@ export function createAiRuntime(
     router: options.router,
     inferenceConfig,
     modelRuntime: injectedManager,
-    modelRuntimeOptions,
+    modelRuntimeOptions: {
+      ...modelRuntimeOptions,
+      monitor: modelRuntimeOptions.monitor ?? monitor,
+    },
+    monitor,
   });
 }
 

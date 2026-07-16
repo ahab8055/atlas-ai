@@ -1,6 +1,7 @@
 /**
  * Model Runtime Manager types (Architecture/25 AI Runtime Manager).
  */
+import type { AiRuntimeMonitor } from "../runtime-monitoring/monitor.js";
 import type { ModelInfo } from "../types.js";
 
 /** Coarse runtime phase for the manager. */
@@ -13,6 +14,8 @@ export interface LoadedModelState {
   status: ModelRuntimePhase;
   loadedAt: string;
   lastUsedAt: string;
+  /** Duration of the most recent successful load in ms. */
+  lastLoadDurationMs?: number;
   /** Estimated resident weight size when known. */
   estimatedMemoryBytes?: number;
   /** Open inference sessions using this model. */
@@ -74,4 +77,6 @@ export interface ModelRuntimeManagerOptions {
   now?: () => number;
   /** Id generator for sessions (tests). */
   createSessionId?: () => string;
+  /** Optional metrics collector (Architecture/15 AI runtime monitoring). */
+  monitor?: AiRuntimeMonitor;
 }

@@ -2,7 +2,7 @@
 
 Controls model execution: load, unload, sessions, and memory (Architecture/25 AI Runtime Manager).
 
-Related: [Local-AI-Runtime.md](./Local-AI-Runtime.md), [Inference-Configuration.md](./Inference-Configuration.md), [Model-Router.md](./Model-Router.md), [Hardware-Detection.md](./Hardware-Detection.md), [ADR-0032](../adr/0032-model-runtime-manager.md), [`@atlas-ai/ai`](../../packages/ai/).
+Related: [Local-AI-Runtime.md](./Local-AI-Runtime.md), [Inference-Configuration.md](./Inference-Configuration.md), [Model-Router.md](./Model-Router.md), [Hardware-Detection.md](./Hardware-Detection.md), [Runtime-Monitoring.md](./Runtime-Monitoring.md), [ADR-0032](../adr/0032-model-runtime-manager.md), [`@atlas-ai/ai`](../../packages/ai/).
 
 ---
 

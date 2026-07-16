@@ -29,6 +29,7 @@ Practical guides for contributing to Atlas AI.
 | [Model-Router.md](./Model-Router.md)                             | Automatic model selection per task         |
 | [Inference-Configuration.md](./Inference-Configuration.md)       | Temperature, tokens, context, streaming    |
 | [Model-Runtime-Manager.md](./Model-Runtime-Manager.md)           | Load/unload, sessions, memory budget       |
+| [Runtime-Monitoring.md](./Runtime-Monitoring.md)                 | AI load/inference/memory/error metrics     |
 | [Quantization.md](./Quantization.md)                             | GGUF quant detect, recommend, tradeoffs    |
 | [Embedding-Models.md](./Embedding-Models.md)                     | Local embeddings + store for search/memory |
 | [Speech-Models.md](./Speech-Models.md)                           | Speech storage + STT/TTS provider ports    |

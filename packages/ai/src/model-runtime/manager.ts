@@ -3,6 +3,7 @@
  */
 import { AiRuntimeError } from "../errors.js";
 import type { InferenceProvider } from "../provider.js";
+import type { AiRuntimeMonitor } from "../runtime-monitoring/monitor.js";
 import type { ModelInfo } from "../types.js";
 import {
   buildMemoryState,
@@ -29,6 +30,7 @@ export class ModelRuntimeManager {
   private readonly resolveSizeBytes?: (modelId: string) => number | undefined;
   private readonly now: () => number;
   private readonly createSessionId: () => string;
+  private readonly monitor?: AiRuntimeMonitor;
 
   private phase: ModelRuntimePhase = "idle";
   private activeModelId?: string;
@@ -60,6 +62,7 @@ export class ModelRuntimeManager {
       options.createSessionId ??
       (() =>
         `sess_${this.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
+    this.monitor = options.monitor;
   }
 
   getPhase(): ModelRuntimePhase {
@@ -131,6 +134,7 @@ export class ModelRuntimeManager {
       await this.makeRoomFor(id);
       this.phase = "loading";
       this.lastError = undefined;
+      const loadStarted = this.now();
       const entry: LoadedModelState = {
         modelId: id,
         status: "loading",
@@ -143,6 +147,7 @@ export class ModelRuntimeManager {
 
       try {
         const model = await this.provider.load(id);
+        const durationMs = Math.max(0, this.now() - loadStarted);
         const estimated =
           estimateModelMemoryBytes({
             sizeBytes: model.sizeBytes ?? this.resolveSizeBytes?.(id),
@@ -152,16 +157,41 @@ export class ModelRuntimeManager {
           model: { ...model },
           status: "ready",
           estimatedMemoryBytes: estimated,
+          lastLoadDurationMs: durationMs,
           lastUsedAt: new Date(this.now()).toISOString(),
         };
         this.loaded.set(id, ready);
         this.activeModelId = id;
         this.phase = "ready";
+        this.monitor?.recordLoad({
+          modelId: id,
+          provider: this.provider.id,
+          ok: true,
+          durationMs,
+          estimatedMemoryBytes: estimated,
+        });
         return { ...model };
       } catch (error) {
+        const durationMs = Math.max(0, this.now() - loadStarted);
+        const message = error instanceof Error ? error.message : String(error);
+        const code = error instanceof AiRuntimeError ? error.code : undefined;
         this.loaded.delete(id);
         this.phase = this.loaded.size > 0 ? "ready" : "idle";
-        this.lastError = error instanceof Error ? error.message : String(error);
+        this.lastError = message;
+        this.monitor?.recordLoad({
+          modelId: id,
+          provider: this.provider.id,
+          ok: false,
+          durationMs,
+          message,
+        });
+        this.monitor?.recordError({
+          operation: "load",
+          message,
+          modelId: id,
+          provider: this.provider.id,
+          code,
+        });
         throw error;
       }
     });
@@ -458,7 +488,11 @@ export function formatRuntimeSnapshot(snapshot: ModelRuntimeSnapshot): string {
           ? ` ${formatBytesShort(m.estimatedMemoryBytes)}`
           : "";
       lines.push(
-        `  - ${m.modelId} [${m.status}] sessions=${m.sessionCount}${mem} lastUsed=${m.lastUsedAt}`,
+        `  - ${m.modelId} [${m.status}] sessions=${m.sessionCount}${mem}` +
+          (m.lastLoadDurationMs !== undefined
+            ? ` load=${m.lastLoadDurationMs}ms`
+            : "") +
+          ` lastUsed=${m.lastUsedAt}`,
       );
     }
   }

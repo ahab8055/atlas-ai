@@ -59,6 +59,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0033](./0033-quantization-support.md)                  | GGUF quantization support               | Accepted |
 | [0034](./0034-embedding-model-integration.md)           | Embedding model integration             | Accepted |
 | [0035](./0035-speech-model-foundation.md)               | Speech model preparation foundation     | Accepted |
+| [0036](./0036-ai-runtime-monitoring.md)                 | AI runtime monitoring foundation        | Accepted |
 
 ## Naming
 

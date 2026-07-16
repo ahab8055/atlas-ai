@@ -204,6 +204,28 @@ export {
 } from "./model-runtime/index.js";
 
 export {
+  AiRuntimeMonitor,
+  DEFAULT_SLOW_INFERENCE_MS,
+  DEFAULT_SLOW_LOAD_MS,
+  buildMetricWarnings,
+  createAiRuntimeMonitor,
+  formatAiRuntimeMetricEvent,
+  formatAiRuntimeMetrics,
+  formatAiRuntimeRecentEvents,
+  resolveThresholds,
+  type AiRuntimeErrorEvent,
+  type AiRuntimeInferenceEvent,
+  type AiRuntimeLoadEvent,
+  type AiRuntimeMetricEvent,
+  type AiRuntimeMetricKind,
+  type AiRuntimeMetrics,
+  type AiRuntimeMetricsWarning,
+  type AiRuntimeMonitorOptions,
+  type AiRuntimeStatusEvent,
+  type TimingStats,
+} from "./runtime-monitoring/index.js";
+
+export {
   QUANTIZATION_TRADEOFFS,
   detectQuantization,
   familyForLevel,

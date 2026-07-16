@@ -33,6 +33,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai embed");
       expect(writes.join("")).toContain("atlas ai embeddings");
       expect(writes.join("")).toContain("atlas ai speech");
+      expect(writes.join("")).toContain("atlas ai metrics");
     } finally {
       process.stdout.write = originalWrite;
     }
