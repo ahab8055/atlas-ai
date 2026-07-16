@@ -83,6 +83,7 @@ Probe the inference facade without running the request pipeline — see [Local-A
 ```bash
 pnpm atlas ai status
 pnpm atlas ai offline
+pnpm atlas ai providers
 pnpm atlas ai register   # persist GGUF metadata
 pnpm atlas ai models
 pnpm atlas ai storage    # usage + directory layout

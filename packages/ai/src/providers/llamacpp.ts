@@ -62,6 +62,12 @@ export interface LlamaCppProviderOptions {
  */
 export class LlamaCppProvider implements InferenceProvider {
   readonly id = "llamacpp";
+  readonly meta = {
+    kind: "local" as const,
+    requiresNetwork: false,
+    label: "llama.cpp (local)",
+    notes: "Local GGUF via llama-server loopback HTTP",
+  };
 
   private readonly baseUrl: string;
   private readonly modelsDir?: string;

@@ -11,7 +11,11 @@ export type {
   StreamChunk,
 } from "./types.js";
 
-export type { InferenceProvider } from "./provider.js";
+export type {
+  InferenceProvider,
+  ProviderDescriptor,
+  ProviderKind,
+} from "./provider.js";
 
 export { AiRuntimeError } from "./errors.js";
 
@@ -41,6 +45,16 @@ export {
   LlamaCppProvider,
   type LlamaCppProviderOptions,
 } from "./providers/llamacpp.js";
+
+export {
+  CloudStubInferenceProvider,
+  type CloudStubInferenceProviderOptions,
+} from "./providers/cloud-stub.js";
+
+export {
+  registerBuiltinProviders,
+  type RegisterBuiltinProvidersOptions,
+} from "./providers/register.js";
 
 export {
   ModelRegistry,

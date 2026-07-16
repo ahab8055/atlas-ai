@@ -20,6 +20,12 @@ export interface MockInferenceProviderOptions {
  */
 export class MockInferenceProvider implements InferenceProvider {
   readonly id = "mock";
+  readonly meta = {
+    kind: "local" as const,
+    requiresNetwork: false,
+    label: "Mock (offline CI)",
+    notes: "Deterministic local provider — no network",
+  };
 
   private active: ModelInfo | undefined;
   private readonly models: ModelInfo[];

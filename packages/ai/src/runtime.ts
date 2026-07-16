@@ -29,8 +29,7 @@ import {
   getDefaultProviderRegistry,
   InferenceProviderRegistry,
 } from "./registry.js";
-import { LlamaCppProvider } from "./providers/llamacpp.js";
-import { MockInferenceProvider } from "./providers/mock.js";
+import { registerBuiltinProviders } from "./providers/register.js";
 import {
   createAiRuntimeMonitor,
   type AiRuntimeMetricEvent,
@@ -93,6 +92,17 @@ export interface AiRuntimeCreateOptions extends AiRuntimeOptions {
   monitor?: AiRuntimeMonitor;
   /** Options when creating the default monitor. */
   monitorOptions?: AiRuntimeMonitorOptions;
+  /**
+   * Feature gates for optional providers (cloud stub).
+   * Defaults: cloudProviders off, offlineMode treated as true when unset
+   * for cloud stub registration (stub only when cloud on AND offline off).
+   */
+  features?: {
+    cloudProviders?: boolean;
+    offlineMode?: boolean;
+  };
+  /** Whether a cloud API key is present (for cloud-stub messaging). */
+  cloudApiKeyPresent?: boolean;
 }
 
 /**
@@ -597,7 +607,7 @@ export class AiRuntime {
 }
 
 /**
- * Build a runtime with mock + llamacpp registered.
+ * Build a runtime with mock + llamacpp registered (optional cloud stub).
  */
 export function createAiRuntime(
   options: AiRuntimeCreateOptions = {},
@@ -606,9 +616,17 @@ export function createAiRuntime(
   const endpoint = options.endpoint ?? "http://127.0.0.1:8080";
   const modelsDir = options.modelsDir;
 
-  const builtins: InferenceProvider[] = options.providers ?? [
-    new MockInferenceProvider(),
-    new LlamaCppProvider({
+  registerBuiltinProviders(registry, {
+    providers: options.providers,
+    features: {
+      cloudProviders: options.features?.cloudProviders === true,
+      // Default offline (no cloud stub) when unset — match Atlas config.
+      offlineMode: options.features?.offlineMode !== false,
+    },
+    cloudStub: {
+      apiKeyPresent: options.cloudApiKeyPresent,
+    },
+    llamaCpp: {
       baseUrl: endpoint,
       modelsDir,
       inference: options.inference,
@@ -616,12 +634,10 @@ export function createAiRuntime(
       manageServer: options.llamaCpp?.manageServer,
       binary: options.llamaCpp?.binary,
       extraArgs: options.llamaCpp?.extraArgs,
-    }),
-  ];
-
-  for (const provider of builtins) {
-    registry.register(provider, { replace: true });
-  }
+    },
+    inference: options.inference,
+    hardware: options.hardware,
+  });
 
   const providerId = options.provider ?? "mock";
   const provider = registry.require(providerId);

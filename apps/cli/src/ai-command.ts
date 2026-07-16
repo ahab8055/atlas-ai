@@ -26,6 +26,7 @@ import {
   formatQuantizationRecommendation,
   formatQuantizationTradeoffs,
   routeModel,
+  registerBuiltinProviders,
   InferenceProviderRegistry,
   MockSpeechToTextProvider,
   MockTextToSpeechProvider,
@@ -118,6 +119,13 @@ export function createAiRuntimeFromConfig(
     inference: config.ai.inference,
     hardware: config.ai.hardware,
     llamaCpp: config.ai.llamaCpp,
+    features: {
+      cloudProviders: config.features.cloudProviders,
+      offlineMode: config.features.offlineMode,
+    },
+    cloudApiKeyPresent: Boolean(
+      config.secrets.openaiApiKey || config.secrets.anthropicApiKey,
+    ),
     compatibility: enforce
       ? {
           enabled: true,
@@ -155,6 +163,7 @@ function printAiHelp(): void {
       "Atlas AI runtime commands:",
       "  atlas ai status              Probe local inference provider health",
       "  atlas ai offline             Offline mode status + limitations",
+      "  atlas ai providers           List registered inference providers",
       "  atlas ai models              List registered / available models",
       "  atlas ai register            Scan models/ and persist registry entries",
       "  atlas ai storage             Ensure layout + show storage usage",
@@ -221,6 +230,12 @@ export async function tryHandleAiCommand(
   const offlineMatch = /^ai\s+offline\s*$/i.exec(trimmed);
   if (offlineMatch) {
     await handleOffline();
+    return true;
+  }
+
+  const providersMatch = /^ai\s+providers\s*$/i.exec(trimmed);
+  if (providersMatch) {
+    await handleProviders();
     return true;
   }
 
@@ -415,6 +430,51 @@ async function handleOffline(): Promise<void> {
     internetReachable,
   });
   process.stdout.write(`${formatOfflineModeStatus(offline)}\n`);
+  process.exitCode = 0;
+}
+
+async function handleProviders(): Promise<void> {
+  const config = loadConfig();
+  const registry = new InferenceProviderRegistry();
+  registerBuiltinProviders(registry, {
+    features: {
+      cloudProviders: config.features.cloudProviders,
+      offlineMode: config.features.offlineMode,
+    },
+    cloudStub: {
+      apiKeyPresent: Boolean(
+        config.secrets.openaiApiKey || config.secrets.anthropicApiKey,
+      ),
+    },
+    llamaCpp: {
+      baseUrl: config.ai.endpoint,
+      modelsDir: config.paths.modelsDir,
+      manageServer: config.ai.llamaCpp.manageServer,
+      binary: config.ai.llamaCpp.binary,
+    },
+  });
+
+  const listed = registry.list();
+  const out: string[] = [`Inference providers (${listed.length}):`];
+  for (const provider of listed) {
+    const health = await provider.health();
+    const kind = provider.meta?.kind ?? "unknown";
+    const net =
+      provider.meta?.requiresNetwork === true
+        ? "network"
+        : provider.meta?.requiresNetwork === false
+          ? "local"
+          : "?";
+    const label = provider.meta?.label ?? provider.id;
+    out.push(
+      `  - ${provider.id} [${kind}/${net}] ok=${health.ok ? "yes" : "no"} — ${label}`,
+    );
+    if (!health.ok && health.message) {
+      out.push(`      ${health.message}`);
+    }
+  }
+
+  process.stdout.write(`${out.join("\n")}\n`);
   process.exitCode = 0;
 }
 
