@@ -1,8 +1,9 @@
 /**
  * Pre-install compatibility checks (Architecture/25).
- * Issues are warnings by default — Atlas displays them and may still install.
+ * Delegates to the shared Model Compatibility Checker in `install` mode
+ * (warnings preferred; storage shortage still errors).
  */
-import { detectHardware } from "../hardware-detection/detect.js";
+import { checkModelCompatibility } from "../model-compatibility/checker.js";
 import type { DetectedHardware } from "../hardware-detection/types.js";
 import type { ModelRequirements } from "../model-registry/types.js";
 import type { CompatibilityReport, CompatibilityWarning } from "./types.js";
@@ -12,86 +13,45 @@ export interface CompatibilityCheckInput {
   /** Estimated / known model size in bytes. */
   sizeBytes?: number;
   hardware?: DetectedHardware;
+  modelsDir?: string;
 }
 
 export function checkInstallCompatibility(
   input: CompatibilityCheckInput = {},
 ): CompatibilityReport {
-  const hardware = input.hardware ?? detectHardware({ skipGpuProbe: false });
-  const warnings: CompatibilityWarning[] = [];
-  const req = input.requirements ?? {};
-  const profile = hardware.profile;
+  const result = checkModelCompatibility({
+    requirements: input.requirements,
+    sizeBytes: input.sizeBytes,
+    hardware: input.hardware,
+    modelsDir: input.modelsDir,
+    mode: "install",
+  });
 
-  if (
-    typeof req.minRamGb === "number" &&
-    hardware.memory.totalGb + 1e-9 < req.minRamGb
-  ) {
-    warnings.push({
-      code: "low_ram",
-      severity: "warning",
-      message: `Model recommends ≥${req.minRamGb}GB RAM; host has ${hardware.memory.totalGb}GB.`,
-    });
-  }
+  const warnings: CompatibilityWarning[] = result.issues.map((issue) => ({
+    code:
+      issue.code === "ram_insufficient"
+        ? "low_ram"
+        : issue.code === "gpu_required"
+          ? "gpu_required"
+          : issue.code === "gpu_layers"
+            ? "gpu_layers"
+            : issue.code === "storage_insufficient" ||
+                issue.code === "storage_unknown"
+              ? "storage_tight"
+              : issue.code === "arch_unsupported"
+                ? "os_arch"
+                : issue.code === "profile_mismatch"
+                  ? "profile_size"
+                  : "other",
+    severity: issue.severity === "info" ? "warning" : issue.severity,
+    message: issue.message,
+  }));
 
-  if (req.acceleration === "gpu" && !hardware.gpuAvailable) {
-    warnings.push({
-      code: "gpu_required",
-      severity: "warning",
-      message:
-        "Model prefers GPU acceleration but no GPU was detected (CPU fallback may be slow).",
-    });
-  }
-
-  if (
-    typeof req.gpuLayersRecommended === "number" &&
-    req.gpuLayersRecommended > 0 &&
-    !hardware.gpuAvailable
-  ) {
-    warnings.push({
-      code: "gpu_layers",
-      severity: "warning",
-      message: `Model recommends ${req.gpuLayersRecommended} GPU layers; none available.`,
-    });
-  }
-
-  if (
-    input.sizeBytes !== undefined &&
-    profile.modelGuidance.maxSizeBytes !== undefined &&
-    input.sizeBytes > profile.modelGuidance.maxSizeBytes
-  ) {
-    warnings.push({
-      code: "profile_size",
-      severity: "warning",
-      message: `Model size exceeds ${profile.id} profile guidance (${profile.modelGuidance.sizeClass} models preferred).`,
-    });
-  }
-
-  if (
-    typeof req.minRamGb === "number" &&
-    req.minRamGb > profile.modelGuidance.maxMinRamGb
-  ) {
-    warnings.push({
-      code: "profile_size",
-      severity: "warning",
-      message: `Model minRam ${req.minRamGb}GB is above ${profile.id} profile cap (${profile.modelGuidance.maxMinRamGb}GB).`,
-    });
-  }
-
-  // Soft OS note for exotic arches when GPU-oriented models are installed on cpu-only.
-  if (hardware.os.arch === "ia32" && (input.sizeBytes ?? 0) > 2 * 1024 ** 3) {
-    warnings.push({
-      code: "os_arch",
-      severity: "warning",
-      message: "32-bit OS detected; large GGUF models may not load reliably.",
-    });
-  }
-
-  const hasError = warnings.some((w) => w.severity === "error");
   return {
-    ok: warnings.length === 0,
-    canProceed: !hasError,
+    ok: result.issues.length === 0,
+    canProceed: result.compatible,
     warnings,
-    hardware,
-    profileId: hardware.profileId,
+    hardware: result.hardware,
+    profileId: result.profileId,
   };
 }

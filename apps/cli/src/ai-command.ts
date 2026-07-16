@@ -1,10 +1,12 @@
 import { loadConfig } from "@atlas-ai/config";
 import {
+  checkModelCompatibility,
   createAiRuntime,
   createModelInstaller,
   createModelStorageManager,
   detectHardware,
   evaluateModelSuitability,
+  formatCompatibilityReport,
   listResourceProfiles,
   recommendModelsForProfile,
   InferenceProviderRegistry,
@@ -21,9 +23,52 @@ import {
 
 /**
  * Build an AiRuntime from Atlas config (+ env overrides via loadConfig).
+ * When `cliOptions` is provided, enables the pre-run compatibility gate using the registry.
  */
-export function createAiRuntimeFromConfig(repoRoot?: string): AiRuntime {
+export function createAiRuntimeFromConfig(
+  repoRoot?: string,
+  cliOptions?: ModelRegistryCliOptions & {
+    enforceCompatibility?: boolean;
+  },
+): AiRuntime {
   const config = loadConfig(repoRoot ? { repoRoot } : {});
+  const enforce = cliOptions?.enforceCompatibility === true;
+  let resolve:
+    | ((
+        modelId: string,
+      ) =>
+        | { requirements?: RegisteredModel["requirements"]; sizeBytes?: number }
+        | undefined)
+    | undefined;
+
+  if (enforce) {
+    const session = openModelRegistrySession(cliOptions);
+    session.registry.syncFromDisk();
+    const models = session.registry.list();
+    session.close();
+    resolve = (modelId: string) => {
+      const exact = models.find((m) => m.id === modelId);
+      if (exact) {
+        return {
+          requirements: exact.requirements,
+          sizeBytes: exact.sizeBytes,
+        };
+      }
+      const base = modelId.includes("/")
+        ? modelId.slice(modelId.lastIndexOf("/") + 1)
+        : modelId;
+      const match = models.find(
+        (m) =>
+          m.id === base ||
+          m.id.endsWith(`/${base}`) ||
+          m.id.replace(/\.gguf$/i, "") === base,
+      );
+      return match
+        ? { requirements: match.requirements, sizeBytes: match.sizeBytes }
+        : undefined;
+    };
+  }
+
   return createAiRuntime({
     registry: new InferenceProviderRegistry(),
     provider: config.ai.provider,
@@ -33,6 +78,13 @@ export function createAiRuntimeFromConfig(repoRoot?: string): AiRuntime {
     inference: config.ai.inference,
     hardware: config.ai.hardware,
     llamaCpp: config.ai.llamaCpp,
+    compatibility: enforce
+      ? {
+          enabled: true,
+          modelsDir: config.paths.modelsDir,
+          resolve,
+        }
+      : undefined,
   });
 }
 
@@ -64,6 +116,7 @@ function printAiHelp(): void {
       "  atlas ai recommend          Recommend models for this machine",
       "  atlas ai install <src> [cat] Install GGUF (file/URL) + register",
       "  atlas ai install --dry-run … Compatibility/storage check only",
+      "  atlas ai check [modelId]     Verify RAM/CPU/GPU/storage compatibility",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Load default model and generate a reply',
       "",
@@ -158,15 +211,21 @@ export async function tryHandleAiCommand(
     return true;
   }
 
+  const checkMatch = /^ai\s+check(?:\s+(\S+))?\s*$/i.exec(trimmed);
+  if (checkMatch) {
+    handleCheck(checkMatch[1], options);
+    return true;
+  }
+
   const loadMatch = /^ai\s+load(?:\s+(\S+))?\s*$/i.exec(trimmed);
   if (loadMatch) {
-    await handleLoad(loadMatch[1]);
+    await handleLoad(loadMatch[1], options);
     return true;
   }
 
   const askMatch = /^ai\s+ask\s+(.+)$/is.exec(trimmed);
   if (askMatch) {
-    await handleAsk(askMatch[1]!.trim());
+    await handleAsk(askMatch[1]!.trim(), options);
     return true;
   }
 
@@ -553,9 +612,50 @@ async function handleInstall(
   }
 }
 
-async function handleLoad(modelId?: string): Promise<void> {
+function handleCheck(
+  modelId: string | undefined,
+  options: ModelRegistryCliOptions,
+): void {
   const config = loadConfig();
-  const runtime = createAiRuntimeFromConfig();
+  const id = modelId ?? config.ai.defaultModelId;
+  const session = openModelRegistrySession(options);
+  try {
+    session.registry.syncFromDisk();
+    const registered =
+      session.registry.get(id) ??
+      session.registry
+        .list()
+        .find((m) => m.id.endsWith(`/${id}`) || m.id === id);
+
+    const result = checkModelCompatibility({
+      modelId: id,
+      requirements: registered?.requirements,
+      sizeBytes: registered?.sizeBytes,
+      modelsDir: config.paths.modelsDir,
+      mode: "runtime",
+    });
+
+    process.stdout.write(`${formatCompatibilityReport(result)}\n`);
+    if (!registered) {
+      process.stdout.write(
+        `(No registry entry for ${id} — checked with empty/partial requirements. Run atlas ai register.)\n`,
+      );
+    }
+    process.exitCode = result.compatible ? 0 : 1;
+  } finally {
+    session.close();
+  }
+}
+
+async function handleLoad(
+  modelId: string | undefined,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const config = loadConfig();
+  const runtime = createAiRuntimeFromConfig(undefined, {
+    ...options,
+    enforceCompatibility: true,
+  });
   try {
     const loaded = await runtime.loadModel(modelId ?? config.ai.defaultModelId);
     process.stdout.write(
@@ -576,7 +676,10 @@ async function handleLoad(modelId?: string): Promise<void> {
   }
 }
 
-async function handleAsk(promptRaw: string): Promise<void> {
+async function handleAsk(
+  promptRaw: string,
+  options: ModelRegistryCliOptions = { enableDatabase: true },
+): Promise<void> {
   let prompt = promptRaw;
   if (
     (prompt.startsWith('"') && prompt.endsWith('"')) ||
@@ -590,7 +693,10 @@ async function handleAsk(promptRaw: string): Promise<void> {
     return;
   }
 
-  const runtime = createAiRuntimeFromConfig();
+  const runtime = createAiRuntimeFromConfig(undefined, {
+    ...options,
+    enforceCompatibility: true,
+  });
   try {
     await runtime.loadModel();
     const result = await runtime.generate({

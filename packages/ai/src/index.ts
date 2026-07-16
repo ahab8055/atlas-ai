@@ -27,6 +27,8 @@ export {
   getDefaultAiRuntime,
   setDefaultAiRuntime,
   type AiRuntimeCreateOptions,
+  type ModelCompatibilityResolver,
+  type RuntimeCompatibilityOptions,
 } from "./runtime.js";
 
 export {
@@ -93,6 +95,19 @@ export {
   type ModelInstallerOptions,
   type StorageCheckResult,
 } from "./model-install/index.js";
+
+export {
+  assertModelCompatible,
+  checkModelCompatibility,
+  formatCompatibilityReport,
+  type CategoryCheckResult,
+  type CompatibilityIssue,
+  type CompatibilityIssueCategory,
+  type CompatibilityIssueCode,
+  type CompatibilityMode,
+  type ModelCompatibilityInput,
+  type ModelCompatibilityResult,
+} from "./model-compatibility/index.js";
 
 export {
   buildLlamaServerArgs,

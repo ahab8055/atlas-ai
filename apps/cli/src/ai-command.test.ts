@@ -25,6 +25,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai profiles");
       expect(writes.join("")).toContain("atlas ai recommend");
       expect(writes.join("")).toContain("atlas ai install");
+      expect(writes.join("")).toContain("atlas ai check");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -168,6 +169,30 @@ describe("ai CLI command", () => {
       expect(text).toContain("low");
       expect(text).toContain("balanced");
       expect(text).toContain("performance");
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("check reports compatibility sections", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand("ai check mock-general", {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toMatch(/Compatibility:/);
+      expect(text).toMatch(/RAM:/);
+      expect(text).toMatch(/CPU:/);
+      expect(text).toMatch(/GPU:/);
+      expect(text).toMatch(/Storage:/);
     } finally {
       process.stdout.write = originalWrite;
     }

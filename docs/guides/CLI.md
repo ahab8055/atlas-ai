@@ -90,6 +90,7 @@ pnpm atlas ai hardware   # classify profile + recommendations
 pnpm atlas ai profiles   # low / balanced / performance
 pnpm atlas ai recommend  # ranked models for this machine
 pnpm atlas ai install ./model.gguf general
+pnpm atlas ai check general/model
 ```
 
 ```bash

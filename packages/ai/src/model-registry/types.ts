@@ -5,8 +5,17 @@ import type { ModelFormat, ModelStatus } from "../types.js";
 
 export interface ModelRequirements {
   minRamGb?: number;
+  /** Minimum logical CPU processors. */
+  minLogicalProcessors?: number;
+  /** @deprecated Prefer minLogicalProcessors. */
+  minCpuCores?: number;
   gpuLayersRecommended?: number;
+  /** Soft preference: cpu | gpu | any. */
   acceleration?: "cpu" | "gpu" | "any";
+  /** Hard GPU requirement — blocks runtime when unmet. */
+  requireGpu?: boolean;
+  /** Minimum free disk space in GB near the model store. */
+  minFreeStorageGb?: number;
   notes?: string;
   [key: string]: unknown;
 }

@@ -26,7 +26,9 @@ Register in model registry
 Available
 ```
 
-Compatibility issues are **warnings** by default (Architecture/25 example). Hard failures: invalid GGUF, insufficient disk (error), missing source.
+Compatibility issues are **warnings** by default at install time (Architecture/25 example). Hard failures: invalid GGUF, insufficient disk (error), missing source.
+
+Before **running** a model, use [Model-Compatibility.md](./Model-Compatibility.md) — unmet RAM/GPU/CPU/storage requirements block load.
 
 ---
 
