@@ -63,4 +63,23 @@ describe("ModelRegistry", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("syncFromDisk discovers category folder models", () => {
+    const dir = join(tmpdir(), `atlas-models-cat-${Date.now()}`);
+    mkdirSync(join(dir, "coding"), { recursive: true });
+    try {
+      const gguf = Buffer.concat([
+        Buffer.from(GGUF_MAGIC),
+        Buffer.alloc(32, 0),
+      ]);
+      writeFileSync(join(dir, "coding", "coder.gguf"), gguf);
+
+      const discovered = scanInstalledGgufModels({ modelsDir: dir });
+      expect(discovered).toHaveLength(1);
+      expect(discovered[0]?.id).toBe("coding/coder");
+      expect(discovered[0]?.capabilities).toContain("coding");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

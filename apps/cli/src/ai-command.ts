@@ -1,6 +1,7 @@
 import { loadConfig } from "@atlas-ai/config";
 import {
   createAiRuntime,
+  createModelStorageManager,
   InferenceProviderRegistry,
   type AiRuntime,
   type ModelInfo,
@@ -29,6 +30,19 @@ export function createAiRuntimeFromConfig(repoRoot?: string): AiRuntime {
   });
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KiB`;
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GiB`;
+}
+
 function printAiHelp(): void {
   process.stdout.write(
     [
@@ -36,6 +50,9 @@ function printAiHelp(): void {
       "  atlas ai status              Probe local inference provider health",
       "  atlas ai models              List registered / available models",
       "  atlas ai register            Scan models/ and persist registry entries",
+      "  atlas ai storage             Ensure layout + show storage usage",
+      "  atlas ai validate            Validate stored model files",
+      "  atlas ai remove <modelId>    Delete a model file (+ unregister)",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Load default model and generate a reply',
       "",
@@ -47,8 +64,7 @@ function printAiHelp(): void {
 }
 
 /**
- * Handle `ai` / `ai status` / `ai models` / `ai register` / `ai load` / `ai ask`
- * without the request pipeline.
+ * Handle `ai` … commands without the request pipeline.
  * Returns true when the input was an AI runtime command.
  */
 export async function tryHandleAiCommand(
@@ -78,6 +94,24 @@ export async function tryHandleAiCommand(
   const registerMatch = /^ai\s+(register|sync-models)\s*$/i.exec(trimmed);
   if (registerMatch) {
     handleRegister(options);
+    return true;
+  }
+
+  const storageMatch = /^ai\s+storage\s*$/i.exec(trimmed);
+  if (storageMatch) {
+    handleStorage();
+    return true;
+  }
+
+  const validateMatch = /^ai\s+validate(?:-models)?\s*$/i.exec(trimmed);
+  if (validateMatch) {
+    handleValidate();
+    return true;
+  }
+
+  const removeMatch = /^ai\s+remove\s+(\S+)\s*$/i.exec(trimmed);
+  if (removeMatch) {
+    handleRemove(removeMatch[1]!, options);
     return true;
   }
 
@@ -147,7 +181,6 @@ function formatRegisteredModel(m: RegisteredModel): string {
 async function handleModels(options: ModelRegistryCliOptions): Promise<void> {
   const session = openModelRegistrySession(options);
   try {
-    // Keep registry up to date with on-disk installs, then query persistable metadata.
     session.registry.syncFromDisk();
     const registered = session.registry.list();
 
@@ -162,7 +195,6 @@ async function handleModels(options: ModelRegistryCliOptions): Promise<void> {
       return;
     }
 
-    // Fall back to provider enumeration when nothing is registered yet.
     const runtime = createAiRuntimeFromConfig();
     const models = await runtime.listModels();
     if (models.length === 0) {
@@ -207,6 +239,98 @@ function handleRegister(options: ModelRegistryCliOptions): void {
   } finally {
     session.close();
   }
+}
+
+function handleStorage(): void {
+  const config = loadConfig();
+  const storage = createModelStorageManager({
+    modelsDir: config.paths.modelsDir,
+  });
+  const structure = storage.ensureStructure();
+  const usage = storage.getUsage();
+
+  const lines = [
+    `Models directory: ${usage.modelsDir}`,
+    `Structure ready: ${usage.structureReady ? "yes" : "no"}`,
+    ...(structure.created.length > 0
+      ? [`Created: ${structure.created.join(", ")}`]
+      : []),
+    `Files: ${usage.fileCount} (valid=${usage.validCount}, invalid=${usage.invalidCount})`,
+    `Total size: ${formatBytes(usage.totalBytes)}`,
+    "By slot:",
+    ...(usage.bySlot.length === 0
+      ? ["  (empty — place .gguf under models/ or models/<category>/)"]
+      : usage.bySlot.map(
+          (slot) =>
+            `  ${slot.slot}: ${slot.fileCount} file(s), ${formatBytes(slot.totalBytes)} (valid=${slot.validCount}, invalid=${slot.invalidCount})`,
+        )),
+    "Layout: models/{general,coding,embeddings,speech}/ (+ root legacy)",
+  ];
+  process.stdout.write(`${lines.join("\n")}\n`);
+  process.exitCode = 0;
+}
+
+function handleValidate(): void {
+  const config = loadConfig();
+  const storage = createModelStorageManager({
+    modelsDir: config.paths.modelsDir,
+  });
+  storage.ensureStructure();
+  const models = storage.validateAll();
+
+  if (models.length === 0) {
+    process.stdout.write(
+      "No model files found under models/. Place GGUF weights then re-run.\n",
+    );
+    process.exitCode = 0;
+    return;
+  }
+
+  const lines = models.map((m) => {
+    const status = m.validation.ok ? "ok" : `INVALID (${m.validation.reason})`;
+    return `- ${m.id} [${m.slot}] ${formatBytes(m.sizeBytes)} ${status}\n  ${m.path}`;
+  });
+  const invalid = models.filter((m) => !m.validation.ok).length;
+  process.stdout.write(
+    `Validated ${models.length} model(s); invalid=${invalid}\n${lines.join("\n")}\n`,
+  );
+  process.exitCode = invalid > 0 ? 1 : 0;
+}
+
+function handleRemove(modelId: string, options: ModelRegistryCliOptions): void {
+  const config = loadConfig();
+  const storage = createModelStorageManager({
+    modelsDir: config.paths.modelsDir,
+  });
+  const result = storage.remove(modelId);
+
+  const session = openModelRegistrySession(options);
+  try {
+    if (result.removed) {
+      session.registry.remove(result.id);
+      const base = result.id.includes("/")
+        ? result.id.slice(result.id.lastIndexOf("/") + 1)
+        : result.id;
+      if (base !== result.id) {
+        session.registry.remove(base);
+      }
+    }
+  } finally {
+    session.close();
+  }
+
+  if (result.removed) {
+    process.stdout.write(
+      `Removed model ${result.id}${result.path ? ` (${result.path})` : ""}\n`,
+    );
+    process.exitCode = 0;
+    return;
+  }
+
+  process.stderr.write(
+    `Could not remove ${modelId}: ${result.reason ?? "unknown error"}\n`,
+  );
+  process.exitCode = 1;
 }
 
 async function handleLoad(modelId?: string): Promise<void> {

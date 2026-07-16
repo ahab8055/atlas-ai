@@ -18,6 +18,9 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai ask");
       expect(writes.join("")).toContain("atlas ai load");
       expect(writes.join("")).toContain("atlas ai register");
+      expect(writes.join("")).toContain("atlas ai storage");
+      expect(writes.join("")).toContain("atlas ai validate");
+      expect(writes.join("")).toContain("atlas ai remove");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -92,6 +95,29 @@ describe("ai CLI command", () => {
       expect(handled).toBe(true);
       expect(writes.join("")).toMatch(/Registered \d+ model/);
       expect(writes.join("")).toContain("memory");
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("storage reports controlled models directory usage", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand("ai storage", {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toContain("Models directory:");
+      expect(text).toContain("Structure ready:");
+      expect(text).toContain("Total size:");
+      expect(text).toContain("general");
     } finally {
       process.stdout.write = originalWrite;
     }

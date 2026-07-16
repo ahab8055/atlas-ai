@@ -56,6 +56,25 @@ export {
 } from "./model-registry/index.js";
 
 export {
+  MODEL_CATEGORIES,
+  ModelStorageManager,
+  categoryPath,
+  createModelStorageManager,
+  ensureModelDirectoryStructure,
+  isStructureReady,
+  listStoredGgufFiles,
+  resolveStoredModelPath,
+  type CategoryUsage,
+  type EnsureStructureResult,
+  type ModelCategory,
+  type ModelRemovalResult,
+  type ModelStorageManagerOptions,
+  type ModelStorageSlot,
+  type StorageUsageReport,
+  type StoredModelFile,
+} from "./model-storage/index.js";
+
+export {
   buildLlamaServerArgs,
   LlamaServerProcess,
   parseEndpoint,

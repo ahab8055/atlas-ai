@@ -2,7 +2,7 @@
 
 Catalog of installed AI models with persistent metadata (Architecture/25).
 
-Related: [Architecture/25](../Architecture/25-Model-Management-System.md), [Architecture/20](../Architecture/20-Database-Schema.md), [Local-AI-Runtime.md](./Local-AI-Runtime.md), [Database.md](./Database.md), [ADR-0024](../adr/0024-model-registry.md), [`@atlas-ai/ai`](../../packages/ai/), [`@atlas-ai/database`](../../packages/database/).
+Related: [Architecture/25](../Architecture/25-Model-Management-System.md), [Architecture/20](../Architecture/20-Database-Schema.md), [Local-AI-Runtime.md](./Local-AI-Runtime.md), [Model-Storage.md](./Model-Storage.md), [Database.md](./Database.md), [ADR-0024](../adr/0024-model-registry.md), [`@atlas-ai/ai`](../../packages/ai/), [`@atlas-ai/database`](../../packages/database/).
 
 ---
 

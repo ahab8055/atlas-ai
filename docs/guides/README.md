@@ -21,6 +21,7 @@ Practical guides for contributing to Atlas AI.
 | [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md) | Cross-package Phase 1 runtime Vitest     |
 | [Local-AI-Runtime.md](./Local-AI-Runtime.md)                     | Local inference providers + AI facade    |
 | [Model-Registry.md](./Model-Registry.md)                         | Installed model catalog + SQLite persist |
+| [Model-Storage.md](./Model-Storage.md)                           | Model dirs, usage, validate, remove      |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)             | GGUF load, CPU/GPU, inference params     |
 | [Intent-Detection.md](./Intent-Detection.md)                     | Intent categories, params, registry      |
 | [Context-Management.md](./Context-Management.md)                 | Context sources before execution         |

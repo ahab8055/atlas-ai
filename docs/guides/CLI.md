@@ -84,6 +84,8 @@ Probe the inference facade without running the request pipeline — see [Local-A
 pnpm atlas ai status
 pnpm atlas ai register   # persist GGUF metadata
 pnpm atlas ai models
+pnpm atlas ai storage    # usage + directory layout
+pnpm atlas ai validate   # detect invalid weights
 ```
 
 ```bash

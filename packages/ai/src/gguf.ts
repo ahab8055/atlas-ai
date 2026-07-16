@@ -5,6 +5,7 @@ import { existsSync, openSync, readSync, closeSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { AiRuntimeError } from "./errors.js";
+import { resolveStoredModelPath } from "./model-storage/scan.js";
 
 /** GGUF magic is ASCII "GGUF" (little-endian uint32 0x46554747). */
 export const GGUF_MAGIC = "GGUF";
@@ -60,7 +61,8 @@ export function validateGgufFile(filePath: string): GgufValidationResult {
 
 /**
  * Resolve a model id or path to an absolute/relative GGUF file under modelsDir.
- * Accepts: "qwen", "qwen.gguf", or absolute/relative path ending in .gguf.
+ * Accepts: "qwen", "qwen.gguf", "general/qwen", or absolute/relative path ending in .gguf.
+ * Searches modelsDir root and Architecture/25 category folders.
  */
 export function resolveGgufPath(
   modelIdOrPath: string,
@@ -71,20 +73,17 @@ export function resolveGgufPath(
     throw new AiRuntimeError("Empty model id", { code: "model_id_required" });
   }
 
+  const found = resolveStoredModelPath(trimmed, modelsDir);
+  if (found) {
+    return found;
+  }
+
   if (trimmed.toLowerCase().endsWith(".gguf") || path.isAbsolute(trimmed)) {
     return path.resolve(trimmed);
   }
 
   if (modelsDir) {
-    const withExt = path.resolve(modelsDir, `${trimmed}.gguf`);
-    if (existsSync(withExt)) {
-      return withExt;
-    }
-    const asIs = path.resolve(modelsDir, trimmed);
-    if (existsSync(asIs)) {
-      return asIs;
-    }
-    return withExt;
+    return path.resolve(modelsDir, `${trimmed}.gguf`);
   }
 
   return path.resolve(`${trimmed}.gguf`);

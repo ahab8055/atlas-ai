@@ -48,6 +48,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0022](./0022-ai-runtime-foundation.md)                 | AI runtime foundation                   | Accepted |
 | [0023](./0023-llamacpp-integration.md)                  | llama.cpp integration                   | Accepted |
 | [0024](./0024-model-registry.md)                        | Model registry                          | Accepted |
+| [0025](./0025-model-storage-manager.md)                 | Model storage manager                   | Accepted |
 
 ## Naming
 

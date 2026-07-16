@@ -1,13 +1,9 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import type { InferenceProvider } from "../provider.js";
 import { AiRuntimeError } from "../errors.js";
-import {
-  requireValidGguf,
-  resolveGgufPath,
-  validateGgufFile,
-} from "../gguf.js";
+import { requireValidGguf, resolveGgufPath } from "../gguf.js";
 import {
   DEFAULT_CPU_HARDWARE,
   mergeHardwareProfile,
@@ -20,6 +16,7 @@ import {
   mergeInferenceParams,
   type InferenceParams,
 } from "../inference-params.js";
+import { listStoredGgufFiles } from "../model-storage/scan.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -433,29 +430,17 @@ export class LlamaCppProvider implements InferenceProvider {
       return [];
     }
     try {
-      const entries = readdirSync(this.modelsDir);
-      return entries
-        .filter((name) => name.toLowerCase().endsWith(".gguf"))
-        .map((name) => {
-          const full = path.join(this.modelsDir!, name);
-          let sizeBytes: number | undefined;
-          try {
-            sizeBytes = statSync(full).size;
-          } catch {
-            sizeBytes = undefined;
-          }
-          const id = name.replace(/\.gguf$/i, "");
-          const valid = validateGgufFile(full).ok;
-          return {
-            id,
-            name: id,
-            format: "gguf" as const,
-            path: full,
-            provider: this.id,
-            status: (valid ? "available" : "error") as ModelInfo["status"],
-            sizeBytes,
-          };
-        });
+      return listStoredGgufFiles(this.modelsDir).map((file) => ({
+        id: file.id,
+        name: file.id,
+        format: "gguf" as const,
+        path: file.path,
+        provider: this.id,
+        status: (file.validation.ok
+          ? "available"
+          : "error") as ModelInfo["status"],
+        sizeBytes: file.sizeBytes,
+      }));
     } catch {
       return [];
     }

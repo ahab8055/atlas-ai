@@ -16,10 +16,12 @@ node_modules/
 *.db-wal
 *.db-shm
 
-# Model weights (keep directory via .gitkeep)
+# Model weights (keep directory via .gitkeep + README)
 models/**
 !models/.gitkeep
 !models/**/.gitkeep
+!models/README.md
+!models/**/README.md
 
 # Build artifacts
 dist/

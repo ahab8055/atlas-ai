@@ -1,10 +1,7 @@
 /**
  * Discover local GGUF installs and map them to registry entries.
  */
-import { readdirSync, statSync } from "node:fs";
-import path from "node:path";
-
-import { validateGgufFile } from "../gguf.js";
+import { listStoredGgufFiles } from "../model-storage/scan.js";
 import type { RegisterModelInput } from "./types.js";
 
 export interface ScanInstalledModelsOptions {
@@ -16,7 +13,7 @@ export interface ScanInstalledModelsOptions {
 }
 
 /**
- * Scan a models directory for installed GGUF files.
+ * Scan a models directory (root + category folders) for installed GGUF files.
  */
 export function scanInstalledGgufModels(
   options: ScanInstalledModelsOptions,
@@ -28,47 +25,33 @@ export function scanInstalledGgufModels(
     defaultCapabilities = ["chat", "local"],
   } = options;
 
-  let entries: string[];
-  try {
-    entries = readdirSync(modelsDir);
-  } catch {
-    return [];
-  }
-
-  const models: RegisterModelInput[] = [];
-  for (const name of entries) {
-    if (!name.toLowerCase().endsWith(".gguf")) {
-      continue;
+  return listStoredGgufFiles(modelsDir).map((file) => {
+    const capabilities = [...defaultCapabilities];
+    if (file.slot === "coding" && !capabilities.includes("coding")) {
+      capabilities.push("coding");
     }
-    const full = path.join(modelsDir, name);
-    const validation = validateGgufFile(full);
-    const id = name.replace(/\.gguf$/i, "");
-    let sizeBytes: number | undefined = validation.sizeBytes;
-    if (sizeBytes === undefined) {
-      try {
-        sizeBytes = statSync(full).size;
-      } catch {
-        sizeBytes = undefined;
-      }
+    if (file.slot === "embeddings" && !capabilities.includes("embeddings")) {
+      capabilities.push("embeddings");
+    }
+    if (file.slot === "speech" && !capabilities.includes("speech")) {
+      capabilities.push("speech");
     }
 
-    models.push({
-      id,
-      name: id,
+    return {
+      id: file.id,
+      name: file.id,
       provider,
       version: "1.0.0",
-      format: "gguf",
-      sizeBytes,
+      format: "gguf" as const,
+      sizeBytes: file.sizeBytes,
       contextLength: defaultContextLength,
-      capabilities: [...defaultCapabilities],
+      capabilities,
       requirements: {
-        acceleration: "cpu",
+        acceleration: "cpu" as const,
         notes: "GGUF via llama.cpp; GPU optional via hardware.gpuLayers",
       },
-      location: full,
-      status: validation.ok ? "available" : "error",
-    });
-  }
-
-  return models.sort((a, b) => a.id.localeCompare(b.id));
+      location: file.path,
+      status: file.validation.ok ? ("available" as const) : ("error" as const),
+    };
+  });
 }

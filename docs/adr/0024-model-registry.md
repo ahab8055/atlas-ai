@@ -27,8 +27,9 @@ Architecture/25 requires a model registry that tracks installed models and metad
 ### Negative / trade-offs
 
 - Capability filter uses SQL `LIKE` on JSON (good enough for MVP).
-- Nested `models/{general,coding}` layouts and downloads remain out of scope.
+- Nested `models/{general,coding}` layouts and downloads remain out of scope (see ADR-0025 for storage layout).
 
 ### Follow-ups
 
-- Model download / storage manager, router, richer capability indexes.
+- Model download / marketplace and richer capability indexes.
+- Model router.
