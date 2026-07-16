@@ -1,6 +1,7 @@
 import { loadConfig } from "@atlas-ai/config";
 import {
   createAiRuntime,
+  createModelInstaller,
   createModelStorageManager,
   detectHardware,
   evaluateModelSuitability,
@@ -8,6 +9,7 @@ import {
   recommendModelsForProfile,
   InferenceProviderRegistry,
   type AiRuntime,
+  type ModelCategory,
   type ModelInfo,
   type RegisteredModel,
 } from "@atlas-ai/ai";
@@ -60,6 +62,8 @@ function printAiHelp(): void {
       "  atlas ai hardware           Detect CPU/RAM/GPU/OS + active profile",
       "  atlas ai profiles           List low/balanced/performance profiles",
       "  atlas ai recommend          Recommend models for this machine",
+      "  atlas ai install <src> [cat] Install GGUF (file/URL) + register",
+      "  atlas ai install --dry-run … Compatibility/storage check only",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
       '  atlas ai ask "<prompt>"      Load default model and generate a reply',
       "",
@@ -137,6 +141,20 @@ export async function tryHandleAiCommand(
   const recommendMatch = /^ai\s+recommend\s*$/i.exec(trimmed);
   if (recommendMatch) {
     handleRecommend(options);
+    return true;
+  }
+
+  const installMatch =
+    /^ai\s+install(?:\s+(--dry-run|--check))?\s+(\S+)(?:\s+(\S+))?\s*$/i.exec(
+      trimmed,
+    );
+  if (installMatch) {
+    await handleInstall(
+      installMatch[2]!,
+      installMatch[3],
+      Boolean(installMatch[1]),
+      options,
+    );
     return true;
   }
 
@@ -475,6 +493,61 @@ function handleRecommend(options: ModelRegistryCliOptions): void {
     ];
     process.stdout.write(`${lines.join("\n")}\n`);
     process.exitCode = 0;
+  } finally {
+    session.close();
+  }
+}
+
+async function handleInstall(
+  source: string,
+  categoryRaw: string | undefined,
+  dryRun: boolean,
+  options: ModelRegistryCliOptions,
+): Promise<void> {
+  const config = loadConfig();
+  const category = (categoryRaw ?? "general") as ModelCategory;
+  const session = openModelRegistrySession(options);
+  try {
+    const installer = createModelInstaller({
+      modelsDir: config.paths.modelsDir,
+      registry: session.registry,
+      defaultProvider:
+        config.ai.provider === "mock" ? "llamacpp" : config.ai.provider,
+      defaultContextLength: config.ai.hardware.contextSize,
+    });
+
+    const result = await installer.install({
+      source,
+      category,
+      dryRun,
+      proceedOnWarnings: true,
+    });
+
+    const warningLines = result.warnings.map(
+      (w) => `  [${w.severity}] ${w.message}`,
+    );
+    const lines = [
+      result.ok ? "Install: OK" : "Install: FAILED",
+      `Source: ${result.source} (${result.sourceKind})`,
+      ...(result.modelId ? [`Model id: ${result.modelId}`] : []),
+      ...(result.destination ? [`Destination: ${result.destination}`] : []),
+      `Profile: ${result.compatibility.profileId}`,
+      `Storage: ${result.storage.message}`,
+      ...(warningLines.length > 0
+        ? ["Compatibility warnings:", ...warningLines]
+        : ["Compatibility warnings: (none)"]),
+      result.message,
+      ...(result.registered
+        ? [`Registered: ${result.registered.id} [${result.registered.status}]`]
+        : []),
+    ];
+    process.stdout.write(`${lines.join("\n")}\n`);
+    process.exitCode = result.ok ? (result.warnings.length > 0 ? 0 : 0) : 1;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
   } finally {
     session.close();
   }

@@ -24,6 +24,7 @@ Practical guides for contributing to Atlas AI.
 | [Model-Storage.md](./Model-Storage.md)                           | Model dirs, usage, validate, remove        |
 | [Hardware-Detection.md](./Hardware-Detection.md)                 | CPU/RAM/GPU/OS detect + resource tiers     |
 | [Hardware-Profiles.md](./Hardware-Profiles.md)                   | low/balanced/performance + recommendations |
+| [Model-Installation.md](./Model-Installation.md)                 | Install GGUF + compat/storage + register   |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)             | GGUF load, CPU/GPU, inference params       |
 | [Intent-Detection.md](./Intent-Detection.md)                     | Intent categories, params, registry        |
 | [Context-Management.md](./Context-Management.md)                 | Context sources before execution           |

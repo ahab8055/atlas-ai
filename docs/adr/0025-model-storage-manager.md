@@ -31,5 +31,5 @@ Architecture/25 defines a Model Storage Manager for local weight files: director
 
 ### Follow-ups
 
-- Installation system (download + compatibility checks).
 - Optional checksum metadata files.
+- Progress events for large downloads (see ADR-0028).

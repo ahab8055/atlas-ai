@@ -51,6 +51,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0025](./0025-model-storage-manager.md)                 | Model storage manager                   | Accepted |
 | [0026](./0026-hardware-detection.md)                    | Hardware detection system               | Accepted |
 | [0027](./0027-hardware-profile-management.md)           | Hardware profile management             | Accepted |
+| [0028](./0028-model-installation-workflow.md)           | Model installation workflow             | Accepted |
 
 ## Naming
 

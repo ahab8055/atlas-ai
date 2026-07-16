@@ -62,4 +62,4 @@ const available = registry.list({ status: "available", capability: "chat" });
 
 ## Out of scope (this story)
 
-Model download / marketplace, auto GPU detection, model router, embeddings manager.
+Model marketplace UI, auto GPU detection polish, model router, embeddings manager.

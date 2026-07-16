@@ -75,6 +75,26 @@ export {
 } from "./model-storage/index.js";
 
 export {
+  ModelInstaller,
+  checkInstallCompatibility,
+  checkInstallStorage,
+  createModelInstaller,
+  downloadModelFile,
+  getFileSizeBytes,
+  getFreeDiskBytes,
+  installModel,
+  isHttpUrl,
+  type CompatibilityCheckInput,
+  type CompatibilityReport,
+  type CompatibilityWarning,
+  type InstallModelInput,
+  type InstallModelResult,
+  type InstallSourceKind,
+  type ModelInstallerOptions,
+  type StorageCheckResult,
+} from "./model-install/index.js";
+
+export {
   buildLlamaServerArgs,
   LlamaServerProcess,
   parseEndpoint,

@@ -14,7 +14,7 @@ Related: [Architecture/25](../Architecture/25-Model-Management-System.md), [Mode
 - **Validate** GGUF magic headers.
 - **Remove** model files safely (never deletes outside `models/`).
 
-Download / marketplace install is a separate story.
+Download / marketplace install is a separate story — use [Model-Installation.md](./Model-Installation.md) to install a known GGUF path/URL.
 
 ---
 
