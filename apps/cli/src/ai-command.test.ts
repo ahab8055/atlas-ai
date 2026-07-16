@@ -26,6 +26,7 @@ describe("ai CLI command", () => {
       expect(writes.join("")).toContain("atlas ai recommend");
       expect(writes.join("")).toContain("atlas ai install");
       expect(writes.join("")).toContain("atlas ai check");
+      expect(writes.join("")).toContain("atlas ai route");
     } finally {
       process.stdout.write = originalWrite;
     }
@@ -193,6 +194,28 @@ describe("ai CLI command", () => {
       expect(text).toMatch(/CPU:/);
       expect(text).toMatch(/GPU:/);
       expect(text).toMatch(/Storage:/);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  it("route explains task analysis and selection", async () => {
+    const writes: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const handled = await tryHandleAiCommand('ai route "hello there"', {
+        enableDatabase: false,
+      });
+      expect(handled).toBe(true);
+      const text = writes.join("");
+      expect(text).toMatch(/Routing:/);
+      expect(text).toMatch(/Complexity:/);
+      expect(text).toMatch(/Reasons:/);
     } finally {
       process.stdout.write = originalWrite;
     }

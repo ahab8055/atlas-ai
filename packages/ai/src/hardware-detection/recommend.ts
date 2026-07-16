@@ -44,6 +44,8 @@ export interface RecommendModelsOptions {
   limit?: number;
   /** Include models that only partially match (lower score). Default false. */
   includeMarginal?: boolean;
+  /** Override profile default size class (e.g. task router complexity). */
+  preferredSizeClass?: ModelSizeClass;
 }
 
 function sizeClassScore(
@@ -145,7 +147,8 @@ export function recommendModelsForProfile<T extends RecommendableModel>(
     }
 
     const modelClass = sizeClassFromBytes(model.sizeBytes);
-    const sizePart = sizeClassScore(modelClass, guidance.sizeClass);
+    const wantedSizeClass = options.preferredSizeClass ?? guidance.sizeClass;
+    const sizePart = sizeClassScore(modelClass, wantedSizeClass);
     score += sizePart.score;
     if (sizePart.reason) {
       reasons.push(sizePart.reason);

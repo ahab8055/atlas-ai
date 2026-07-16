@@ -91,6 +91,8 @@ pnpm atlas ai profiles   # low / balanced / performance
 pnpm atlas ai recommend  # ranked models for this machine
 pnpm atlas ai install ./model.gguf general
 pnpm atlas ai check general/model
+pnpm atlas ai route "Summarize this note"
+pnpm atlas ai ask "hello"
 ```
 
 ```bash

@@ -7,6 +7,9 @@ import {
 } from "./model-compatibility/checker.js";
 import type { ModelCompatibilityResult } from "./model-compatibility/types.js";
 import type { ModelRequirements } from "./model-registry/types.js";
+import type { RegisteredModel } from "./model-registry/types.js";
+import { routeModel } from "./model-router/router.js";
+import type { RoutingDecision } from "./model-router/types.js";
 import type { InferenceProvider } from "./provider.js";
 import {
   getDefaultProviderRegistry,
@@ -40,6 +43,15 @@ export interface RuntimeCompatibilityOptions {
   skipGpuProbe?: boolean;
 }
 
+export interface RuntimeRouterOptions {
+  /** When true, generate/stream without modelId will auto-route. */
+  enabled?: boolean;
+  /** Catalog of registered models for routing decisions. */
+  listModels?: () => RegisteredModel[];
+  fallbackModelId?: string;
+  skipGpuProbe?: boolean;
+}
+
 export interface AiRuntimeCreateOptions extends AiRuntimeOptions {
   registry?: InferenceProviderRegistry;
   logger?: Logger;
@@ -47,6 +59,8 @@ export interface AiRuntimeCreateOptions extends AiRuntimeOptions {
   providers?: InferenceProvider[];
   /** Pre-run compatibility gate (Architecture/25). */
   compatibility?: RuntimeCompatibilityOptions;
+  /** Automatic model selection (Architecture/25 Model Router). */
+  router?: RuntimeRouterOptions;
 }
 
 /**
@@ -60,6 +74,7 @@ export class AiRuntime {
   private readonly logger?: Logger;
   private readonly defaultModelId?: string;
   private readonly compatibility?: RuntimeCompatibilityOptions;
+  private readonly router?: RuntimeRouterOptions;
 
   constructor(
     provider: InferenceProvider,
@@ -68,6 +83,7 @@ export class AiRuntime {
       logger?: Logger;
       defaultModelId?: string;
       compatibility?: RuntimeCompatibilityOptions;
+      router?: RuntimeRouterOptions;
     },
   ) {
     this.provider = provider;
@@ -75,6 +91,7 @@ export class AiRuntime {
     this.logger = options.logger;
     this.defaultModelId = options.defaultModelId;
     this.compatibility = options.compatibility;
+    this.router = options.router;
   }
 
   getProviderId(): string {
@@ -102,9 +119,6 @@ export class AiRuntime {
     return this.provider.listModels();
   }
 
-  /**
-   * Check host compatibility for a model without loading it.
-   */
   checkCompatibility(modelId?: string): ModelCompatibilityResult {
     const id = modelId ?? this.defaultModelId;
     if (!id) {
@@ -121,6 +135,25 @@ export class AiRuntime {
       modelsDir: this.compatibility?.modelsDir,
       mode: "runtime",
       skipGpuProbe: this.compatibility?.skipGpuProbe,
+    });
+  }
+
+  /**
+   * Select a model for a task (explainable routing). Manual preferredModelId skips auto.
+   */
+  route(input: {
+    prompt?: string;
+    messages?: GenerateRequest["messages"];
+    preferredModelId?: string;
+  }): RoutingDecision {
+    const catalog = this.router?.listModels?.() ?? [];
+    return routeModel({
+      ...input,
+      models: catalog,
+      preferredModelId: input.preferredModelId,
+      mode: input.preferredModelId ? "manual" : "auto",
+      fallbackModelId: this.router?.fallbackModelId ?? this.defaultModelId,
+      skipGpuProbe: this.router?.skipGpuProbe,
     });
   }
 
@@ -153,9 +186,10 @@ export class AiRuntime {
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
-    await this.ensureLoaded(req.modelId);
+    const modelId = await this.resolveModelId(req);
+    await this.ensureLoaded(modelId);
     try {
-      return await this.provider.generate(req);
+      return await this.provider.generate({ ...req, modelId });
     } catch (error) {
       this.logger?.error("AI generate failed", {
         category: "ai",
@@ -167,8 +201,40 @@ export class AiRuntime {
   }
 
   async *stream(req: GenerateRequest): AsyncGenerator<StreamChunk> {
-    await this.ensureLoaded(req.modelId);
-    yield* this.provider.stream(req);
+    const modelId = await this.resolveModelId(req);
+    await this.ensureLoaded(modelId);
+    yield* this.provider.stream({ ...req, modelId });
+  }
+
+  private async resolveModelId(
+    req: GenerateRequest,
+  ): Promise<string | undefined> {
+    if (req.modelId) {
+      return req.modelId;
+    }
+    if (
+      this.router?.enabled !== false &&
+      this.router?.listModels &&
+      req.messages &&
+      req.messages.length > 0
+    ) {
+      const decision = this.route({
+        messages: req.messages,
+      });
+      if (decision.modelId) {
+        this.logger?.info("AI model routed", {
+          category: "ai",
+          context: {
+            modelId: decision.modelId,
+            taskType: decision.task.taskType,
+            complexity: decision.task.complexity,
+            mode: decision.mode,
+          },
+        });
+        return decision.modelId;
+      }
+    }
+    return undefined;
   }
 
   private enforceCompatibility(modelId: string): void {
@@ -249,6 +315,7 @@ export function createAiRuntime(
     logger: options.logger,
     defaultModelId: options.defaultModelId,
     compatibility,
+    router: options.router,
   });
 }
 

@@ -53,6 +53,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0027](./0027-hardware-profile-management.md)           | Hardware profile management             | Accepted |
 | [0028](./0028-model-installation-workflow.md)           | Model installation workflow             | Accepted |
 | [0029](./0029-model-compatibility-checker.md)           | Model compatibility checker             | Accepted |
+| [0030](./0030-model-router.md)                          | Model router system                     | Accepted |
 
 ## Naming
 

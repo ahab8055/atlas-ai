@@ -29,6 +29,7 @@ export {
   type AiRuntimeCreateOptions,
   type ModelCompatibilityResolver,
   type RuntimeCompatibilityOptions,
+  type RuntimeRouterOptions,
 } from "./runtime.js";
 
 export {
@@ -168,6 +169,21 @@ export {
   type ResourceProfileId,
   type SystemProbe,
 } from "./hardware-detection/index.js";
+
+export {
+  ModelRouter,
+  analyzeTask,
+  createModelRouter,
+  formatRoutingDecision,
+  routeModel,
+  type ComplexityLevel,
+  type ModelRouterOptions,
+  type RouteModelInput,
+  type RoutingDecision,
+  type RoutingMode,
+  type TaskAnalysis,
+  type TaskType,
+} from "./model-router/index.js";
 
 export {
   DEFAULT_INFERENCE_PARAMS,

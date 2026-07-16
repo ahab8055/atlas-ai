@@ -7,8 +7,10 @@ import {
   detectHardware,
   evaluateModelSuitability,
   formatCompatibilityReport,
+  formatRoutingDecision,
   listResourceProfiles,
   recommendModelsForProfile,
+  routeModel,
   InferenceProviderRegistry,
   type AiRuntime,
   type ModelCategory,
@@ -29,10 +31,12 @@ export function createAiRuntimeFromConfig(
   repoRoot?: string,
   cliOptions?: ModelRegistryCliOptions & {
     enforceCompatibility?: boolean;
+    enableRouter?: boolean;
   },
 ): AiRuntime {
   const config = loadConfig(repoRoot ? { repoRoot } : {});
   const enforce = cliOptions?.enforceCompatibility === true;
+  const enableRouter = cliOptions?.enableRouter !== false;
   let resolve:
     | ((
         modelId: string,
@@ -40,33 +44,47 @@ export function createAiRuntimeFromConfig(
         | { requirements?: RegisteredModel["requirements"]; sizeBytes?: number }
         | undefined)
     | undefined;
+  let listModels: (() => RegisteredModel[]) | undefined;
 
-  if (enforce) {
-    const session = openModelRegistrySession(cliOptions);
-    session.registry.syncFromDisk();
-    const models = session.registry.list();
-    session.close();
-    resolve = (modelId: string) => {
-      const exact = models.find((m) => m.id === modelId);
-      if (exact) {
-        return {
-          requirements: exact.requirements,
-          sizeBytes: exact.sizeBytes,
-        };
+  if (enforce || enableRouter) {
+    const openCatalog = (): RegisteredModel[] => {
+      const session = openModelRegistrySession(cliOptions);
+      try {
+        session.registry.syncFromDisk();
+        return session.registry.list();
+      } finally {
+        session.close();
       }
-      const base = modelId.includes("/")
-        ? modelId.slice(modelId.lastIndexOf("/") + 1)
-        : modelId;
-      const match = models.find(
-        (m) =>
-          m.id === base ||
-          m.id.endsWith(`/${base}`) ||
-          m.id.replace(/\.gguf$/i, "") === base,
-      );
-      return match
-        ? { requirements: match.requirements, sizeBytes: match.sizeBytes }
-        : undefined;
     };
+
+    if (enableRouter) {
+      listModels = openCatalog;
+    }
+
+    if (enforce) {
+      const models = openCatalog();
+      resolve = (modelId: string) => {
+        const exact = models.find((m) => m.id === modelId);
+        if (exact) {
+          return {
+            requirements: exact.requirements,
+            sizeBytes: exact.sizeBytes,
+          };
+        }
+        const base = modelId.includes("/")
+          ? modelId.slice(modelId.lastIndexOf("/") + 1)
+          : modelId;
+        const match = models.find(
+          (m) =>
+            m.id === base ||
+            m.id.endsWith(`/${base}`) ||
+            m.id.replace(/\.gguf$/i, "") === base,
+        );
+        return match
+          ? { requirements: match.requirements, sizeBytes: match.sizeBytes }
+          : undefined;
+      };
+    }
   }
 
   return createAiRuntime({
@@ -85,6 +103,14 @@ export function createAiRuntimeFromConfig(
           resolve,
         }
       : undefined,
+    router:
+      enableRouter && listModels
+        ? {
+            enabled: true,
+            listModels,
+            fallbackModelId: config.ai.defaultModelId,
+          }
+        : undefined,
   });
 }
 
@@ -117,8 +143,10 @@ function printAiHelp(): void {
       "  atlas ai install <src> [cat] Install GGUF (file/URL) + register",
       "  atlas ai install --dry-run … Compatibility/storage check only",
       "  atlas ai check [modelId]     Verify RAM/CPU/GPU/storage compatibility",
+      '  atlas ai route "<prompt>"    Explain automatic model selection for a task',
+      "  atlas ai route --model <id> … Manual model selection (explain only)",
       "  atlas ai load [modelId]      Validate/load GGUF (default from config)",
-      '  atlas ai ask "<prompt>"      Load default model and generate a reply',
+      '  atlas ai ask "<prompt>"      Route + load model and generate a reply',
       "",
       "Config: ai.provider, ai.endpoint, ai.defaultModelId, ai.inference, ai.hardware, ai.llamaCpp",
       "Env: ATLAS_AI_PROVIDER, ATLAS_AI_ENDPOINT, ATLAS_AI_DEFAULT_MODEL,",
@@ -214,6 +242,14 @@ export async function tryHandleAiCommand(
   const checkMatch = /^ai\s+check(?:\s+(\S+))?\s*$/i.exec(trimmed);
   if (checkMatch) {
     handleCheck(checkMatch[1], options);
+    return true;
+  }
+
+  const routeMatch = /^ai\s+route(?:\s+--model\s+(\S+))?\s+(.+)$/is.exec(
+    trimmed,
+  );
+  if (routeMatch) {
+    handleRoute(routeMatch[2]!.trim(), routeMatch[1], options);
     return true;
   }
 
@@ -647,6 +683,47 @@ function handleCheck(
   }
 }
 
+function stripQuotedPrompt(promptRaw: string): string {
+  let prompt = promptRaw.trim();
+  if (
+    (prompt.startsWith('"') && prompt.endsWith('"')) ||
+    (prompt.startsWith("'") && prompt.endsWith("'"))
+  ) {
+    prompt = prompt.slice(1, -1);
+  }
+  return prompt;
+}
+
+function handleRoute(
+  promptRaw: string,
+  manualModelId: string | undefined,
+  options: ModelRegistryCliOptions,
+): void {
+  const config = loadConfig();
+  const prompt = stripQuotedPrompt(promptRaw);
+  if (!prompt) {
+    process.stderr.write('Usage: atlas ai route "<prompt>"\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  const session = openModelRegistrySession(options);
+  try {
+    session.registry.syncFromDisk();
+    const decision = routeModel({
+      prompt,
+      models: session.registry.list(),
+      preferredModelId: manualModelId,
+      mode: manualModelId ? "manual" : "auto",
+      fallbackModelId: config.ai.defaultModelId,
+    });
+    process.stdout.write(`${formatRoutingDecision(decision)}\n`);
+    process.exitCode = decision.routed ? 0 : 1;
+  } finally {
+    session.close();
+  }
+}
+
 async function handleLoad(
   modelId: string | undefined,
   options: ModelRegistryCliOptions,
@@ -680,13 +757,7 @@ async function handleAsk(
   promptRaw: string,
   options: ModelRegistryCliOptions = { enableDatabase: true },
 ): Promise<void> {
-  let prompt = promptRaw;
-  if (
-    (prompt.startsWith('"') && prompt.endsWith('"')) ||
-    (prompt.startsWith("'") && prompt.endsWith("'"))
-  ) {
-    prompt = prompt.slice(1, -1);
-  }
+  const prompt = stripQuotedPrompt(promptRaw);
   if (!prompt) {
     process.stderr.write('Usage: atlas ai ask "<prompt>"\n');
     process.exitCode = 2;
@@ -696,9 +767,13 @@ async function handleAsk(
   const runtime = createAiRuntimeFromConfig(undefined, {
     ...options,
     enforceCompatibility: true,
+    enableRouter: true,
   });
   try {
-    await runtime.loadModel();
+    const decision = runtime.route({ prompt });
+    if (process.env.ATLAS_CLI_DEBUG === "1") {
+      process.stderr.write(`${formatRoutingDecision(decision)}\n`);
+    }
     const result = await runtime.generate({
       messages: [{ role: "user", content: prompt }],
     });
