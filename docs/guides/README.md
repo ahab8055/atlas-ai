@@ -39,6 +39,7 @@ Practical guides for contributing to Atlas AI.
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)                               | GGUF load, CPU/GPU, inference params       |
 | [Intent-Detection.md](./Intent-Detection.md)                                       | Intent categories, params, registry        |
 | [Context-Management.md](./Context-Management.md)                                   | Context sources before execution           |
+| [Memory-Architecture.md](./Memory-Architecture.md)                                 | Typed memory providers + MemoryManager     |
 | [Task-Planning.md](./Task-Planning.md)                                             | Single- and multi-step execution plans     |
 | [Execution-Controller.md](./Execution-Controller.md)                               | Lifecycle, progress, failures              |
 | [Tool-Registry.md](./Tool-Registry.md)                                             | Tool metadata, discovery, versioning       |

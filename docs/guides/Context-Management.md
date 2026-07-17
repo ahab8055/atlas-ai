@@ -2,7 +2,7 @@
 
 Collects relevant context **before** planning and execution so responses can be personalized and accurate.
 
-Related: [Request-Pipeline.md](./Request-Pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md) (Context Manager), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [ADR-0009](../adr/0009-context-management.md), [`@atlas-ai/core`](../../packages/core/).
+Related: [Request-Pipeline.md](./Request-Pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md) (Context Manager), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [Memory-Architecture.md](./Memory-Architecture.md), [ADR-0009](../adr/0009-context-management.md), [ADR-0040](../adr/0040-memory-architecture-foundation.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/memory`](../../packages/memory/).
 
 ---
 
@@ -22,17 +22,17 @@ recordAssistant(...)  (conversation continuity)
 
 ## Context structure (`LoadedContext`)
 
-| Field                 | Source                            | MVP                                   |
-| --------------------- | --------------------------------- | ------------------------------------- |
-| `conversation`        | Current session turns             | In-memory store                       |
-| `preferences`         | User preferences                  | Defaults (`preferredEditor: VS Code`) |
-| `activeTasks`         | Active / working tasks            | In-memory store                       |
-| `systemState`         | Runtime / platform / input source | Live `process` info                   |
-| `project`             | Project context                   | Stub (`Atlas AI`)                     |
-| `memories`            | Future `@atlas-ai/memory`         | Empty + swappable provider            |
-| `knowledge`           | Future knowledge graph            | Empty + swappable provider            |
-| `sources`             | Provider ids that ran             | Always listed                         |
-| `conversationSummary` | Compact log/plan string           | Derived from turns                    |
+| Field                 | Source                            | MVP                                                                                   |
+| --------------------- | --------------------------------- | ------------------------------------------------------------------------------------- |
+| `conversation`        | Current session turns             | In-memory store                                                                       |
+| `preferences`         | User preferences                  | Defaults (`preferredEditor: VS Code`)                                                 |
+| `activeTasks`         | Active / working tasks            | In-memory store                                                                       |
+| `systemState`         | Runtime / platform / input source | Live `process` info                                                                   |
+| `project`             | Project context                   | Stub (`Atlas AI`)                                                                     |
+| `memories`            | `@atlas-ai/memory` (foundation)   | Empty in pipeline until wired; see [Memory-Architecture.md](./Memory-Architecture.md) |
+| `knowledge`           | Future knowledge graph            | Empty + swappable provider                                                            |
+| `sources`             | Provider ids that ran             | Always listed                                                                         |
+| `conversationSummary` | Compact log/plan string           | Derived from turns                                                                    |
 
 ---
 
@@ -68,7 +68,7 @@ const result = handleRequest(
 );
 ```
 
-Later, `@atlas-ai/memory` and the knowledge graph implement `ContextProvider` (or the `MemoryRetriever` / `KnowledgeRetriever` ports) without changing the pipeline shape.
+`@atlas-ai/memory` foundation exists ([Memory-Architecture.md](./Memory-Architecture.md)); wire retrieval into `createMemoryProvider` next. Knowledge graph still implements `ContextProvider` / `KnowledgeRetriever` without changing the pipeline shape.
 
 ---
 
