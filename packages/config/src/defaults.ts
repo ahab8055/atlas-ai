@@ -41,4 +41,10 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       binary: "llama-server",
     },
   },
+  memory: {
+    shortTerm: {
+      maxEntries: 50,
+      ttlMs: 1_800_000,
+    },
+  },
 };

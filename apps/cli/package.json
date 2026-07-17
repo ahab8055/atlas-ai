@@ -20,7 +20,8 @@
     "@atlas-ai/config": "workspace:*",
     "@atlas-ai/core": "workspace:*",
     "@atlas-ai/database": "workspace:*",
-    "@atlas-ai/logging": "workspace:*"
+    "@atlas-ai/logging": "workspace:*",
+    "@atlas-ai/memory": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "22",

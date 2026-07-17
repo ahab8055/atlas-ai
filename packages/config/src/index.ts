@@ -7,6 +7,8 @@ export type {
   AtlasConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
+  AtlasMemoryConfig,
+  AtlasMemoryShortTermConfig,
   AtlasPathsConfig,
   AtlasSecrets,
   AtlasServerConfig,

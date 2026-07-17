@@ -19,6 +19,7 @@ export {
   InMemoryConversationStore,
   summarizeConversation,
   type ConversationStore,
+  type InMemoryConversationStoreOptions,
 } from "./conversation-store.js";
 
 export {

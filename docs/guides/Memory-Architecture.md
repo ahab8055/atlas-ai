@@ -78,6 +78,9 @@ await memory.store({
 await memory.clear("working", { sessionId: "sess-1" });
 ```
 
+For conversation turns with a configurable window and TTL, use
+[Short-Term-Memory.md](./Short-Term-Memory.md) (`createShortTermMemory`).
+
 ---
 
 ## Adding a provider

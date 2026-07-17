@@ -1,7 +1,10 @@
+import {
+  createShortTermMemory,
+  type ShortTermMemoryOptions,
+} from "@atlas-ai/memory";
 import type { DetectedIntent } from "../intent/types.js";
 import type { NormalizedRequest } from "../types.js";
 import {
-  InMemoryConversationStore,
   summarizeConversation,
   type ConversationStore,
 } from "./conversation-store.js";
@@ -29,6 +32,8 @@ import type {
 
 export interface ContextManagerOptions {
   conversationStore?: ConversationStore;
+  /** Options when creating default ShortTermMemory-backed store. */
+  shortTermOptions?: ShortTermMemoryOptions;
   preferenceStore?: PreferenceStore;
   taskStore?: ActiveTaskStore;
   /** Extra / replacement providers (by id). */
@@ -46,7 +51,10 @@ export class ContextManager {
 
   constructor(options: ContextManagerOptions = {}) {
     this.conversationStore =
-      options.conversationStore ?? new InMemoryConversationStore();
+      options.conversationStore ??
+      (createShortTermMemory(
+        options.shortTermOptions,
+      ).toConversationStore() as ConversationStore);
     this.preferenceStore =
       options.preferenceStore ?? new InMemoryPreferenceStore();
     this.taskStore = options.taskStore ?? new InMemoryActiveTaskStore();

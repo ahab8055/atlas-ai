@@ -2,7 +2,7 @@ import type { ConversationTurn } from "./types.js";
 
 /**
  * Session-scoped conversation history.
- * Default is in-memory; desktop/memory packages can supply a durable store later.
+ * Default is in-memory; ShortTermMemory / desktop can supply alternatives.
  */
 export interface ConversationStore {
   getTurns(sessionId: string): ConversationTurn[];
@@ -10,19 +10,40 @@ export interface ConversationStore {
   clear(sessionId: string): void;
 }
 
-const MAX_TURNS_PER_SESSION = 50;
+export interface InMemoryConversationStoreOptions {
+  /** Max turns retained per session (oldest dropped first). Default 50. */
+  maxTurns?: number;
+  /** Drop turns older than this many ms; 0 disables TTL. Default 30 minutes. */
+  ttlMs?: number;
+  /** Clock for tests / deterministic expiry. */
+  now?: () => number;
+}
+
+const DEFAULT_MAX_TURNS = 50;
+const DEFAULT_TTL_MS = 1_800_000;
 
 export class InMemoryConversationStore implements ConversationStore {
   private readonly sessions = new Map<string, ConversationTurn[]>();
+  private readonly maxTurns: number;
+  private readonly ttlMs: number;
+  private readonly now: () => number;
+
+  constructor(options: InMemoryConversationStoreOptions = {}) {
+    this.maxTurns = Math.max(1, options.maxTurns ?? DEFAULT_MAX_TURNS);
+    this.ttlMs = Math.max(0, options.ttlMs ?? DEFAULT_TTL_MS);
+    this.now = options.now ?? (() => Date.now());
+  }
 
   getTurns(sessionId: string): ConversationTurn[] {
+    this.pruneSession(sessionId);
     return [...(this.sessions.get(sessionId) ?? [])];
   }
 
   append(sessionId: string, turn: ConversationTurn): void {
+    this.pruneSession(sessionId);
     const existing = this.sessions.get(sessionId) ?? [];
     existing.push(turn);
-    while (existing.length > MAX_TURNS_PER_SESSION) {
+    while (existing.length > this.maxTurns) {
       existing.shift();
     }
     this.sessions.set(sessionId, existing);
@@ -30,6 +51,23 @@ export class InMemoryConversationStore implements ConversationStore {
 
   clear(sessionId: string): void {
     this.sessions.delete(sessionId);
+  }
+
+  private pruneSession(sessionId: string): void {
+    const turns = this.sessions.get(sessionId);
+    if (!turns || turns.length === 0 || this.ttlMs <= 0) {
+      return;
+    }
+    const cutoff = this.now() - this.ttlMs;
+    const kept = turns.filter((t) => {
+      const ts = Date.parse(t.at);
+      return Number.isFinite(ts) ? ts >= cutoff : true;
+    });
+    if (kept.length === 0) {
+      this.sessions.delete(sessionId);
+    } else {
+      this.sessions.set(sessionId, kept);
+    }
   }
 }
 

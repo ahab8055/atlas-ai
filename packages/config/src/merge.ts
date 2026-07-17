@@ -6,6 +6,8 @@ import type {
   AtlasAppConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
+  AtlasMemoryConfig,
+  AtlasMemoryShortTermConfig,
   AtlasPathsConfig,
   AtlasServerConfig,
   LogLevel,
@@ -190,6 +192,36 @@ function mergeAi(base: AtlasAiConfig, patch: unknown): AtlasAiConfig {
   };
 }
 
+function mergeMemoryShortTerm(
+  base: AtlasMemoryShortTermConfig,
+  patch: unknown,
+): AtlasMemoryShortTermConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    maxEntries: Math.max(
+      1,
+      Math.floor(asNumber(patch.maxEntries, base.maxEntries)),
+    ),
+    ttlMs: Math.max(0, Math.floor(asNumber(patch.ttlMs, base.ttlMs))),
+  };
+}
+
+function mergeMemory(
+  base: AtlasMemoryConfig,
+  patch: unknown,
+): AtlasMemoryConfig {
+  if (!isRecord(patch)) {
+    return {
+      shortTerm: { ...base.shortTerm },
+    };
+  }
+  return {
+    shortTerm: mergeMemoryShortTerm(base.shortTerm, patch.shortTerm),
+  };
+}
+
 /** Deep-merge a partial JSON object onto defaults (non-secret fields only). */
 export function mergeAppConfig(
   base: AtlasAppConfig,
@@ -202,6 +234,7 @@ export function mergeAppConfig(
       server: { ...base.server },
       features: { ...base.features },
       ai: mergeAi(base.ai, undefined),
+      memory: mergeMemory(base.memory, undefined),
     };
   }
 
@@ -212,6 +245,7 @@ export function mergeAppConfig(
     server: mergeServer(base.server, patch.server),
     features: mergeFeatures(base.features, patch.features),
     ai: mergeAi(base.ai, patch.ai),
+    memory: mergeMemory(base.memory, patch.memory),
   };
 }
 
@@ -297,6 +331,18 @@ export function applyEnvOverrides(
             ? envVars.ATLAS_AI_MANAGE_SERVER === "true"
             : config.ai.llamaCpp.manageServer,
         binary: envVars.ATLAS_AI_LLAMA_BINARY ?? config.ai.llamaCpp.binary,
+      },
+    },
+    memory: {
+      shortTerm: {
+        maxEntries:
+          envVars.ATLAS_MEMORY_SHORT_TERM_MAX_ENTRIES !== undefined
+            ? Number(envVars.ATLAS_MEMORY_SHORT_TERM_MAX_ENTRIES)
+            : config.memory.shortTerm.maxEntries,
+        ttlMs:
+          envVars.ATLAS_MEMORY_SHORT_TERM_TTL_MS !== undefined
+            ? Number(envVars.ATLAS_MEMORY_SHORT_TERM_TTL_MS)
+            : config.memory.shortTerm.ttlMs,
       },
     },
   });

@@ -110,4 +110,65 @@ describe("context management", () => {
     expect(context.memories[0]?.content).toContain("dark mode");
     expect(context.sources).toContain("memory");
   });
+
+  it("honors configurable maxTurns on conversation store", () => {
+    const store = new InMemoryConversationStore({ maxTurns: 2, ttlMs: 0 });
+    const manager = new ContextManager({ conversationStore: store });
+
+    for (const text of ["one", "two", "three"]) {
+      const req = normalizeRequest({
+        source: "cli",
+        rawInput: text,
+        sessionId: "trim-1",
+      });
+      loadContext(req, detectIntent(req), { manager });
+    }
+
+    const turns = store.getTurns("trim-1");
+    expect(turns).toHaveLength(2);
+    expect(turns.map((t) => t.text)).toEqual(["two", "three"]);
+  });
+
+  it("expires conversation turns via ttlMs", () => {
+    let now = Date.parse("2026-01-01T12:00:00.000Z");
+    const store = new InMemoryConversationStore({
+      maxTurns: 10,
+      ttlMs: 60_000,
+      now: () => now,
+    });
+    store.append("ttl-1", {
+      role: "user",
+      text: "stale",
+      at: "2026-01-01T11:58:00.000Z",
+    });
+    store.append("ttl-1", {
+      role: "assistant",
+      text: "ok",
+      at: "2026-01-01T11:59:30.000Z",
+    });
+
+    now = Date.parse("2026-01-01T12:00:00.000Z");
+    const turns = store.getTurns("ttl-1");
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.text).toBe("ok");
+  });
+
+  it("uses shortTermOptions for default ShortTermMemory-backed store", () => {
+    const manager = new ContextManager({
+      shortTermOptions: { maxEntries: 2, ttlMs: 0 },
+    });
+
+    for (const text of ["a", "b", "c"]) {
+      const req = normalizeRequest({
+        source: "cli",
+        rawInput: text,
+        sessionId: "stm-1",
+      });
+      loadContext(req, detectIntent(req), { manager });
+    }
+
+    const turns = manager.conversationStore.getTurns("stm-1");
+    expect(turns).toHaveLength(2);
+    expect(turns.map((t) => t.text)).toEqual(["b", "c"]);
+  });
 });

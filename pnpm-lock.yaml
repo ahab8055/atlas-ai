@@ -83,6 +83,9 @@ importers:
       '@atlas-ai/logging':
         specifier: workspace:*
         version: link:../../packages/logging
+      '@atlas-ai/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
     devDependencies:
       '@types/node':
         specifier: '22'
@@ -161,6 +164,9 @@ importers:
       '@atlas-ai/logging':
         specifier: workspace:*
         version: link:../logging
+      '@atlas-ai/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@atlas-ai/security':
         specifier: workspace:*
         version: link:../security

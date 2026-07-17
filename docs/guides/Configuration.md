@@ -58,18 +58,20 @@ Resolve environment from `ATLAS_ENV` (`development` | `production` | `test`), de
 
 Stored in `config/*.json` and/or overridden with:
 
-| Variable                        | Maps to                                           |
-| ------------------------------- | ------------------------------------------------- |
-| `ATLAS_ENV`                     | `config.env`                                      |
-| `ATLAS_LOG_LEVEL`               | `config.logLevel`                                 |
-| `ATLAS_DATA_DIR`                | `config.paths.dataDir`                            |
-| `ATLAS_MODELS_DIR`              | `config.paths.modelsDir`                          |
-| `ATLAS_DATABASE_PATH`           | `config.paths.databasePath`                       |
-| `ATLAS_HOST`                    | `config.server.host`                              |
-| `ATLAS_PORT`                    | `config.server.port`                              |
-| `ATLAS_FEATURE_CLOUD_PROVIDERS` | `config.features.cloudProviders` (`true`/`false`) |
-| `ATLAS_FEATURE_TELEMETRY`       | `config.features.telemetry` (`true`/`false`)      |
-| `ATLAS_FEATURE_OFFLINE_MODE`    | `config.features.offlineMode` (`true`/`false`)    |
+| Variable                              | Maps to                                           |
+| ------------------------------------- | ------------------------------------------------- |
+| `ATLAS_ENV`                           | `config.env`                                      |
+| `ATLAS_LOG_LEVEL`                     | `config.logLevel`                                 |
+| `ATLAS_DATA_DIR`                      | `config.paths.dataDir`                            |
+| `ATLAS_MODELS_DIR`                    | `config.paths.modelsDir`                          |
+| `ATLAS_DATABASE_PATH`                 | `config.paths.databasePath`                       |
+| `ATLAS_HOST`                          | `config.server.host`                              |
+| `ATLAS_PORT`                          | `config.server.port`                              |
+| `ATLAS_FEATURE_CLOUD_PROVIDERS`       | `config.features.cloudProviders` (`true`/`false`) |
+| `ATLAS_FEATURE_TELEMETRY`             | `config.features.telemetry` (`true`/`false`)      |
+| `ATLAS_FEATURE_OFFLINE_MODE`          | `config.features.offlineMode` (`true`/`false`)    |
+| `ATLAS_MEMORY_SHORT_TERM_MAX_ENTRIES` | `config.memory.shortTerm.maxEntries`              |
+| `ATLAS_MEMORY_SHORT_TERM_TTL_MS`      | `config.memory.shortTerm.ttlMs` (0 disables TTL)  |
 
 Public frontend values may use `VITE_*` (e.g. `VITE_ATLAS_API_URL`) and must never include secrets.
 

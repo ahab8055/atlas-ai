@@ -40,6 +40,15 @@ describe("applyEnvOverrides", () => {
     expect(next.ai.inference.stream).toBe(false);
     expect(next.ai.hardware.contextSize).toBe(8192);
   });
+
+  it("overrides short-term memory window and ttl", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_MEMORY_SHORT_TERM_MAX_ENTRIES: "12",
+      ATLAS_MEMORY_SHORT_TERM_TTL_MS: "60000",
+    });
+    expect(next.memory.shortTerm.maxEntries).toBe(12);
+    expect(next.memory.shortTerm.ttlMs).toBe(60000);
+  });
 });
 
 describe("loadConfig", () => {
@@ -79,5 +88,13 @@ describe("mergeAppConfig", () => {
     });
     expect(merged.paths.dataDir).toBe(".data/custom");
     expect(merged.paths.modelsDir).toBe(DEFAULT_APP_CONFIG.paths.modelsDir);
+  });
+
+  it("merges memory.shortTerm overrides", () => {
+    const merged = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      memory: { shortTerm: { maxEntries: 8, ttlMs: 120000 } },
+    });
+    expect(merged.memory.shortTerm.maxEntries).toBe(8);
+    expect(merged.memory.shortTerm.ttlMs).toBe(120000);
   });
 });

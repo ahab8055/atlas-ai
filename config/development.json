@@ -37,5 +37,11 @@
       "manageServer": false,
       "binary": "llama-server"
     }
+  },
+  "memory": {
+    "shortTerm": {
+      "maxEntries": 50,
+      "ttlMs": 1800000
+    }
   }
 }

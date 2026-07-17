@@ -4,6 +4,7 @@ import {
   createRequestHandler,
   type PipelineResult,
 } from "@atlas-ai/core";
+import { loadConfig } from "@atlas-ai/config";
 import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
 import {
   createLogger,
@@ -12,6 +13,7 @@ import {
   type LogSink,
   type Logger,
 } from "@atlas-ai/logging";
+import { createMemoryManager, createShortTermMemory } from "@atlas-ai/memory";
 
 import {
   createDebugEventPrinter,
@@ -62,7 +64,16 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   });
 
   const eventBus = new EventBus({ historyLimit: options.debug ? 200 : 0 });
-  const contextManager = new ContextManager();
+  const config = loadConfig();
+  const memoryManager = createMemoryManager();
+  const shortTerm = createShortTermMemory({
+    maxEntries: config.memory.shortTerm.maxEntries,
+    ttlMs: config.memory.shortTerm.ttlMs,
+    memoryManager,
+  });
+  const contextManager = new ContextManager({
+    conversationStore: shortTerm.toConversationStore(),
+  });
 
   if (options.debug) {
     const print = createDebugEventPrinter();

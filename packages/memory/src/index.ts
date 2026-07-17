@@ -41,3 +41,18 @@ export {
   toMemorySnippets,
   type MemoryManagerOptions,
 } from "./manager.js";
+
+export type {
+  ConversationStoreAdapter,
+  ShortTermMemoryConfig,
+  ShortTermMemoryOptions,
+  ShortTermRole,
+  ShortTermTurn,
+} from "./short-term/types.js";
+
+export {
+  DEFAULT_SHORT_TERM_MAX_ENTRIES,
+  DEFAULT_SHORT_TERM_TTL_MS,
+} from "./short-term/types.js";
+
+export { ShortTermMemory, createShortTermMemory } from "./short-term/index.js";

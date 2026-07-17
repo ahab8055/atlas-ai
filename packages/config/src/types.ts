@@ -69,6 +69,17 @@ export interface AtlasAiConfig {
   llamaCpp: AtlasAiLlamaCppConfig;
 }
 
+export interface AtlasMemoryShortTermConfig {
+  /** Max conversation turns retained per session. */
+  maxEntries: number;
+  /** Drop turns older than this many ms; 0 disables TTL. */
+  ttlMs: number;
+}
+
+export interface AtlasMemoryConfig {
+  shortTerm: AtlasMemoryShortTermConfig;
+}
+
 /** Non-secret, serializable application settings. */
 export interface AtlasAppConfig {
   env: AtlasEnvironment;
@@ -77,6 +88,7 @@ export interface AtlasAppConfig {
   server: AtlasServerConfig;
   features: AtlasFeatureFlags;
   ai: AtlasAiConfig;
+  memory: AtlasMemoryConfig;
 }
 
 /**

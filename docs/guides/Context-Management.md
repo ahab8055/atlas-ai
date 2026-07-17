@@ -2,7 +2,7 @@
 
 Collects relevant context **before** planning and execution so responses can be personalized and accurate.
 
-Related: [Request-Pipeline.md](./Request-Pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md) (Context Manager), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [Memory-Architecture.md](./Memory-Architecture.md), [ADR-0009](../adr/0009-context-management.md), [ADR-0040](../adr/0040-memory-architecture-foundation.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/memory`](../../packages/memory/).
+Related: [Request-Pipeline.md](./Request-Pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md) (Context Manager), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [Memory-Architecture.md](./Memory-Architecture.md), [Short-Term-Memory.md](./Short-Term-Memory.md), [ADR-0009](../adr/0009-context-management.md), [ADR-0040](../adr/0040-memory-architecture-foundation.md), [ADR-0041](../adr/0041-short-term-memory.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/memory`](../../packages/memory/).
 
 ---
 
@@ -24,7 +24,7 @@ recordAssistant(...)  (conversation continuity)
 
 | Field                 | Source                            | MVP                                                                                   |
 | --------------------- | --------------------------------- | ------------------------------------------------------------------------------------- |
-| `conversation`        | Current session turns             | In-memory store                                                                       |
+| `conversation`        | Current session turns             | Short-term buffer (window + TTL); see [Short-Term-Memory.md](./Short-Term-Memory.md)  |
 | `preferences`         | User preferences                  | Defaults (`preferredEditor: VS Code`)                                                 |
 | `activeTasks`         | Active / working tasks            | In-memory store                                                                       |
 | `systemState`         | Runtime / platform / input source | Live `process` info                                                                   |
@@ -74,7 +74,7 @@ const result = handleRequest(
 
 ## Conversation continuity
 
-Same `sessionId` reuses turns. The pipeline appends the user utterance during load and the assistant reply after response generation.
+Same `sessionId` reuses turns. The pipeline appends the user utterance during load and the assistant reply after response generation. Default store is `ShortTermMemory` (configurable `maxEntries` / `ttlMs`).
 
 ---
 
