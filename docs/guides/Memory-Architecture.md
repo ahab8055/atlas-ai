@@ -81,6 +81,9 @@ await memory.clear("working", { sessionId: "sess-1" });
 For conversation turns with a configurable window and TTL, use
 [Short-Term-Memory.md](./Short-Term-Memory.md) (`createShortTermMemory`).
 
+For persistent facts/preferences across restarts, use
+[Long-Term-Memory.md](./Long-Term-Memory.md) (`createLongTermMemory` / SQLite).
+
 ---
 
 ## Adding a provider

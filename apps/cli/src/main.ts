@@ -8,6 +8,7 @@
 import { exitCodeForResult } from "./display.js";
 import { tryHandleAiCommand } from "./ai-command.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
+import { tryHandleMemoryCommand } from "./memory-command.js";
 import { usage } from "./options.js";
 import { parseCliArgs } from "./parse-args.js";
 import { runRepl } from "./repl.js";
@@ -65,7 +66,12 @@ async function main(): Promise<void> {
           })
         ) {
           // continue into REPL
-        } else if (!tryHandleHistoryCommand(runtime, initial)) {
+        } else if (
+          tryHandleHistoryCommand(runtime, initial) ||
+          tryHandleMemoryCommand(runtime, initial)
+        ) {
+          // continue into REPL
+        } else {
           runCommand(runtime, options, initial);
         }
       }
@@ -74,7 +80,10 @@ async function main(): Promise<void> {
     }
 
     const rawInput = options.commandArgs.join(" ");
-    if (tryHandleHistoryCommand(runtime, rawInput)) {
+    if (
+      tryHandleHistoryCommand(runtime, rawInput) ||
+      tryHandleMemoryCommand(runtime, rawInput)
+    ) {
       return;
     }
 

@@ -8,6 +8,8 @@ import {
   MemoryProviderRegistry,
 } from "./registry.js";
 import { registerBuiltinMemoryProviders } from "./providers/register.js";
+import { registerPersistentMemoryProviders } from "./providers/persistent.js";
+import type { MemoriesRepository } from "@atlas-ai/database";
 import type {
   ClearMemoryOptions,
   CreateMemoryInput,
@@ -174,5 +176,14 @@ export function createMemoryManager(
 export function createDefaultMemoryManager(): MemoryManager {
   const registry = getDefaultMemoryProviderRegistry();
   registerBuiltinMemoryProviders(registry);
+  return new MemoryManager({ registry, skipBuiltins: true });
+}
+
+/** MemoryManager with SQLite long-term providers + in-memory working. */
+export function createPersistentMemoryManager(
+  repo: MemoriesRepository,
+): MemoryManager {
+  const registry = new MemoryProviderRegistry();
+  registerPersistentMemoryProviders(registry, repo);
   return new MemoryManager({ registry, skipBuiltins: true });
 }

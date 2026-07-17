@@ -38,6 +38,14 @@ export {
   type EmbeddingRow,
 } from "./repositories/embeddings.js";
 export {
+  MemoriesRepository,
+  type LongTermMemoryType,
+  type MemoryListQuery,
+  type MemoryRecordInput,
+  type MemoryRow,
+  type MemoryUpdateInput,
+} from "./repositories/memories.js";
+export {
   ExecutionHistoryRepository,
   type ExecutionFailureInput,
   type ExecutionHistoryInput,

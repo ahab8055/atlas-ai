@@ -1,6 +1,7 @@
 export type {
   ClearMemoryOptions,
   CreateMemoryInput,
+  LongTermMemoryKind,
   MemoryQuery,
   MemoryRecord,
   MemoryScope,
@@ -38,9 +39,20 @@ export {
   MemoryManager,
   createDefaultMemoryManager,
   createMemoryManager,
+  createPersistentMemoryManager,
   toMemorySnippets,
   type MemoryManagerOptions,
 } from "./manager.js";
+
+export { SqliteMemoryProvider } from "./providers/sqlite.js";
+export { registerPersistentMemoryProviders } from "./providers/persistent.js";
+
+export {
+  LongTermMemory,
+  createLongTermMemory,
+  type LongTermListOptions,
+  type LongTermSearchOptions,
+} from "./long-term/index.js";
 
 export type {
   ConversationStoreAdapter,

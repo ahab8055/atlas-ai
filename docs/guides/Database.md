@@ -46,6 +46,9 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 | `user_preferences`  | Preference placeholders (`preferred_editor`, `theme`, …) |
 | `tools`             | Tool registry persistence                                |
 | `models`            | AI model registry (name, format, caps, requirements, …)  |
+| `embeddings`        | Embedding vectors for search/memory                      |
+| `memories`          | Long-term memory records (episodic/semantic/procedural)  |
+| `memory_tags`       | Tags for long-term memories                              |
 | `execution_history` | Pipeline / task run history                              |
 | `task_executions`   | Per-step execution rows                                  |
 | `schema_migrations` | Applied schema version                                   |

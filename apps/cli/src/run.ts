@@ -1,6 +1,7 @@
 import {
   ContextManager,
   EventBus,
+  createMemoryProvider,
   createRequestHandler,
   type PipelineResult,
 } from "@atlas-ai/core";
@@ -13,7 +14,14 @@ import {
   type LogSink,
   type Logger,
 } from "@atlas-ai/logging";
-import { createMemoryManager, createShortTermMemory } from "@atlas-ai/memory";
+import {
+  createLongTermMemory,
+  createMemoryManager,
+  createPersistentMemoryManager,
+  createShortTermMemory,
+  type LongTermMemory,
+  type MemoryManager,
+} from "@atlas-ai/memory";
 
 import {
   createDebugEventPrinter,
@@ -43,6 +51,8 @@ export interface CliRuntime {
   contextManager: ContextManager;
   logger: Logger;
   database?: AtlasDatabase;
+  memoryManager: MemoryManager;
+  longTermMemory?: LongTermMemory;
 }
 
 /**
@@ -65,23 +75,6 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
 
   const eventBus = new EventBus({ historyLimit: options.debug ? 200 : 0 });
   const config = loadConfig();
-  const memoryManager = createMemoryManager();
-  const shortTerm = createShortTermMemory({
-    maxEntries: config.memory.shortTerm.maxEntries,
-    ttlMs: config.memory.shortTerm.ttlMs,
-    memoryManager,
-  });
-  const contextManager = new ContextManager({
-    conversationStore: shortTerm.toConversationStore(),
-  });
-
-  if (options.debug) {
-    const print = createDebugEventPrinter();
-    eventBus.subscribe("*", (event) => {
-      const summary = event.traceId ? `trace=${event.traceId}` : "";
-      print(event.type, summary);
-    });
-  }
 
   let database: AtlasDatabase | undefined;
   if (options.enableDatabase) {
@@ -95,13 +88,49 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     }
   }
 
+  const memoryManager = database
+    ? createPersistentMemoryManager(database.memories)
+    : createMemoryManager();
+  const longTermMemory = database
+    ? createLongTermMemory(database.memories)
+    : undefined;
+
+  const shortTerm = createShortTermMemory({
+    maxEntries: config.memory.shortTerm.maxEntries,
+    ttlMs: config.memory.shortTerm.ttlMs,
+    memoryManager,
+  });
+
+  const contextManager = new ContextManager({
+    conversationStore: shortTerm.toConversationStore(),
+    providers: longTermMemory
+      ? [createMemoryProvider(longTermMemory.createRetriever({ limit: 5 }))]
+      : undefined,
+  });
+
+  if (options.debug) {
+    const print = createDebugEventPrinter();
+    eventBus.subscribe("*", (event) => {
+      const summary = event.traceId ? `trace=${event.traceId}` : "";
+      print(event.type, summary);
+    });
+  }
+
   const handler = createRequestHandler({
     logger,
     eventBus,
     contextManager,
   });
 
-  return { handler, eventBus, contextManager, logger, database };
+  return {
+    handler,
+    eventBus,
+    contextManager,
+    logger,
+    database,
+    memoryManager,
+    longTermMemory,
+  };
 }
 
 /** Execute one command through core without I/O (testable). */

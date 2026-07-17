@@ -5,6 +5,9 @@
 /** Canonical memory kinds from Architecture/04. */
 export type MemoryType = "working" | "episodic" | "semantic" | "procedural";
 
+/** Long-term subset of MemoryType (matches @atlas-ai/database LongTermMemoryType). */
+export type LongTermMemoryKind = "episodic" | "semantic" | "procedural";
+
 /**
  * Lifetime scope: short-term ≈ working; long-term ≈ episodic/semantic/procedural.
  */
@@ -17,7 +20,7 @@ export const MEMORY_TYPES: readonly MemoryType[] = [
   "procedural",
 ] as const;
 
-export function isLongTermType(type: MemoryType): boolean {
+export function isLongTermType(type: MemoryType): type is LongTermMemoryKind {
   return type !== "working";
 }
 

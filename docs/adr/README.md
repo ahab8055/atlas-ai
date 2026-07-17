@@ -65,6 +65,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0039](./0039-phase2-local-ai-integration-tests.md)     | Phase 2 Local AI integration tests      | Accepted |
 | [0040](./0040-memory-architecture-foundation.md)        | Memory architecture foundation          | Accepted |
 | [0041](./0041-short-term-memory.md)                     | Short-term memory                       | Accepted |
+| [0042](./0042-long-term-memory.md)                      | Long-term memory                        | Accepted |
 
 ## Naming
 

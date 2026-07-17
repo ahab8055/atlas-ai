@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -128,4 +128,34 @@ CREATE INDEX IF NOT EXISTS idx_embeddings_collection ON embeddings(collection);
 CREATE INDEX IF NOT EXISTS idx_embeddings_model ON embeddings(model_id);
 CREATE INDEX IF NOT EXISTS idx_embeddings_source ON embeddings(source);
 CREATE INDEX IF NOT EXISTS idx_embeddings_updated ON embeddings(updated_at);
+
+CREATE TABLE IF NOT EXISTS memories (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'local',
+  type TEXT NOT NULL CHECK (type IN ('episodic', 'semantic', 'procedural')),
+  content TEXT NOT NULL,
+  importance REAL,
+  confidence REAL,
+  source TEXT,
+  session_id TEXT,
+  metadata TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
+CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_memories_updated ON memories(updated_at);
+CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id);
+
+CREATE TABLE IF NOT EXISTS memory_tags (
+  id TEXT PRIMARY KEY,
+  memory_id TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE,
+  UNIQUE (memory_id, tag)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_tags_tag ON memory_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_memory_tags_memory ON memory_tags(memory_id);
 `;

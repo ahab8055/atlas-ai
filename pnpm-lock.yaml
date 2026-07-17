@@ -200,6 +200,10 @@ importers:
         version: 5.8.3
 
   packages/memory:
+    dependencies:
+      '@atlas-ai/database':
+        specifier: workspace:*
+        version: link:../database
     devDependencies:
       typescript:
         specifier: ~5.8.3

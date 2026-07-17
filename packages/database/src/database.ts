@@ -6,6 +6,7 @@ import {
 } from "./client.js";
 import { EmbeddingsRepository } from "./repositories/embeddings.js";
 import { ExecutionHistoryRepository } from "./repositories/execution-history.js";
+import { MemoriesRepository } from "./repositories/memories.js";
 import { ModelsRepository } from "./repositories/models.js";
 import { SystemConfigRepository } from "./repositories/system-config.js";
 import { ToolsRepository } from "./repositories/tools.js";
@@ -22,6 +23,7 @@ export class AtlasDatabase {
   readonly tools: ToolsRepository;
   readonly models: ModelsRepository;
   readonly embeddings: EmbeddingsRepository;
+  readonly memories: MemoriesRepository;
   readonly executionHistory: ExecutionHistoryRepository;
   /** UI-oriented task history tracking (query + display DTOs). */
   readonly taskHistory: TaskHistoryService;
@@ -35,6 +37,7 @@ export class AtlasDatabase {
     this.tools = new ToolsRepository(db);
     this.models = new ModelsRepository(db);
     this.embeddings = new EmbeddingsRepository(db);
+    this.memories = new MemoriesRepository(db);
     this.executionHistory = new ExecutionHistoryRepository(db);
     this.taskHistory = new TaskHistoryService(this.executionHistory);
   }

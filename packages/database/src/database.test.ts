@@ -167,6 +167,41 @@ describe("AtlasDatabase", () => {
 
     atlas.close();
   });
+
+  it("persists long-term memories across reopen", () => {
+    const path = join(tmpdir(), `atlas-memories-${Date.now()}.sqlite`);
+    try {
+      const atlas = openAtlasDatabase({ path });
+      expect(atlas.schemaVersion).toBe(SCHEMA_VERSION);
+
+      const stored = atlas.memories.upsert({
+        type: "semantic",
+        content: "User prefers TypeScript",
+        importance: 0.9,
+        tags: ["preference", "language"],
+      });
+      expect(stored.id).toBeTruthy();
+      atlas.close();
+
+      const again = openAtlasDatabase({ path });
+      const loaded = again.memories.get(stored.id);
+      expect(loaded?.content).toContain("TypeScript");
+      expect(loaded?.tags).toEqual(["language", "preference"]);
+
+      const ranked = again.memories.list({ text: "TypeScript", limit: 5 });
+      expect(ranked[0]?.id).toBe(stored.id);
+
+      again.memories.update(stored.id, {
+        content: "User prefers TypeScript strictly",
+      });
+      expect(again.memories.get(stored.id)?.content).toContain("strictly");
+      expect(again.memories.delete(stored.id)).toBe(true);
+      expect(again.memories.get(stored.id)).toBeUndefined();
+      again.close();
+    } finally {
+      rmSync(path, { force: true });
+    }
+  });
 });
 
 describe("TaskHistoryService", () => {

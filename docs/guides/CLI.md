@@ -73,6 +73,11 @@ SQLite initializes automatically (default `.data/atlas.sqlite`). Each command sy
 pnpm atlas --db /tmp/atlas.sqlite status
 pnpm atlas history
 pnpm atlas history --status blocked --limit 5
+
+# Long-term memory (requires DB)
+pnpm atlas memory add --type semantic "Prefers TypeScript"
+pnpm atlas memory search "TypeScript"
+pnpm atlas memory list
 pnpm atlas --no-db status
 ```
 
