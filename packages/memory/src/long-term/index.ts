@@ -15,6 +15,16 @@ import {
   type MemoryClassificationResult,
   type PurgeExpiredResult,
 } from "../classification/index.js";
+import {
+  consolidateAgainstText,
+  consolidateMemories,
+  mergeMetadata,
+  readConflict,
+  type ConsolidateAgainstResult,
+  type ConsolidateOptions,
+  type ConsolidationResult,
+  type ConsolidationThresholds,
+} from "../consolidation/index.js";
 import { MemoryError } from "../errors.js";
 import {
   createMemoryRetrievalEngine,
@@ -38,12 +48,16 @@ export interface EvaluateAndStoreExtras {
   sessionId?: string;
   metadata?: Record<string, unknown>;
   thresholds?: Partial<ClassificationThresholds>;
+  /** Override consolidation thresholds / disable consolidate-on-store. */
+  consolidation?: Partial<ConsolidationThresholds>;
+  consolidateOnStore?: boolean;
 }
 
 export interface EvaluateAndStoreResult {
   stored: boolean;
   record?: MemoryRecord;
   classification: MemoryClassificationResult;
+  consolidation?: ConsolidateAgainstResult;
 }
 
 export interface LongTermSearchOptions extends RetrievalOptions {
@@ -110,18 +124,29 @@ export class LongTermMemory {
 
   update(id: string, patch: UpdateMemoryInput): MemoryRecord {
     try {
+      const existing = this.repo.get(id);
+      if (!existing) {
+        throw MemoryError.notFound(id);
+      }
+      const metadata =
+        patch.metadata !== undefined
+          ? mergeMetadata(existing.metadata, patch.metadata)
+          : undefined;
       const row = this.repo.update(id, {
         content: patch.content,
         importance: patch.importance,
         confidence: patch.confidence,
         sessionId: patch.sessionId,
-        metadata: patch.metadata,
+        metadata,
         tags: patch.tags,
       });
       const record = rowToRecord(row);
       this.invokeOnStored(record);
       return record;
     } catch (error) {
+      if (error instanceof MemoryError) {
+        throw error;
+      }
       if (error instanceof Error && error.message.includes("not found")) {
         throw MemoryError.notFound(id);
       }
@@ -157,7 +182,7 @@ export class LongTermMemory {
 
   /**
    * Classify candidate text and store only when action is store_long_term.
-   * Discard / short_term do not write SQLite.
+   * When consolidate-on-store is enabled, merges/updates near-duplicates first.
    */
   evaluateAndStore(
     text: string,
@@ -190,6 +215,33 @@ export class LongTermMemory {
       metadata.expiresAt = classification.expiresAt;
     }
 
+    const consolidateOnStore =
+      extras.consolidateOnStore ??
+      extras.consolidation?.consolidateOnStore ??
+      true;
+
+    if (consolidateOnStore) {
+      const consolidation = consolidateAgainstText(
+        this.asStore(),
+        text.trim(),
+        {
+          type: classification.suggestedType,
+          importance: classification.importance,
+          confidence: classification.confidence,
+          tags: extras.tags,
+          sessionId: extras.sessionId,
+          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+          thresholds: extras.consolidation,
+        },
+      );
+      return {
+        stored: true,
+        record: consolidation.record,
+        classification,
+        consolidation,
+      };
+    }
+
     const record = this.store({
       type: classification.suggestedType,
       content: text.trim(),
@@ -201,6 +253,18 @@ export class LongTermMemory {
     });
 
     return { stored: true, record, classification };
+  }
+
+  /** Batch near-duplicate merge + conflict flagging. */
+  consolidate(options: ConsolidateOptions = {}): ConsolidationResult {
+    return consolidateMemories(this.asStore(), options);
+  }
+
+  /** List memories with an open conflict flag. */
+  listConflicts(options: LongTermListOptions = {}): MemoryRecord[] {
+    return this.list({ ...options, limit: options.limit ?? 100 }).filter(
+      (row) => readConflict(row.metadata)?.status === "open",
+    );
   }
 
   /** Delete long-term rows whose metadata.expiresAt is in the past. */
@@ -252,6 +316,18 @@ export class LongTermMemory {
     } catch {
       // Best-effort indexing must never block store
     }
+  }
+
+  private asStore() {
+    return {
+      list: (opts: LongTermListOptions) => this.list(opts),
+      retrieve: (text: string, opts?: RetrievalOptions) =>
+        this.retrieve(text, opts),
+      get: (id: string) => this.get(id),
+      update: (id: string, patch: UpdateMemoryInput) => this.update(id, patch),
+      delete: (id: string) => this.delete(id),
+      store: (input: CreateMemoryInput) => this.store(input),
+    };
   }
 }
 

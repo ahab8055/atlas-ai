@@ -56,5 +56,11 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       minScore: 0.15,
       recencyHalfLifeMs: 2_592_000_000,
     },
+    consolidation: {
+      mergeMinScore: 0.72,
+      conflictMinScore: 0.55,
+      candidateLimit: 10,
+      consolidateOnStore: true,
+    },
   },
 };

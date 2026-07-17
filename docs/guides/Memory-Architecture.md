@@ -47,6 +47,7 @@ packages/memory/src/
 ├── manager.ts            # MemoryManager facade + toMemorySnippets
 ├── classification/       # Importance gate (classifyMemory, purge)
 ├── retrieval/            # Hybrid rank (MemoryRetrievalEngine)
+├── consolidation/        # Dedupe + conflict flags
 ├── long-term/            # SQLite LongTermMemory facade
 ├── short-term/           # Conversation window + TTL
 ├── errors.ts

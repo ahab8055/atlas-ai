@@ -71,6 +71,19 @@ describe("applyEnvOverrides", () => {
     expect(next.memory.retrieval.minScore).toBe(0.2);
     expect(next.memory.retrieval.recencyHalfLifeMs).toBe(86400000);
   });
+
+  it("overrides memory consolidation settings", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_MEMORY_CONSOLIDATE_MERGE_MIN_SCORE: "0.8",
+      ATLAS_MEMORY_CONSOLIDATE_CONFLICT_MIN_SCORE: "0.6",
+      ATLAS_MEMORY_CONSOLIDATE_CANDIDATE_LIMIT: "5",
+      ATLAS_MEMORY_CONSOLIDATE_ON_STORE: "false",
+    });
+    expect(next.memory.consolidation.mergeMinScore).toBe(0.8);
+    expect(next.memory.consolidation.conflictMinScore).toBe(0.6);
+    expect(next.memory.consolidation.candidateLimit).toBe(5);
+    expect(next.memory.consolidation.consolidateOnStore).toBe(false);
+  });
 });
 
 describe("loadConfig", () => {
@@ -148,5 +161,22 @@ describe("mergeAppConfig", () => {
     expect(merged.memory.retrieval.limit).toBe(10);
     expect(merged.memory.retrieval.minScore).toBe(0.25);
     expect(merged.memory.retrieval.recencyHalfLifeMs).toBe(1000);
+  });
+
+  it("merges memory.consolidation overrides", () => {
+    const merged = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      memory: {
+        consolidation: {
+          mergeMinScore: 0.9,
+          conflictMinScore: 0.7,
+          candidateLimit: 3,
+          consolidateOnStore: false,
+        },
+      },
+    });
+    expect(merged.memory.consolidation.mergeMinScore).toBe(0.9);
+    expect(merged.memory.consolidation.conflictMinScore).toBe(0.7);
+    expect(merged.memory.consolidation.candidateLimit).toBe(3);
+    expect(merged.memory.consolidation.consolidateOnStore).toBe(false);
   });
 });

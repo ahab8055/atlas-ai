@@ -644,6 +644,9 @@ Deleted
 
 # Memory Update Rules
 
+Implementation: [Memory-Consolidation.md](../guides/Memory-Consolidation.md),
+[ADR-0045](../adr/0045-memory-consolidation-service.md).
+
 Memory should update when:
 
 - User provides new information.

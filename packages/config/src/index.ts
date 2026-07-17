@@ -9,6 +9,7 @@ export type {
   AtlasFeatureFlags,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
+  AtlasMemoryConsolidationConfig,
   AtlasMemoryRetrievalConfig,
   AtlasMemoryShortTermConfig,
   AtlasPathsConfig,

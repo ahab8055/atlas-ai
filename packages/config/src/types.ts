@@ -94,10 +94,22 @@ export interface AtlasMemoryRetrievalConfig {
   recencyHalfLifeMs: number;
 }
 
+export interface AtlasMemoryConsolidationConfig {
+  /** Near-duplicate merge threshold (default 0.72). */
+  mergeMinScore: number;
+  /** Min score to consider conflict detection (default 0.55). */
+  conflictMinScore: number;
+  /** Max near-neighbors per anchor (default 10). */
+  candidateLimit: number;
+  /** Merge/update on evaluateAndStore (default true). */
+  consolidateOnStore: boolean;
+}
+
 export interface AtlasMemoryConfig {
   shortTerm: AtlasMemoryShortTermConfig;
   classification: AtlasMemoryClassificationConfig;
   retrieval: AtlasMemoryRetrievalConfig;
+  consolidation: AtlasMemoryConsolidationConfig;
 }
 
 /** Non-secret, serializable application settings. */

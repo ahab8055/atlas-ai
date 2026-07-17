@@ -55,6 +55,12 @@ function stubRuntime(): CliRuntime {
           minScore: 0.15,
           recencyHalfLifeMs: 2_592_000_000,
         },
+        consolidation: {
+          mergeMinScore: 0.72,
+          conflictMinScore: 0.55,
+          candidateLimit: 10,
+          consolidateOnStore: true,
+        },
       },
     } as unknown as CliRuntime["config"],
     database,
@@ -196,6 +202,42 @@ describe("memory CLI + context wiring", () => {
       expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
         true,
       );
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
+  it("consolidates duplicates and lists conflicts via CLI", () => {
+    const runtime = stubRuntime();
+    try {
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "Prefers TypeScript strictly",
+        importance: 0.9,
+      });
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "Prefers TypeScript strictly",
+        importance: 0.8,
+      });
+      expect(
+        tryHandleMemoryCommand(runtime, "memory consolidate --type semantic"),
+      ).toBe(true);
+      expect(runtime.longTermMemory!.list().length).toBe(1);
+
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "User prefers dark mode",
+        importance: 0.9,
+      });
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "User prefers light mode",
+        importance: 0.9,
+      });
+      expect(tryHandleMemoryCommand(runtime, "memory consolidate")).toBe(true);
+      expect(tryHandleMemoryCommand(runtime, "memory conflicts")).toBe(true);
     } finally {
       runtime.database?.close();
       process.exitCode = undefined;

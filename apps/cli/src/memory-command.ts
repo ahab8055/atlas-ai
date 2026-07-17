@@ -99,12 +99,20 @@ export function tryHandleMemoryCommand(
 
       if (useClassify) {
         const thresholds = runtime.config.memory.classification;
+        const consolidation = runtime.config.memory.consolidation;
         const result = ltm.evaluateAndStore(finalContent, {
           thresholds,
+          consolidation,
+          consolidateOnStore: consolidation.consolidateOnStore,
         });
         if (result.stored && result.record) {
+          const via =
+            result.consolidation?.action &&
+            result.consolidation.action !== "insert"
+              ? ` (${result.consolidation.action})`
+              : "";
           process.stdout.write(
-            `Stored ${result.record.type} memory ${result.record.id}\n` +
+            `Stored ${result.record.type} memory ${result.record.id}${via}\n` +
               `${formatClassification(result.classification)}\n`,
           );
         } else {
@@ -234,6 +242,62 @@ export function tryHandleMemoryCommand(
       return true;
     }
 
+    if (sub === "consolidate") {
+      const dryRun = hasFlag(tokens, "--dry-run");
+      const type = readFlag(tokens, "--type") as LongTermMemoryType | undefined;
+      if (type && !LONG_TERM_TYPES.has(type)) {
+        throw new Error(`Invalid --type (use episodic|semantic|procedural)`);
+      }
+      const limit = Number(readFlag(tokens, "--limit") ?? "100");
+      const cfg = runtime.config.memory.consolidation;
+      const result = ltm.consolidate({
+        type,
+        dryRun,
+        limit: Number.isFinite(limit) ? limit : 100,
+        thresholds: cfg,
+      });
+      process.stdout.write(
+        `${dryRun ? "[dry-run] " : ""}` +
+          `scanned=${result.scanned} merged=${result.merged} ` +
+          `conflicts=${result.conflicts} skipped=${result.skipped}\n`,
+      );
+      for (const pair of result.pairs) {
+        if (pair.decision.action === "skip") {
+          continue;
+        }
+        process.stdout.write(
+          `  ${pair.decision.action} score=${pair.decision.score.toFixed(3)} ` +
+            `${pair.decision.survivorId} <- ${pair.decision.otherId}` +
+            ` (${pair.decision.reason})\n`,
+        );
+      }
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "conflicts") {
+      const rows = ltm.listConflicts({ limit: 100 });
+      if (rows.length === 0) {
+        process.stdout.write("(no open conflicts)\n");
+      } else {
+        process.stdout.write(
+          rows
+            .map((r) => {
+              const c = r.metadata?.conflict as
+                { withId?: string; note?: string } | undefined;
+              return (
+                `${r.id}  [${r.type}]  vs ${c?.withId ?? "?"}  ` +
+                `${truncate(r.content, 60)}` +
+                (c?.note ? `  (${c.note})` : "")
+              );
+            })
+            .join("\n") + "\n",
+        );
+      }
+      process.exitCode = 0;
+      return true;
+    }
+
     throw new Error(`Unknown memory subcommand: ${sub}\n${memoryUsage()}`);
   } catch (error) {
     process.stderr.write(
@@ -257,6 +321,8 @@ function memoryUsage(): string {
     "  atlas memory delete <id>",
     '  atlas memory search "query" [--type …] [--limit N]',
     '  atlas memory retrieve "query" [--limit N]',
+    "  atlas memory consolidate [--dry-run] [--type …] [--limit N]",
+    "  atlas memory conflicts",
     "  atlas memory purge-expired",
   ].join("\n");
 }
@@ -350,7 +416,7 @@ function positionalArgs(tokens: string[], start: number): string[] {
     const t = tokens[i];
     if (t.startsWith("--")) {
       // boolean flags without values (e.g. --classify)
-      if (t === "--classify") {
+      if (t === "--classify" || t === "--dry-run") {
         continue;
       }
       i += 1; // skip flag value

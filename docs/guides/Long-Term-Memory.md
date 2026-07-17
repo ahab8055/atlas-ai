@@ -7,6 +7,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [Short-Term-Memory.md](./Short-Term-Memory.md),
 [Memory-Classification.md](./Memory-Classification.md),
 [Memory-Retrieval.md](./Memory-Retrieval.md),
+[Memory-Consolidation.md](./Memory-Consolidation.md),
 [Context-Management.md](./Context-Management.md),
 [Database.md](./Database.md),
 [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md),
@@ -14,6 +15,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [ADR-0042](../adr/0042-long-term-memory.md),
 [ADR-0043](../adr/0043-memory-classification-engine.md),
 [ADR-0044](../adr/0044-memory-retrieval-engine.md),
+[ADR-0045](../adr/0045-memory-consolidation-service.md),
 [`@atlas-ai/memory`](../../packages/memory/), [`@atlas-ai/database`](../../packages/database/).
 
 ---
@@ -67,6 +69,8 @@ pnpm atlas memory add --classify "I prefer TypeScript"
 pnpm atlas memory list --type semantic
 pnpm atlas memory search "TypeScript"
 pnpm atlas memory retrieve "change theme to dark"
+pnpm atlas memory consolidate --type semantic
+pnpm atlas memory conflicts
 pnpm atlas memory get <id>
 pnpm atlas memory update <id> --content "Prefers TypeScript strictly"
 pnpm atlas memory delete <id>

@@ -8,6 +8,7 @@ import type {
   AtlasFeatureFlags,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
+  AtlasMemoryConsolidationConfig,
   AtlasMemoryRetrievalConfig,
   AtlasMemoryShortTermConfig,
   AtlasPathsConfig,
@@ -255,6 +256,29 @@ function mergeMemoryRetrieval(
   };
 }
 
+function mergeMemoryConsolidation(
+  base: AtlasMemoryConsolidationConfig,
+  patch: unknown,
+): AtlasMemoryConsolidationConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    mergeMinScore: clamp01(asNumber(patch.mergeMinScore, base.mergeMinScore)),
+    conflictMinScore: clamp01(
+      asNumber(patch.conflictMinScore, base.conflictMinScore),
+    ),
+    candidateLimit: Math.max(
+      1,
+      Math.floor(asNumber(patch.candidateLimit, base.candidateLimit)),
+    ),
+    consolidateOnStore: asBoolean(
+      patch.consolidateOnStore,
+      base.consolidateOnStore,
+    ),
+  };
+}
+
 function mergeMemory(
   base: AtlasMemoryConfig,
   patch: unknown,
@@ -264,6 +288,7 @@ function mergeMemory(
       shortTerm: { ...base.shortTerm },
       classification: { ...base.classification },
       retrieval: { ...base.retrieval },
+      consolidation: { ...base.consolidation },
     };
   }
   return {
@@ -273,6 +298,10 @@ function mergeMemory(
       patch.classification,
     ),
     retrieval: mergeMemoryRetrieval(base.retrieval, patch.retrieval),
+    consolidation: mergeMemoryConsolidation(
+      base.consolidation,
+      patch.consolidation,
+    ),
   };
 }
 
@@ -425,6 +454,24 @@ export function applyEnvOverrides(
           envVars.ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS !== undefined
             ? Number(envVars.ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS)
             : config.memory.retrieval.recencyHalfLifeMs,
+      },
+      consolidation: {
+        mergeMinScore:
+          envVars.ATLAS_MEMORY_CONSOLIDATE_MERGE_MIN_SCORE !== undefined
+            ? Number(envVars.ATLAS_MEMORY_CONSOLIDATE_MERGE_MIN_SCORE)
+            : config.memory.consolidation.mergeMinScore,
+        conflictMinScore:
+          envVars.ATLAS_MEMORY_CONSOLIDATE_CONFLICT_MIN_SCORE !== undefined
+            ? Number(envVars.ATLAS_MEMORY_CONSOLIDATE_CONFLICT_MIN_SCORE)
+            : config.memory.consolidation.conflictMinScore,
+        candidateLimit:
+          envVars.ATLAS_MEMORY_CONSOLIDATE_CANDIDATE_LIMIT !== undefined
+            ? Number(envVars.ATLAS_MEMORY_CONSOLIDATE_CANDIDATE_LIMIT)
+            : config.memory.consolidation.candidateLimit,
+        consolidateOnStore:
+          envVars.ATLAS_MEMORY_CONSOLIDATE_ON_STORE !== undefined
+            ? envVars.ATLAS_MEMORY_CONSOLIDATE_ON_STORE === "true"
+            : config.memory.consolidation.consolidateOnStore,
       },
     },
   });

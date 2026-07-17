@@ -97,6 +97,30 @@ export {
 } from "./retrieval/index.js";
 
 export type {
+  ConsolidateAgainstOptions,
+  ConsolidateAgainstResult,
+  ConsolidateOptions,
+  ConsolidationAction,
+  ConsolidationDecision,
+  ConsolidationPairResult,
+  ConsolidationResult,
+  ConsolidationThresholds,
+  MemoryConflictMeta,
+  MemoryHistoryEntry,
+} from "./consolidation/index.js";
+
+export {
+  DEFAULT_CONSOLIDATION_THRESHOLDS,
+  consolidateAgainstText,
+  consolidateMemories,
+  detectContradiction,
+  mergeThresholds,
+  pairSimilarity,
+  readConflict,
+  readHistory,
+} from "./consolidation/index.js";
+
+export type {
   ConversationStoreAdapter,
   ShortTermMemoryConfig,
   ShortTermMemoryOptions,
