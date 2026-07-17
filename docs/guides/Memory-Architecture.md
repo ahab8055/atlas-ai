@@ -4,7 +4,12 @@ Modular memory layer for storing and retrieving typed knowledge without coupling
 callers to a specific backend.
 
 Related: [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md),
-[Context-Management.md](./Context-Management.md), [ADR-0040](../adr/0040-memory-architecture-foundation.md),
+[Context-Management.md](./Context-Management.md),
+[Short-Term-Memory.md](./Short-Term-Memory.md),
+[Long-Term-Memory.md](./Long-Term-Memory.md),
+[Memory-Classification.md](./Memory-Classification.md),
+[ADR-0040](../adr/0040-memory-architecture-foundation.md),
+[ADR-0043](../adr/0043-memory-classification-engine.md),
 [`@atlas-ai/memory`](../../packages/memory/).
 
 ---
@@ -40,10 +45,15 @@ packages/memory/src/
 ├── provider.ts           # MemoryProvider port
 ├── registry.ts           # MemoryProviderRegistry
 ├── manager.ts            # MemoryManager facade + toMemorySnippets
+├── classification/       # Importance gate (classifyMemory, purge)
+├── long-term/            # SQLite LongTermMemory facade
+├── short-term/           # Conversation window + TTL
 ├── errors.ts
 └── providers/
     ├── in-memory.ts      # Four isolated in-memory providers
     ├── in-memory-store.ts
+    ├── sqlite.ts         # Persistent long-term providers
+    ├── persistent.ts
     └── register.ts       # registerBuiltinMemoryProviders
 ```
 
@@ -83,6 +93,8 @@ For conversation turns with a configurable window and TTL, use
 
 For persistent facts/preferences across restarts, use
 [Long-Term-Memory.md](./Long-Term-Memory.md) (`createLongTermMemory` / SQLite).
+Before auto-storing candidates, run the importance gate in
+[Memory-Classification.md](./Memory-Classification.md).
 
 ---
 

@@ -6,6 +6,7 @@ import type {
   AtlasAppConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
+  AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryShortTermConfig,
   AtlasPathsConfig,
@@ -124,6 +125,13 @@ function asNumber(value: unknown, fallback: number): number {
   return fallback;
 }
 
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, value));
+}
+
 function mergeInference(
   base: AtlasAiInferenceConfig,
   patch: unknown,
@@ -208,6 +216,27 @@ function mergeMemoryShortTerm(
   };
 }
 
+function mergeMemoryClassification(
+  base: AtlasMemoryClassificationConfig,
+  patch: unknown,
+): AtlasMemoryClassificationConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    minImportanceToStore: clamp01(
+      asNumber(patch.minImportanceToStore, base.minImportanceToStore),
+    ),
+    minConfidenceToStore: clamp01(
+      asNumber(patch.minConfidenceToStore, base.minConfidenceToStore),
+    ),
+    temporaryTtlMs: Math.max(
+      0,
+      Math.floor(asNumber(patch.temporaryTtlMs, base.temporaryTtlMs)),
+    ),
+  };
+}
+
 function mergeMemory(
   base: AtlasMemoryConfig,
   patch: unknown,
@@ -215,10 +244,15 @@ function mergeMemory(
   if (!isRecord(patch)) {
     return {
       shortTerm: { ...base.shortTerm },
+      classification: { ...base.classification },
     };
   }
   return {
     shortTerm: mergeMemoryShortTerm(base.shortTerm, patch.shortTerm),
+    classification: mergeMemoryClassification(
+      base.classification,
+      patch.classification,
+    ),
   };
 }
 
@@ -343,6 +377,20 @@ export function applyEnvOverrides(
           envVars.ATLAS_MEMORY_SHORT_TERM_TTL_MS !== undefined
             ? Number(envVars.ATLAS_MEMORY_SHORT_TERM_TTL_MS)
             : config.memory.shortTerm.ttlMs,
+      },
+      classification: {
+        minImportanceToStore:
+          envVars.ATLAS_MEMORY_CLASSIFY_MIN_IMPORTANCE !== undefined
+            ? Number(envVars.ATLAS_MEMORY_CLASSIFY_MIN_IMPORTANCE)
+            : config.memory.classification.minImportanceToStore,
+        minConfidenceToStore:
+          envVars.ATLAS_MEMORY_CLASSIFY_MIN_CONFIDENCE !== undefined
+            ? Number(envVars.ATLAS_MEMORY_CLASSIFY_MIN_CONFIDENCE)
+            : config.memory.classification.minConfidenceToStore,
+        temporaryTtlMs:
+          envVars.ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS !== undefined
+            ? Number(envVars.ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS)
+            : config.memory.classification.temporaryTtlMs,
       },
     },
   });

@@ -6,6 +6,7 @@ import {
   type PipelineResult,
 } from "@atlas-ai/core";
 import { loadConfig } from "@atlas-ai/config";
+import type { AtlasConfig } from "@atlas-ai/config";
 import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
 import {
   createLogger,
@@ -50,6 +51,7 @@ export interface CliRuntime {
   eventBus: EventBus;
   contextManager: ContextManager;
   logger: Logger;
+  config: AtlasConfig;
   database?: AtlasDatabase;
   memoryManager: MemoryManager;
   longTermMemory?: LongTermMemory;
@@ -127,6 +129,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     eventBus,
     contextManager,
     logger,
+    config,
     database,
     memoryManager,
     longTermMemory,

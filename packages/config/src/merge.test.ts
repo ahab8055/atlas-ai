@@ -49,6 +49,17 @@ describe("applyEnvOverrides", () => {
     expect(next.memory.shortTerm.maxEntries).toBe(12);
     expect(next.memory.shortTerm.ttlMs).toBe(60000);
   });
+
+  it("overrides memory classification thresholds", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_MEMORY_CLASSIFY_MIN_IMPORTANCE: "0.5",
+      ATLAS_MEMORY_CLASSIFY_MIN_CONFIDENCE: "0.4",
+      ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS: "3600000",
+    });
+    expect(next.memory.classification.minImportanceToStore).toBe(0.5);
+    expect(next.memory.classification.minConfidenceToStore).toBe(0.4);
+    expect(next.memory.classification.temporaryTtlMs).toBe(3600000);
+  });
 });
 
 describe("loadConfig", () => {
@@ -96,5 +107,20 @@ describe("mergeAppConfig", () => {
     });
     expect(merged.memory.shortTerm.maxEntries).toBe(8);
     expect(merged.memory.shortTerm.ttlMs).toBe(120000);
+  });
+
+  it("merges memory.classification overrides", () => {
+    const merged = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      memory: {
+        classification: {
+          minImportanceToStore: 0.6,
+          minConfidenceToStore: 0.5,
+          temporaryTtlMs: 1000,
+        },
+      },
+    });
+    expect(merged.memory.classification.minImportanceToStore).toBe(0.6);
+    expect(merged.memory.classification.minConfidenceToStore).toBe(0.5);
+    expect(merged.memory.classification.temporaryTtlMs).toBe(1000);
   });
 });

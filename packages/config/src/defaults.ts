@@ -46,5 +46,10 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       maxEntries: 50,
       ttlMs: 1_800_000,
     },
+    classification: {
+      minImportanceToStore: 0.45,
+      minConfidenceToStore: 0.35,
+      temporaryTtlMs: 86_400_000,
+    },
   },
 };

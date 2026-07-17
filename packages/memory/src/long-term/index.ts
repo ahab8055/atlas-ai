@@ -7,6 +7,14 @@ import type {
   MemoryRow,
 } from "@atlas-ai/database";
 
+import {
+  classifyMemory,
+  purgeExpiredMemories,
+  type ClassificationThresholds,
+  type MemoryClassificationInput,
+  type MemoryClassificationResult,
+  type PurgeExpiredResult,
+} from "../classification/index.js";
 import { MemoryError } from "../errors.js";
 import { toMemorySnippets } from "../manager.js";
 import type {
@@ -16,6 +24,21 @@ import type {
   UpdateMemoryInput,
 } from "../types.js";
 import { isLongTermType, scopeForType } from "../types.js";
+
+export interface EvaluateAndStoreExtras {
+  explicitRemember?: boolean;
+  frequency?: number;
+  tags?: string[];
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
+  thresholds?: Partial<ClassificationThresholds>;
+}
+
+export interface EvaluateAndStoreResult {
+  stored: boolean;
+  record?: MemoryRecord;
+  classification: MemoryClassificationResult;
+}
 
 export interface LongTermSearchOptions {
   type?: LongTermMemoryType;
@@ -105,6 +128,62 @@ export class LongTermMemory {
       .rankByRelevance(candidates, text)
       .slice(0, limit)
       .map(rowToRecord);
+  }
+
+  /**
+   * Classify candidate text and store only when action is store_long_term.
+   * Discard / short_term do not write SQLite.
+   */
+  evaluateAndStore(
+    text: string,
+    extras: EvaluateAndStoreExtras = {},
+  ): EvaluateAndStoreResult {
+    const input: MemoryClassificationInput = {
+      text,
+      explicitRemember: extras.explicitRemember,
+      frequency: extras.frequency,
+    };
+    const classification = classifyMemory(input, {
+      thresholds: extras.thresholds,
+    });
+
+    if (classification.action !== "store_long_term") {
+      return { stored: false, classification };
+    }
+
+    if (
+      classification.suggestedType === "none" ||
+      !isLongTermType(classification.suggestedType)
+    ) {
+      return { stored: false, classification };
+    }
+
+    const metadata: Record<string, unknown> = {
+      ...(extras.metadata ?? {}),
+    };
+    if (classification.expiresAt) {
+      metadata.expiresAt = classification.expiresAt;
+    }
+
+    const record = this.store({
+      type: classification.suggestedType,
+      content: text.trim(),
+      importance: classification.importance,
+      confidence: classification.confidence,
+      tags: extras.tags,
+      sessionId: extras.sessionId,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+    });
+
+    return { stored: true, record, classification };
+  }
+
+  /** Delete long-term rows whose metadata.expiresAt is in the past. */
+  purgeExpired(
+    now?: () => number,
+    options?: { limit?: number; userId?: string },
+  ): PurgeExpiredResult {
+    return purgeExpiredMemories(this.repo, now, options);
   }
 
   /** Sync retriever for core ContextManager createMemoryProvider. */

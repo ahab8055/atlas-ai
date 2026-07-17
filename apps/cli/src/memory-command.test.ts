@@ -42,6 +42,16 @@ function stubRuntime(): CliRuntime {
     } as unknown as CliRuntime["eventBus"],
     contextManager,
     logger: { info: () => undefined } as unknown as CliRuntime["logger"],
+    config: {
+      memory: {
+        shortTerm: { maxEntries: 10, ttlMs: 0 },
+        classification: {
+          minImportanceToStore: 0.45,
+          minConfidenceToStore: 0.35,
+          temporaryTtlMs: 86_400_000,
+        },
+      },
+    } as unknown as CliRuntime["config"],
     database,
     memoryManager,
     longTermMemory,
@@ -98,6 +108,68 @@ describe("memory CLI + context wiring", () => {
       expect(context.sources).toContain("memory");
     } finally {
       runtime.database?.close();
+    }
+  });
+
+  it("classifies without requiring database writes", () => {
+    const runtime = stubRuntime();
+    try {
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory classify "I like dark mode interfaces."',
+        ),
+      ).toBe(true);
+      expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
+        true,
+      );
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
+  it("add --classify stores preferences and skips coffee chatter", () => {
+    const runtime = stubRuntime();
+    try {
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory add --classify "I like dark mode interfaces."',
+        ),
+      ).toBe(true);
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory add --classify "This coffee tastes good."',
+        ),
+      ).toBe(true);
+
+      const listed = runtime.longTermMemory!.list();
+      expect(listed.some((m) => m.content.includes("dark mode"))).toBe(true);
+      expect(listed.some((m) => m.content.includes("coffee"))).toBe(false);
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
+  it("purge-expired removes memories past expiresAt", () => {
+    const runtime = stubRuntime();
+    try {
+      const past = new Date(Date.now() - 60_000).toISOString();
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "temporary note",
+        metadata: { expiresAt: past },
+      });
+      expect(tryHandleMemoryCommand(runtime, "memory purge-expired")).toBe(
+        true,
+      );
+      expect(runtime.longTermMemory!.list()).toHaveLength(0);
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
     }
   });
 });

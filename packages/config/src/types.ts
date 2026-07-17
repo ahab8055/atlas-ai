@@ -76,8 +76,18 @@ export interface AtlasMemoryShortTermConfig {
   ttlMs: number;
 }
 
+export interface AtlasMemoryClassificationConfig {
+  /** Below this importance → discard (default 0.45). */
+  minImportanceToStore: number;
+  /** Below this confidence → discard (default 0.35). */
+  minConfidenceToStore: number;
+  /** TTL for temporary / borderline content (default 24h). */
+  temporaryTtlMs: number;
+}
+
 export interface AtlasMemoryConfig {
   shortTerm: AtlasMemoryShortTermConfig;
+  classification: AtlasMemoryClassificationConfig;
 }
 
 /** Non-secret, serializable application settings. */

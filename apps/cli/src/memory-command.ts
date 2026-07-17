@@ -1,8 +1,12 @@
 /**
- * CLI: atlas memory — manage long-term memories (requires SQLite).
+ * CLI: atlas memory — manage long-term memories + classify candidates.
  */
 import type { LongTermMemoryType } from "@atlas-ai/database";
-import type { MemoryRecord } from "@atlas-ai/memory";
+import {
+  classifyMemory,
+  type MemoryClassificationResult,
+  type MemoryRecord,
+} from "@atlas-ai/memory";
 
 import type { CliRuntime } from "./run.js";
 
@@ -22,6 +26,28 @@ export function tryHandleMemoryCommand(
     return false;
   }
 
+  const sub = tokens[1]?.toLowerCase();
+
+  // classify works without a database
+  if (sub === "classify") {
+    try {
+      const text = positionalArgs(tokens, 2).join(" ").trim();
+      if (!text) {
+        throw new Error('Usage: memory classify "text"');
+      }
+      const thresholds = runtime.config.memory.classification;
+      const result = classifyMemory({ text }, { thresholds });
+      process.stdout.write(`${formatClassification(result)}\n`);
+      process.exitCode = 0;
+    } catch (error) {
+      process.stderr.write(
+        `${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      process.exitCode = 2;
+    }
+    return true;
+  }
+
   if (!runtime.database || !runtime.longTermMemory) {
     process.stderr.write(
       "Long-term memory requires the database. Remove --no-db / ATLAS_DB_DISABLED.\n",
@@ -31,7 +57,6 @@ export function tryHandleMemoryCommand(
   }
 
   const ltm = runtime.longTermMemory;
-  const sub = tokens[1]?.toLowerCase();
 
   try {
     if (!sub || sub === "help" || sub === "--help" || sub === "-h") {
@@ -56,6 +81,41 @@ export function tryHandleMemoryCommand(
     }
 
     if (sub === "add") {
+      const useClassify = hasFlag(tokens, "--classify");
+      const content = positionalArgs(tokens, 2)
+        .filter((t) => !t.startsWith("--"))
+        .join(" ")
+        .trim();
+      const contentFromFlag = readFlag(tokens, "--content");
+      const finalContent = (contentFromFlag ?? content).trim();
+      if (!finalContent) {
+        throw new Error(
+          useClassify
+            ? 'Usage: memory add --classify "content"'
+            : 'Usage: memory add --type <type> "content"',
+        );
+      }
+
+      if (useClassify) {
+        const thresholds = runtime.config.memory.classification;
+        const result = ltm.evaluateAndStore(finalContent, {
+          thresholds,
+        });
+        if (result.stored && result.record) {
+          process.stdout.write(
+            `Stored ${result.record.type} memory ${result.record.id}\n` +
+              `${formatClassification(result.classification)}\n`,
+          );
+        } else {
+          process.stdout.write(
+            `Not stored (action=${result.classification.action})\n` +
+              `${formatClassification(result.classification)}\n`,
+          );
+        }
+        process.exitCode = 0;
+        return true;
+      }
+
       const type = (readFlag(tokens, "--type") ??
         "semantic") as LongTermMemoryType;
       if (!LONG_TERM_TYPES.has(type)) {
@@ -64,16 +124,6 @@ export function tryHandleMemoryCommand(
       const importanceRaw = readFlag(tokens, "--importance");
       const importance =
         importanceRaw !== undefined ? Number(importanceRaw) : undefined;
-      const content = positionalArgs(tokens, 2)
-        .filter((t) => !t.startsWith("--"))
-        .join(" ")
-        .trim();
-      // Also support: memory add --type semantic -- content...
-      const contentFromFlag = readFlag(tokens, "--content");
-      const finalContent = (contentFromFlag ?? content).trim();
-      if (!finalContent) {
-        throw new Error('Usage: memory add --type <type> "content"');
-      }
       const stored = ltm.store({
         type,
         content: finalContent,
@@ -152,6 +202,16 @@ export function tryHandleMemoryCommand(
       return true;
     }
 
+    if (sub === "purge-expired") {
+      const result = ltm.purgeExpired();
+      process.stdout.write(
+        `Purged ${result.deleted} expired memor${result.deleted === 1 ? "y" : "ies"}` +
+          ` (scanned ${result.scanned})\n`,
+      );
+      process.exitCode = 0;
+      return true;
+    }
+
     throw new Error(`Unknown memory subcommand: ${sub}\n${memoryUsage()}`);
   } catch (error) {
     process.stderr.write(
@@ -164,15 +224,32 @@ export function tryHandleMemoryCommand(
 
 function memoryUsage(): string {
   return [
-    "atlas memory — long-term memory (requires database)",
+    "atlas memory — long-term memory + classification",
     "",
+    '  atlas memory classify "text"',
     "  atlas memory list [--type episodic|semantic|procedural] [--limit N]",
     '  atlas memory add --type semantic "content" [--importance 0.9]',
+    '  atlas memory add --classify "content"',
     "  atlas memory get <id>",
     '  atlas memory update <id> --content "..." [--importance 0.8]',
     "  atlas memory delete <id>",
     '  atlas memory search "query" [--type …] [--limit N]',
+    "  atlas memory purge-expired",
   ].join("\n");
+}
+
+function formatClassification(result: MemoryClassificationResult): string {
+  return [
+    `action: ${result.action}`,
+    `type: ${result.suggestedType}`,
+    `durability: ${result.durability}`,
+    `importance: ${result.importance.toFixed(2)}`,
+    `confidence: ${result.confidence.toFixed(2)}`,
+    `reasons: ${result.reasons.join("; ")}`,
+    result.expiresAt ? `expiresAt: ${result.expiresAt}` : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function formatMemoryList(rows: MemoryRecord[]): string {
@@ -227,11 +304,19 @@ function readFlag(tokens: string[], name: string): string | undefined {
   return tokens[idx + 1];
 }
 
+function hasFlag(tokens: string[], name: string): boolean {
+  return tokens.includes(name);
+}
+
 function positionalArgs(tokens: string[], start: number): string[] {
   const out: string[] = [];
   for (let i = start; i < tokens.length; i += 1) {
     const t = tokens[i];
     if (t.startsWith("--")) {
+      // boolean flags without values (e.g. --classify)
+      if (t === "--classify") {
+        continue;
+      }
       i += 1; // skip flag value
       continue;
     }
@@ -242,5 +327,5 @@ function positionalArgs(tokens: string[], start: number): string[] {
 
 /** Exported for tests. */
 export function __testOnly() {
-  return { tokenize, readFlag, formatMemoryList, memoryUsage };
+  return { tokenize, readFlag, formatMemoryList, memoryUsage, hasFlag };
 }

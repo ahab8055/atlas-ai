@@ -454,6 +454,9 @@ Index
 
 Not all information should become memory.
 
+Implementation: [Memory-Classification.md](../guides/Memory-Classification.md),
+[ADR-0043](../adr/0043-memory-classification-engine.md).
+
 Atlas evaluates:
 
 ## Factors

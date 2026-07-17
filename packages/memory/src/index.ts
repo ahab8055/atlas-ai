@@ -50,9 +50,31 @@ export { registerPersistentMemoryProviders } from "./providers/persistent.js";
 export {
   LongTermMemory,
   createLongTermMemory,
+  type EvaluateAndStoreExtras,
+  type EvaluateAndStoreResult,
   type LongTermListOptions,
   type LongTermSearchOptions,
 } from "./long-term/index.js";
+
+export type {
+  ClassificationAction,
+  ClassificationThresholds,
+  MemoryClassificationInput,
+  MemoryClassificationResult,
+  MemoryDurability,
+  SuggestedMemoryType,
+  PurgeExpiredResult,
+} from "./classification/index.js";
+
+export {
+  DEFAULT_CLASSIFICATION_THRESHOLDS,
+  classifyMemory,
+  createExpirationPolicy,
+  purgeExpiredMemories,
+  resolveAction,
+  resolveExpiresAt,
+  shouldPersist,
+} from "./classification/index.js";
 
 export type {
   ConversationStoreAdapter,

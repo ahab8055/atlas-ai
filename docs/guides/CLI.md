@@ -74,10 +74,13 @@ pnpm atlas --db /tmp/atlas.sqlite status
 pnpm atlas history
 pnpm atlas history --status blocked --limit 5
 
-# Long-term memory (requires DB)
+# Long-term memory (requires DB; classify does not)
+pnpm atlas memory classify "I like dark mode interfaces."
 pnpm atlas memory add --type semantic "Prefers TypeScript"
+pnpm atlas memory add --classify "I prefer TypeScript"
 pnpm atlas memory search "TypeScript"
 pnpm atlas memory list
+pnpm atlas memory purge-expired
 pnpm atlas --no-db status
 ```
 

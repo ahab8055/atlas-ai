@@ -42,6 +42,11 @@
     "shortTerm": {
       "maxEntries": 50,
       "ttlMs": 1800000
+    },
+    "classification": {
+      "minImportanceToStore": 0.45,
+      "minConfidenceToStore": 0.35,
+      "temporaryTtlMs": 86400000
     }
   }
 }
