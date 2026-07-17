@@ -62,6 +62,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0036](./0036-ai-runtime-monitoring.md)                 | AI runtime monitoring foundation        | Accepted |
 | [0037](./0037-offline-mode.md)                          | Offline mode foundation                 | Accepted |
 | [0038](./0038-ai-provider-abstraction.md)               | AI provider abstraction layer           | Accepted |
+| [0039](./0039-phase2-local-ai-integration-tests.md)     | Phase 2 Local AI integration tests      | Accepted |
 
 ## Naming
 
