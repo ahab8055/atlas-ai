@@ -31,9 +31,10 @@ export class ResponseGenerator {
   constructor(private readonly options: ResponseGeneratorOptions = {}) {}
 
   generate(input: GenerateResponseInput): PipelineResponse {
-    const { request, intent, execution, plan } = input;
+    const { request, intent, execution, plan, context } = input;
     const modality = this.options.modality ?? modalityForSource(request.source);
     const withTrace = { traceId: request.traceId };
+    const memoryNote = formatRecalledMemoryNote(context);
 
     if (intent.name === "help") {
       const { text, spokenText } = buildHelpText();
@@ -134,12 +135,15 @@ export class ResponseGenerator {
     }
 
     const body = buildCompletedBody(intent, execution, plan);
+    const textBody = memoryNote
+      ? [...body.textBody, "", memoryNote]
+      : body.textBody;
     return assembleResponse({
       intent,
       execution,
       modality,
       summary: body.summary,
-      textBody: body.textBody,
+      textBody,
       spokenParts: body.spokenParts,
       errors: [],
       ...withTrace,
@@ -169,9 +173,25 @@ export function generateResponse(
   execution: ExecutionResult,
   plan?: ExecutionPlan,
   options?: ResponseGeneratorOptions,
+  context?: GenerateResponseInput["context"],
 ): PipelineResponse {
   const generator = options
     ? new ResponseGenerator(options)
     : getDefaultResponseGenerator();
-  return generator.generate({ request, intent, execution, plan });
+  return generator.generate({ request, intent, execution, plan, context });
+}
+
+function formatRecalledMemoryNote(
+  context: GenerateResponseInput["context"],
+): string | undefined {
+  if (!context?.memories || context.memories.length === 0) {
+    return undefined;
+  }
+  const lines = context.memories
+    .slice(0, 3)
+    .map((m) => `- ${m.content.trim()}`);
+  if (lines.length === 0) {
+    return undefined;
+  }
+  return `Recalled memories:\n${lines.join("\n")}`;
 }

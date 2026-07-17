@@ -47,6 +47,11 @@
       "minImportanceToStore": 0.45,
       "minConfidenceToStore": 0.35,
       "temporaryTtlMs": 86400000
+    },
+    "retrieval": {
+      "limit": 5,
+      "minScore": 0.15,
+      "recencyHalfLifeMs": 2592000000
     }
   }
 }

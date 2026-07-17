@@ -6,6 +6,7 @@ import {
   classifyMemory,
   type MemoryClassificationResult,
   type MemoryRecord,
+  type RetrievedMemory,
 } from "@atlas-ai/memory";
 
 import type { CliRuntime } from "./run.js";
@@ -202,6 +203,27 @@ export function tryHandleMemoryCommand(
       return true;
     }
 
+    if (sub === "retrieve") {
+      const query = positionalArgs(tokens, 2).join(" ").trim();
+      if (!query) {
+        throw new Error('Usage: memory retrieve "query"');
+      }
+      const limit = Number(
+        readFlag(tokens, "--limit") ??
+          String(runtime.config.memory.retrieval.limit),
+      );
+      const hits = ltm.retrieve(query, {
+        limit: Number.isFinite(limit)
+          ? limit
+          : runtime.config.memory.retrieval.limit,
+        minScore: runtime.config.memory.retrieval.minScore,
+        recencyHalfLifeMs: runtime.config.memory.retrieval.recencyHalfLifeMs,
+      });
+      process.stdout.write(`${formatRetrievedList(hits)}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
     if (sub === "purge-expired") {
       const result = ltm.purgeExpired();
       process.stdout.write(
@@ -234,6 +256,7 @@ function memoryUsage(): string {
     '  atlas memory update <id> --content "..." [--importance 0.8]',
     "  atlas memory delete <id>",
     '  atlas memory search "query" [--type …] [--limit N]',
+    '  atlas memory retrieve "query" [--limit N]',
     "  atlas memory purge-expired",
   ].join("\n");
 }
@@ -261,6 +284,19 @@ function formatMemoryList(rows: MemoryRecord[]): string {
       (r) =>
         `${r.id}  [${r.type}]  ${truncate(r.content, 80)}` +
         (r.importance !== undefined ? `  imp=${r.importance}` : ""),
+    )
+    .join("\n");
+}
+
+function formatRetrievedList(hits: RetrievedMemory[]): string {
+  if (hits.length === 0) {
+    return "(no matches)";
+  }
+  return hits
+    .map(
+      (h) =>
+        `${h.score.toFixed(3)}  ${h.record.id}  [${h.record.type}]  ` +
+        `${truncate(h.record.content, 70)}`,
     )
     .join("\n");
 }

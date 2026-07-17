@@ -67,6 +67,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0041](./0041-short-term-memory.md)                     | Short-term memory                       | Accepted |
 | [0042](./0042-long-term-memory.md)                      | Long-term memory                        | Accepted |
 | [0043](./0043-memory-classification-engine.md)          | Memory classification engine            | Accepted |
+| [0044](./0044-memory-retrieval-engine.md)               | Memory retrieval engine                 | Accepted |
 
 ## Naming
 

@@ -53,6 +53,7 @@ export {
   type EvaluateAndStoreExtras,
   type EvaluateAndStoreResult,
   type LongTermListOptions,
+  type LongTermMemoryOptions,
   type LongTermSearchOptions,
 } from "./long-term/index.js";
 
@@ -75,6 +76,25 @@ export {
   resolveExpiresAt,
   shouldPersist,
 } from "./classification/index.js";
+
+export type {
+  MemoryEmbeddingLookup,
+  RetrievalOptions,
+  RetrievalScoreWeights,
+  RetrievedMemory,
+  ScoreBreakdown,
+} from "./retrieval/index.js";
+
+export {
+  DEFAULT_RECENCY_HALF_LIFE_MS,
+  DEFAULT_RETRIEVAL_LIMIT,
+  DEFAULT_RETRIEVAL_MIN_SCORE,
+  DEFAULT_RETRIEVAL_WEIGHTS,
+  MemoryRetrievalEngine,
+  createMemoryRetrievalEngine,
+  cosineSimilarity,
+  hashTextToVector,
+} from "./retrieval/index.js";
 
 export type {
   ConversationStoreAdapter,

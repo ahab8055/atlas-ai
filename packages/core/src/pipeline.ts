@@ -351,7 +351,14 @@ export function runPipeline(
       },
     );
 
-    const response = generateResponse(request, intent, execution, plan);
+    const response = generateResponse(
+      request,
+      intent,
+      execution,
+      plan,
+      undefined,
+      context,
+    );
     for (const structured of response.structuredErrors) {
       // Unknown-intent and other response-layer errors — log if not already from execution.
       if (

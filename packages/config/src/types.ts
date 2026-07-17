@@ -85,9 +85,19 @@ export interface AtlasMemoryClassificationConfig {
   temporaryTtlMs: number;
 }
 
+export interface AtlasMemoryRetrievalConfig {
+  /** Max memories injected into context (default 5). */
+  limit: number;
+  /** Drop hits below this hybrid score (default 0.15). */
+  minScore: number;
+  /** Recency half-life in ms (default 30 days). */
+  recencyHalfLifeMs: number;
+}
+
 export interface AtlasMemoryConfig {
   shortTerm: AtlasMemoryShortTermConfig;
   classification: AtlasMemoryClassificationConfig;
+  retrieval: AtlasMemoryRetrievalConfig;
 }
 
 /** Non-secret, serializable application settings. */

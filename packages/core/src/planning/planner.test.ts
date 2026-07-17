@@ -152,4 +152,26 @@ describe("task planning engine", () => {
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0]?.description).toBe("Custom step");
   });
+
+  it("appends recalled memories to the plan goal", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "Open VS Code",
+    });
+    const intent = detectIntent(request);
+    const context = loadContext(request, intent, {
+      manager: new ContextManager(),
+    });
+    context.memories = [
+      {
+        id: "m1",
+        content: "User prefers dark mode interfaces",
+        kind: "semantic",
+        score: 0.8,
+      },
+    ];
+    const plan = createPlan(request, intent, context);
+    expect(plan.goal).toContain("Recalled memories");
+    expect(plan.goal).toContain("dark mode");
+  });
 });

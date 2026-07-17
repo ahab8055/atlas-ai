@@ -8,6 +8,7 @@ import type {
   AtlasFeatureFlags,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
+  AtlasMemoryRetrievalConfig,
   AtlasMemoryShortTermConfig,
   AtlasPathsConfig,
   AtlasServerConfig,
@@ -237,6 +238,23 @@ function mergeMemoryClassification(
   };
 }
 
+function mergeMemoryRetrieval(
+  base: AtlasMemoryRetrievalConfig,
+  patch: unknown,
+): AtlasMemoryRetrievalConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    limit: Math.max(1, Math.floor(asNumber(patch.limit, base.limit))),
+    minScore: clamp01(asNumber(patch.minScore, base.minScore)),
+    recencyHalfLifeMs: Math.max(
+      1,
+      Math.floor(asNumber(patch.recencyHalfLifeMs, base.recencyHalfLifeMs)),
+    ),
+  };
+}
+
 function mergeMemory(
   base: AtlasMemoryConfig,
   patch: unknown,
@@ -245,6 +263,7 @@ function mergeMemory(
     return {
       shortTerm: { ...base.shortTerm },
       classification: { ...base.classification },
+      retrieval: { ...base.retrieval },
     };
   }
   return {
@@ -253,6 +272,7 @@ function mergeMemory(
       base.classification,
       patch.classification,
     ),
+    retrieval: mergeMemoryRetrieval(base.retrieval, patch.retrieval),
   };
 }
 
@@ -391,6 +411,20 @@ export function applyEnvOverrides(
           envVars.ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS !== undefined
             ? Number(envVars.ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS)
             : config.memory.classification.temporaryTtlMs,
+      },
+      retrieval: {
+        limit:
+          envVars.ATLAS_MEMORY_RETRIEVAL_LIMIT !== undefined
+            ? Number(envVars.ATLAS_MEMORY_RETRIEVAL_LIMIT)
+            : config.memory.retrieval.limit,
+        minScore:
+          envVars.ATLAS_MEMORY_RETRIEVAL_MIN_SCORE !== undefined
+            ? Number(envVars.ATLAS_MEMORY_RETRIEVAL_MIN_SCORE)
+            : config.memory.retrieval.minScore,
+        recencyHalfLifeMs:
+          envVars.ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS !== undefined
+            ? Number(envVars.ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS)
+            : config.memory.retrieval.recencyHalfLifeMs,
       },
     },
   });

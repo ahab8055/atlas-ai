@@ -43,6 +43,7 @@ Practical guides for contributing to Atlas AI.
 | [Short-Term-Memory.md](./Short-Term-Memory.md)                                     | Session conversation window + TTL          |
 | [Long-Term-Memory.md](./Long-Term-Memory.md)                                       | Persistent memories + relevance search     |
 | [Memory-Classification.md](./Memory-Classification.md)                             | Importance gate before long-term store     |
+| [Memory-Retrieval.md](./Memory-Retrieval.md)                                       | Hybrid rank + inject into context          |
 | [Task-Planning.md](./Task-Planning.md)                                             | Single- and multi-step execution plans     |
 | [Execution-Controller.md](./Execution-Controller.md)                               | Lifecycle, progress, failures              |
 | [Tool-Registry.md](./Tool-Registry.md)                                             | Tool metadata, discovery, versioning       |

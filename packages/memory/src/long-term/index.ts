@@ -1,5 +1,5 @@
 /**
- * Long-term memory facade — sync SQLite CRUD + relevance search.
+ * Long-term memory facade — sync SQLite CRUD + hybrid retrieval.
  */
 import type {
   LongTermMemoryType,
@@ -16,7 +16,13 @@ import {
   type PurgeExpiredResult,
 } from "../classification/index.js";
 import { MemoryError } from "../errors.js";
-import { toMemorySnippets } from "../manager.js";
+import {
+  createMemoryRetrievalEngine,
+  type MemoryEmbeddingLookup,
+  type MemoryRetrievalEngine,
+  type RetrievalOptions,
+  type RetrievedMemory,
+} from "../retrieval/index.js";
 import type {
   CreateMemoryInput,
   MemoryRecord,
@@ -40,19 +46,39 @@ export interface EvaluateAndStoreResult {
   classification: MemoryClassificationResult;
 }
 
-export interface LongTermSearchOptions {
+export interface LongTermSearchOptions extends RetrievalOptions {
+  type?: LongTermMemoryType;
+  tags?: string[];
+  userId?: string;
+}
+
+export interface LongTermListOptions {
   type?: LongTermMemoryType;
   tags?: string[];
   limit?: number;
   userId?: string;
-}
-
-export interface LongTermListOptions extends LongTermSearchOptions {
   sessionId?: string;
 }
 
+export interface LongTermMemoryOptions {
+  embeddingLookup?: MemoryEmbeddingLookup;
+  /** Best-effort index hook after successful store (must not throw). */
+  onStored?: (record: MemoryRecord) => void;
+}
+
 export class LongTermMemory {
-  constructor(private readonly repo: MemoriesRepository) {}
+  private readonly engine: MemoryRetrievalEngine;
+  private readonly onStored?: (record: MemoryRecord) => void;
+
+  constructor(
+    private readonly repo: MemoriesRepository,
+    options: LongTermMemoryOptions = {},
+  ) {
+    this.engine = createMemoryRetrievalEngine(repo, {
+      embeddingLookup: options.embeddingLookup,
+    });
+    this.onStored = options.onStored;
+  }
 
   store(input: CreateMemoryInput): MemoryRecord {
     if (!isLongTermType(input.type)) {
@@ -72,7 +98,9 @@ export class LongTermMemory {
       metadata: input.metadata,
       tags: input.tags,
     });
-    return rowToRecord(row);
+    const record = rowToRecord(row);
+    this.invokeOnStored(record);
+    return record;
   }
 
   get(id: string): MemoryRecord | undefined {
@@ -90,7 +118,9 @@ export class LongTermMemory {
         metadata: patch.metadata,
         tags: patch.tags,
       });
-      return rowToRecord(row);
+      const record = rowToRecord(row);
+      this.invokeOnStored(record);
+      return record;
     } catch (error) {
       if (error instanceof Error && error.message.includes("not found")) {
         throw MemoryError.notFound(id);
@@ -115,19 +145,14 @@ export class LongTermMemory {
       .map(rowToRecord);
   }
 
-  /** Relevance-ranked search (token hits + importance + recency). */
+  /** Hybrid relevance search (semantic + lexical + importance + recency). */
   search(text: string, options: LongTermSearchOptions = {}): MemoryRecord[] {
-    const limit = options.limit ?? 5;
-    const candidates = this.repo.list({
-      type: options.type,
-      tags: options.tags,
-      userId: options.userId,
-      limit: Math.max(limit * 10, 50),
-    });
-    return this.repo
-      .rankByRelevance(candidates, text)
-      .slice(0, limit)
-      .map(rowToRecord);
+    return this.retrieve(text, options).map((hit) => hit.record);
+  }
+
+  /** Full ranked retrieval with scores. */
+  retrieve(text: string, options: RetrievalOptions = {}): RetrievedMemory[] {
+    return this.engine.retrieve(text, options);
   }
 
   /**
@@ -188,7 +213,11 @@ export class LongTermMemory {
 
   /** Sync retriever for core ContextManager createMemoryProvider. */
   createRetriever(
-    options: { limit?: number } = {},
+    options: {
+      limit?: number;
+      minScore?: number;
+      recencyHalfLifeMs?: number;
+    } = {},
   ): (input: {
     sessionId: string;
     text: string;
@@ -200,14 +229,37 @@ export class LongTermMemory {
       if (!text) {
         return [];
       }
-      const hits = this.search(text, { limit });
-      return toMemorySnippets(hits, text);
+      const hits = this.retrieve(text, {
+        limit,
+        minScore: options.minScore,
+        recencyHalfLifeMs: options.recencyHalfLifeMs,
+      });
+      return hits.map((hit) => ({
+        id: hit.record.id,
+        content: hit.record.content,
+        kind: hit.record.type,
+        score: hit.score,
+      }));
     };
+  }
+
+  private invokeOnStored(record: MemoryRecord): void {
+    if (!this.onStored) {
+      return;
+    }
+    try {
+      this.onStored(record);
+    } catch {
+      // Best-effort indexing must never block store
+    }
   }
 }
 
-export function createLongTermMemory(repo: MemoriesRepository): LongTermMemory {
-  return new LongTermMemory(repo);
+export function createLongTermMemory(
+  repo: MemoriesRepository,
+  options: LongTermMemoryOptions = {},
+): LongTermMemory {
+  return new LongTermMemory(repo, options);
 }
 
 function rowToRecord(row: MemoryRow): MemoryRecord {

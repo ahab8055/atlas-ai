@@ -60,6 +60,17 @@ describe("applyEnvOverrides", () => {
     expect(next.memory.classification.minConfidenceToStore).toBe(0.4);
     expect(next.memory.classification.temporaryTtlMs).toBe(3600000);
   });
+
+  it("overrides memory retrieval settings", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_MEMORY_RETRIEVAL_LIMIT: "8",
+      ATLAS_MEMORY_RETRIEVAL_MIN_SCORE: "0.2",
+      ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS: "86400000",
+    });
+    expect(next.memory.retrieval.limit).toBe(8);
+    expect(next.memory.retrieval.minScore).toBe(0.2);
+    expect(next.memory.retrieval.recencyHalfLifeMs).toBe(86400000);
+  });
 });
 
 describe("loadConfig", () => {
@@ -122,5 +133,20 @@ describe("mergeAppConfig", () => {
     expect(merged.memory.classification.minImportanceToStore).toBe(0.6);
     expect(merged.memory.classification.minConfidenceToStore).toBe(0.5);
     expect(merged.memory.classification.temporaryTtlMs).toBe(1000);
+  });
+
+  it("merges memory.retrieval overrides", () => {
+    const merged = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      memory: {
+        retrieval: {
+          limit: 10,
+          minScore: 0.25,
+          recencyHalfLifeMs: 1000,
+        },
+      },
+    });
+    expect(merged.memory.retrieval.limit).toBe(10);
+    expect(merged.memory.retrieval.minScore).toBe(0.25);
+    expect(merged.memory.retrieval.recencyHalfLifeMs).toBe(1000);
   });
 });

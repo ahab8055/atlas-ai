@@ -106,7 +106,15 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const contextManager = new ContextManager({
     conversationStore: shortTerm.toConversationStore(),
     providers: longTermMemory
-      ? [createMemoryProvider(longTermMemory.createRetriever({ limit: 5 }))]
+      ? [
+          createMemoryProvider(
+            longTermMemory.createRetriever({
+              limit: config.memory.retrieval.limit,
+              minScore: config.memory.retrieval.minScore,
+              recencyHalfLifeMs: config.memory.retrieval.recencyHalfLifeMs,
+            }),
+          ),
+        ]
       : undefined,
   });
 

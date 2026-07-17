@@ -223,6 +223,33 @@ describe("response generation", () => {
     expect(response.structuredErrors[0]?.code).toBe("unknown_intent");
     expect(response.errors[0]).toMatch(/understand|help/i);
   });
+
+  it("surfaces recalled memories in completed responses", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "echo hello",
+    });
+    const response = generateResponse(
+      request,
+      echoIntent(),
+      baseExecution(),
+      undefined,
+      undefined,
+      {
+        memories: [
+          {
+            id: "m1",
+            content: "User prefers dark mode interfaces",
+            kind: "semantic",
+            score: 0.9,
+          },
+        ],
+      } as never,
+    );
+
+    expect(response.text).toContain("Recalled memories");
+    expect(response.text).toContain("dark mode");
+  });
 });
 
 describe("explainFailures", () => {

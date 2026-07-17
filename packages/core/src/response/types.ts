@@ -6,6 +6,7 @@ import type {
 import type { AtlasErrorResponse } from "../errors/types.js";
 import type { DetectedIntent } from "../intent/types.js";
 import type { ExecutionPlan } from "../planning/types.js";
+import type { LoadedContext } from "../context/types.js";
 import type { NormalizedRequest } from "../types.js";
 
 /** How the response should be presented (adapters pick fields). */
@@ -44,6 +45,8 @@ export interface GenerateResponseInput {
   intent: DetectedIntent;
   execution: ExecutionResult;
   plan?: ExecutionPlan;
+  /** Optional loaded context for recalled-memory surfacing. */
+  context?: LoadedContext;
 }
 
 export interface ResponseGeneratorOptions {

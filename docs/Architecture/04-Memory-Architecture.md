@@ -516,6 +516,9 @@ Not stored.
 
 # Memory Retrieval Pipeline
 
+Implementation: [Memory-Retrieval.md](../guides/Memory-Retrieval.md),
+[ADR-0044](../adr/0044-memory-retrieval-engine.md).
+
 When responding:
 
 ```

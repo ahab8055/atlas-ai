@@ -51,5 +51,10 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       minConfidenceToStore: 0.35,
       temporaryTtlMs: 86_400_000,
     },
+    retrieval: {
+      limit: 5,
+      minScore: 0.15,
+      recencyHalfLifeMs: 2_592_000_000,
+    },
   },
 };

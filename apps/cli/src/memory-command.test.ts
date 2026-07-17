@@ -50,6 +50,11 @@ function stubRuntime(): CliRuntime {
           minConfidenceToStore: 0.35,
           temporaryTtlMs: 86_400_000,
         },
+        retrieval: {
+          limit: 5,
+          minScore: 0.15,
+          recencyHalfLifeMs: 2_592_000_000,
+        },
       },
     } as unknown as CliRuntime["config"],
     database,
@@ -167,6 +172,30 @@ describe("memory CLI + context wiring", () => {
         true,
       );
       expect(runtime.longTermMemory!.list()).toHaveLength(0);
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
+  it("retrieves ranked memories via CLI", () => {
+    const runtime = stubRuntime();
+    try {
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "User prefers dark mode interfaces",
+        importance: 0.9,
+        confidence: 0.9,
+      });
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory retrieve "change theme to dark"',
+        ),
+      ).toBe(true);
+      expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
+        true,
+      );
     } finally {
       runtime.database?.close();
       process.exitCode = undefined;
