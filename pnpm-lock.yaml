@@ -80,6 +80,9 @@ importers:
       '@atlas-ai/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@atlas-ai/knowledge':
+        specifier: workspace:*
+        version: link:../../packages/knowledge
       '@atlas-ai/logging':
         specifier: workspace:*
         version: link:../../packages/logging
@@ -186,6 +189,16 @@ importers:
       '@types/node':
         specifier: '22'
         version: 22.20.1
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
+  packages/knowledge:
+    dependencies:
+      '@atlas-ai/database':
+        specifier: workspace:*
+        version: link:../database
+    devDependencies:
       typescript:
         specifier: ~5.8.3
         version: 5.8.3

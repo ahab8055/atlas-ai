@@ -46,6 +46,23 @@ export {
   type MemoryUpdateInput,
 } from "./repositories/memories.js";
 export {
+  EntitiesRepository,
+  type EntityListQuery,
+  type EntityRecordInput,
+  type EntityRow,
+  type EntityUpdateInput,
+} from "./repositories/entities.js";
+export {
+  RelationshipsRepository,
+  type NeighborDirection,
+  type NeighborEdge,
+  type NeighborQuery,
+  type RelationshipListQuery,
+  type RelationshipRecordInput,
+  type RelationshipRow,
+  type RelationshipUpdateInput,
+} from "./repositories/relationships.js";
+export {
   ExecutionHistoryRepository,
   type ExecutionFailureInput,
   type ExecutionHistoryInput,

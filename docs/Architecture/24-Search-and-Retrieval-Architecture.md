@@ -779,7 +779,7 @@ Related systems:
 
 Previous:
 
-- `23-Computer-Interaction-Architecture.md`
+- `26-Computer-Interaction-Architecture.md`
 
 Related:
 

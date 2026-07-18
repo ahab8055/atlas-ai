@@ -4,6 +4,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { tryHandleAiCommand } from "./ai-command.js";
 import { exitCodeForResult } from "./display.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
+import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import type { CliOptions } from "./options.js";
 import { createCliRuntime, runCommand, type CliRuntime } from "./run.js";
@@ -69,6 +70,14 @@ export async function runRepl(
       }
 
       if (tryHandleMemoryCommand(runtime, trimmed)) {
+        lastCode =
+          process.exitCode === 1 || process.exitCode === 2
+            ? process.exitCode
+            : 0;
+        continue;
+      }
+
+      if (tryHandleKnowledgeCommand(runtime, trimmed)) {
         lastCode =
           process.exitCode === 1 || process.exitCode === 2
             ? process.exitCode

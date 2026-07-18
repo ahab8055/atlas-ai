@@ -767,7 +767,7 @@ Related:
 Next:
 
 - `Architecture/23-Knowledge-Graph-Architecture.md`
-- `Architecture/24-Computer-Interaction-Architecture.md`
+- `Architecture/26-Computer-Interaction-Architecture.md`
 
 ---
 

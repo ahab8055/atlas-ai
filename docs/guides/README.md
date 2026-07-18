@@ -45,6 +45,7 @@ Practical guides for contributing to Atlas AI.
 | [Memory-Classification.md](./Memory-Classification.md)                             | Importance gate before long-term store     |
 | [Memory-Retrieval.md](./Memory-Retrieval.md)                                       | Hybrid rank + inject into context          |
 | [Memory-Consolidation.md](./Memory-Consolidation.md)                               | Dedupe, history, conflict flags            |
+| [Knowledge-Graph.md](./Knowledge-Graph.md)                                         | Entities, relationships, traversal         |
 | [Task-Planning.md](./Task-Planning.md)                                             | Single- and multi-step execution plans     |
 | [Execution-Controller.md](./Execution-Controller.md)                               | Lifecycle, progress, failures              |
 | [Tool-Registry.md](./Tool-Registry.md)                                             | Tool metadata, discovery, versioning       |

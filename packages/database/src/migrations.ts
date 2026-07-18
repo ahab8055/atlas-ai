@@ -117,6 +117,42 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     `);
   }
 
+  if (version < 6) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS entities (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'local',
+        type TEXT NOT NULL,
+        name TEXT NOT NULL,
+        properties TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (user_id, type, name)
+      );
+      CREATE INDEX IF NOT EXISTS idx_entities_user_type ON entities(user_id, type);
+      CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name);
+
+      CREATE TABLE IF NOT EXISTS relationships (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'local',
+        from_entity_id TEXT NOT NULL,
+        to_entity_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        weight REAL,
+        properties TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (from_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
+        FOREIGN KEY (to_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
+        UNIQUE (user_id, from_entity_id, to_entity_id, type)
+      );
+      CREATE INDEX IF NOT EXISTS idx_relationships_from ON relationships(from_entity_id);
+      CREATE INDEX IF NOT EXISTS idx_relationships_to ON relationships(to_entity_id);
+      CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(type);
+      CREATE INDEX IF NOT EXISTS idx_relationships_user ON relationships(user_id);
+    `);
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

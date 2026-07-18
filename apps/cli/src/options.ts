@@ -51,6 +51,8 @@ export function usage(): string {
     "  atlas history --status failed --limit 5",
     '  atlas memory add --type semantic "Prefers TypeScript"',
     '  atlas memory search "TypeScript"',
+    "  atlas knowledge entity add --type project --name Atlas",
+    "  atlas knowledge traverse <entityId>",
     "  atlas echo hello",
     '  atlas --debug "Open VS Code"',
     "  atlas -i",

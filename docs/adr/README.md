@@ -69,6 +69,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0043](./0043-memory-classification-engine.md)          | Memory classification engine            | Accepted |
 | [0044](./0044-memory-retrieval-engine.md)               | Memory retrieval engine                 | Accepted |
 | [0045](./0045-memory-consolidation-service.md)          | Memory consolidation service            | Accepted |
+| [0046](./0046-knowledge-graph-data-model.md)            | Knowledge graph data model              | Accepted |
 
 ## Naming
 

@@ -20,6 +20,7 @@
     "@atlas-ai/config": "workspace:*",
     "@atlas-ai/core": "workspace:*",
     "@atlas-ai/database": "workspace:*",
+    "@atlas-ai/knowledge": "workspace:*",
     "@atlas-ai/logging": "workspace:*",
     "@atlas-ai/memory": "workspace:*"
   },

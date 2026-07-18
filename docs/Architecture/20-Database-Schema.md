@@ -399,6 +399,84 @@ User prefers TypeScript.
 
 ---
 
+# 5b. Knowledge Graph Entities
+
+## Purpose
+
+Stores knowledge graph nodes (Architecture/23).
+
+---
+
+# Schema
+
+```
+entities
+
+id
+
+user_id
+
+type
+
+name
+
+properties
+
+created_at
+
+updated_at
+
+UNIQUE (user_id, type, name)
+
+```
+
+Known types: `project`, `person`, `technology`, `file`, `concept`, `location`,
+`preference` (custom strings allowed).
+
+---
+
+# 5c. Knowledge Graph Relationships
+
+## Purpose
+
+Stores directed edges between entities.
+
+---
+
+# Schema
+
+```
+relationships
+
+id
+
+user_id
+
+from_entity_id
+
+to_entity_id
+
+type
+
+weight
+
+properties
+
+created_at
+
+updated_at
+
+UNIQUE (user_id, from_entity_id, to_entity_id, type)
+
+FOREIGN KEY from_entity_id / to_entity_id → entities(id) ON DELETE CASCADE
+
+```
+
+Known types: `part_of`, `depends_on`, `uses`, `related_to`, `located_at`,
+`prefers` (custom strings allowed).
+
+---
+
 # 6. Memory Tags
 
 ## Purpose
@@ -1287,11 +1365,14 @@ models
 
 Add:
 
-- Knowledge graph.
 - Multi-device sync.
 - Enterprise users.
 - Shared workspaces.
 - Advanced analytics.
+
+Knowledge graph tables (`entities`, `relationships`) ship at schema version 6 —
+see [Architecture/23](./23-Knowledge-Graph-Architecture.md) and
+[Knowledge-Graph.md](../guides/Knowledge-Graph.md).
 
 ---
 

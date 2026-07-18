@@ -2,7 +2,7 @@
 
 Local SQLite persistence for configuration and core runtime data.
 
-Related: [Architecture/20-Database-Schema.md](../Architecture/20-Database-Schema.md), [Architecture/07-Data-Architecture.md](../Architecture/07-Data-Architecture.md), [Architecture/17-Technology-Stack.md](../Architecture/17-Technology-Stack.md), [`@atlas-ai/database`](../../packages/database/), [ADR-0018](../adr/0018-core-database-integration.md), [CLI.md](./CLI.md).
+Related: [Architecture/20-Database-Schema.md](../Architecture/20-Database-Schema.md), [Architecture/07-Data-Architecture.md](../Architecture/07-Data-Architecture.md), [Architecture/17-Technology-Stack.md](../Architecture/17-Technology-Stack.md), [Knowledge-Graph.md](./Knowledge-Graph.md), [`@atlas-ai/database`](../../packages/database/), [ADR-0018](../adr/0018-core-database-integration.md), [ADR-0046](../adr/0046-knowledge-graph-data-model.md), [CLI.md](./CLI.md).
 
 ---
 
@@ -49,6 +49,8 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 | `embeddings`        | Embedding vectors for search/memory                      |
 | `memories`          | Long-term memory records (episodic/semantic/procedural)  |
 | `memory_tags`       | Tags for long-term memories                              |
+| `entities`          | Knowledge graph nodes (schema v6)                        |
+| `relationships`     | Knowledge graph directed edges (schema v6)               |
 | `execution_history` | Pipeline / task run history                              |
 | `task_executions`   | Per-step execution rows                                  |
 | `schema_migrations` | Applied schema version                                   |

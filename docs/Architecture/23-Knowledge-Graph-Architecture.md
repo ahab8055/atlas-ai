@@ -2,771 +2,174 @@
 
 ## Technical Architecture Documentation
 
-**Document:** 23-Computer-Interaction-Architecture.md  
+**Document:** 23-Knowledge-Graph-Architecture.md  
 **Project Name:** Atlas AI (Codename)  
 **Version:** 0.1 (Draft)  
 **Status:** Draft  
 **Author:** Ahab Latif  
-**Last Updated:** July 15, 2026
+**Last Updated:** July 18, 2026
 
 ---
 
-# Computer Interaction Architecture
+# Knowledge Graph Architecture
 
 ## Purpose
 
-This document defines how Atlas interacts with the user's operating system and digital environment.
+This document defines the personal knowledge graph for Atlas AI: how entities and
+relationships are modeled, stored, traversed, and exported for future
+visualization.
 
-The Computer Interaction Layer allows Atlas to:
+The graph lets Atlas understand connections such as Project → Technology → Tool
+without embedding that structure only in free-text memory.
 
-- Open applications.
-- Manage files.
-- Execute commands.
-- Control workflows.
-- Interact with websites.
-- Understand screen state.
-- Perform computer actions safely.
-
-This layer transforms Atlas from an AI assistant into an actual computer operator.
+Related: [Architecture/20-Database-Schema.md](./20-Database-Schema.md),
+[Architecture/24-Search-and-Retrieval-Architecture.md](./24-Search-and-Retrieval-Architecture.md),
+[guides/Knowledge-Graph.md](../guides/Knowledge-Graph.md),
+[ADR-0046](../adr/0046-knowledge-graph-data-model.md),
+[`@atlas-ai/knowledge`](../../packages/knowledge/).
 
 ---
 
 # Design Goals
 
-The Computer Interaction Layer must provide:
-
-- Secure system access.
-- Cross-platform support.
-- Reliable execution.
-- User transparency.
-- Permission control.
-- Extensible capabilities.
+- Consistent entity and relationship storage (property graph in SQLite).
+- Directed edges with optional weight and JSON properties.
+- Depth-limited graph traversal for queries and context loading.
+- Stable subgraph snapshot JSON for future visualization (no UI in this slice).
+- Pluggable store (in-memory for tests, SQLite for persistence).
 
 ---
 
-# Architecture Overview
+# Out of Scope (this foundation)
 
-             Atlas AI Core
-
-                   |
-
-          Action Decision Layer
-
-                   |
-
-      Computer Interaction Engine
-
-                   |
-                   | | | |
-
-OS Layer File Layer Application Layer Browser Layer
-
-| | | |
-
-Windows Filesystem Apps Websites
-
-macOS
-
-Linux
+- Automatic NER / entity extraction from chat.
+- Desktop or web graph visualization UI.
+- Hybrid search ranking that blends graph hops with vectors (Architecture/24
+  may consume the graph later).
+- Cypher, SPARQL, or a dedicated graph database.
 
 ---
 
-# Core Principles
+# Data Model
 
-## 1. Never Execute Without Authorization
+## Entity (node)
 
-Atlas should not silently perform sensitive actions.
+| Field        | Type     | Notes                                      |
+| ------------ | -------- | ------------------------------------------ |
+| `id`         | string   | UUID                                       |
+| `userId`     | string   | Default `local`                            |
+| `type`       | string   | Known set or custom (see below)            |
+| `name`       | string   | Display / match key                        |
+| `properties` | object   | Extensible JSON; prefer primitives for viz |
+| `createdAt`  | ISO time |                                            |
+| `updatedAt`  | ISO time |                                            |
 
-Examples requiring permission:
+**Consistency:** unique `(userId, type, name)`.
 
-- Deleting files.
-- Installing software.
-- Changing system settings.
-- Sending messages.
+### Known entity types
 
----
+`project` | `person` | `technology` | `file` | `concept` | `location` |
+`preference` | (open string for custom types)
 
-## 2. Abstract Operating Systems
+## Relationship (directed edge)
 
-Atlas should provide a common interface.
+| Field          | Type     | Notes                             |
+| -------------- | -------- | --------------------------------- |
+| `id`           | string   | UUID                              |
+| `userId`       | string   | Default `local`                   |
+| `fromEntityId` | string   | FK → entity                       |
+| `toEntityId`   | string   | FK → entity                       |
+| `type`         | string   | Known set or custom               |
+| `weight`       | number?  | Optional `0..1` for later ranking |
+| `properties`   | object   | Extensible JSON                   |
+| `createdAt`    | ISO time |                                   |
+| `updatedAt`    | ISO time |                                   |
 
-Example:
-openApplication()
+**Consistency:** unique `(userId, fromEntityId, toEntityId, type)`. Endpoints
+must exist; deleting an entity cascades to incident edges.
 
-readFile()
+### Known relationship types
 
-executeCommand()
-
-captureScreen()
-
-The implementation changes by OS.
-
----
-
-## 3. Human Control
-
-Users should always know:
-
-- What Atlas is doing.
-- Why it is doing it.
-- What permissions are being used.
-
----
-
-# System Components
-
----
-
-# 1. OS Abstraction Layer
-
-## Purpose
-
-Provides a unified interface across operating systems.
+`part_of` | `depends_on` | `uses` | `related_to` | `located_at` | `prefers` |
+(open string for custom types)
 
 ---
 
-## Supported Platforms
+# Storage
 
-Initial:
+Tables in `@atlas-ai/database` (schema version ≥ 6):
 
-- Windows
-- macOS
-- Linux
+- `entities`
+- `relationships`
 
----
-
-## Architecture
-
-Atlas Command
-
-    |
-
-OS Adapter Interface
-
-    |
-
-Windows Adapter
-
-macOS Adapter
-
-Linux Adapter
+Domain logic lives in `@atlas-ai/knowledge` (`KnowledgeGraphManager` +
+`GraphStore` port). Callers do not write SQL directly.
 
 ---
 
-# OS Adapter Responsibilities
+# Traversal and Queries
 
-Handles:
+Supported operations:
 
-- Application management.
-- System information.
-- File permissions.
-- Process management.
-- Native commands.
+| API              | Behavior                                                |
+| ---------------- | ------------------------------------------------------- |
+| `getEntity`      | By id                                                   |
+| `listEntities`   | Filter by type / name substring / limit                 |
+| `getNeighbors`   | 1-hop in / out / both, optional relation type filter    |
+| `traverse`       | BFS from a start id, `maxDepth` (default 2), cycle-safe |
+| `exportSnapshot` | Full graph or ego subgraph as viz-ready JSON            |
 
----
-
-# 2. Application Control System
-
-## Purpose
-
-Allows Atlas to manage installed applications.
+No declarative graph query language in MVP foundation.
 
 ---
 
-# Capabilities
+# Visualization Contract
 
-Atlas can:
+`GraphSnapshot` is the stable export shape for future D3 / Cytoscape / etc.:
 
-- Find applications.
-- Launch applications.
-- Close applications.
-- Check application status.
+```ts
+{
+  nodes: { id, label, type, properties }[];
+  edges: { id, source, target, type, weight?, properties }[];
+}
+```
 
----
-
-# Example
-
-User:
-
-Open my coding environment.
-
-Atlas:
-
-Detect preferred IDE
-
-↓
-
-Launch VS Code
-
-↓
-
-Open last project
+UI rendering is out of scope; exporters and CLI `export` produce this JSON only.
 
 ---
 
-# Application Registry
+# Context Integration
 
-Atlas maintains:
+`createKnowledgeProvider` in `@atlas-ai/core` accepts a `KnowledgeRetriever`.
+When a graph is available, lexical name match on the request text loads a
+shallow ego neighborhood and maps hits to `KnowledgeSnippet { id, label, content }`.
 
-applications
-
-id
-
-name
-
-path
-
-version
-
-last_used
-
-permissions
+Default retriever remains empty when no database is configured.
 
 ---
 
-# Application Intelligence
+# Package Boundaries
 
-Atlas learns:
+```
+CLI / Context Manager
+        ↓
+KnowledgeGraphManager (@atlas-ai/knowledge)
+        ↓
+GraphStore (in-memory | sqlite)
+        ↓
+entities / relationships (@atlas-ai/database)
+```
 
-Example:
-
-Coding Task
-
-↓
-
-VS Code
-
-↓
-
-Atlas Project Folder
-
----
-
-# 3. File System Interaction Layer
-
-## Purpose
-
-Provides controlled access to files.
+Memory (`@atlas-ai/memory`) remains free-text / typed memories; the knowledge
+graph is structural. They may reference each other later but are not merged.
 
 ---
 
-# Capabilities
-
-Supports:
-
-- File search.
-- Reading files.
-- Creating files.
-- Editing files.
-- Moving files.
-- Metadata extraction.
-
----
-
-# File Operations
-
-Example API:
-
-findFiles()
-
-readFile()
-
-writeFile()
-
-createDirectory()
-
-deleteFile()
-
----
-
-# File Security
-
-Sensitive operations require approval.
-
-Examples:
-
-Allowed:
-
-Read project files
-
-Requires confirmation:
-
-Delete directory
-
----
-
-# File Indexing
-
-Used by:
-
-- Search system.
-- Memory system.
-- Knowledge graph.
-
----
-
-# 4. Terminal Execution System
-
-## Purpose
-
-Allows Atlas to execute commands.
-
----
-
-# Example
-
-User:
-
-Run my backend server.
-
-Execution:
-
-Open terminal
-
-↓
-
-Navigate project
-
-↓
-
-Execute npm command
-
-↓
-
-Monitor output
-
----
-
-# Command Security
-
-Every command receives:
-
-Risk Score
-
-Permission Check
-
-Execution Policy
-
----
-
-# Risk Levels
-
-## Low
-
-Examples:
-
-ls
-
-pwd
-
-git status
-
----
-
-## Medium
-
-Examples:
-
-npm install
-
-docker start
-
----
-
-## High
-
-Examples:
-
-rm -rf
-
-system modification
-
-registry changes
-
----
-
-# 5. Browser Automation Layer
-
-## Purpose
-
-Allows Atlas to interact with websites.
-
----
-
-# Capabilities
-
-Supports:
-
-- Open browser.
-- Navigate pages.
-- Fill forms.
-- Extract information.
-- Automate workflows.
-
----
-
-# Technology
-
-Recommended:
-
-Playwright
-
----
-
-# Example
-
-User:
-
-Find latest project updates.
-
-Atlas:
-
-Open browser
-
-↓
-
-Login
-
-↓
-
-Collect information
-
-↓
-
-Summarize
-
----
-
-# Browser Security
-
-Atlas must:
-
-- Store credentials securely.
-- Ask permission.
-- Avoid unsafe actions.
-
----
-
-# 6. Screen Understanding System
-
-## Purpose
-
-Allows Atlas to understand visual state.
-
----
-
-# Capabilities
-
-Future:
-
-- Screenshot analysis.
-- OCR.
-- UI understanding.
-- Element detection.
-
----
-
-# Example
-
-User:
-
-Fix this error.
-
-Atlas:
-
-Capture screen
-
-↓
-
-Read error message
-
-↓
-
-Suggest solution
-
----
-
-# 7. Keyboard and Mouse Control
-
-## Purpose
-
-Allows direct UI interaction.
-
----
-
-# Capabilities
-
-Future:
-
-- Click elements.
-- Type text.
-- Scroll.
-- Drag and drop.
-
----
-
-# Safety
-
-Mouse/keyboard automation requires:
-
-- User visibility.
-- Action preview.
-- Emergency stop.
-
----
-
-# 8. Process Management
-
-## Purpose
-
-Controls running processes.
-
----
-
-# Capabilities
-
-Atlas can:
-
-- List processes.
-- Monitor processes.
-- Stop processes.
-- Restart services.
-
----
-
-# Example
-
-Backend crashed
-
-↓
-
-Detect process failure
-
-↓
-
-Restart service
-
-↓
-
-Notify user
-
----
-
-# 9. Device Information Layer
-
-## Purpose
-
-Provides system information.
-
----
-
-# Data
-
-Collect:
-
-- CPU usage.
-- Memory usage.
-- Storage.
-- Network status.
-- Battery status.
-
----
-
-# Example
-
-User:
-
-Why is my computer slow?
-
-Atlas:
-
-Analyze:
-
-CPU
-
-Memory
-
-Processes
-
-↓
-
-Provide explanation
-
----
-
-# Permission Architecture
-
-All actions pass through:
-
-User Request
-
-↓
-
-Action Analysis
-
-↓
-
-Permission Check
-
-↓
-
-Execution
-
-↓
-
-Logging
-
----
-
-# Action Categories
-
-## Read Operations
-
-Examples:
-
-- Read files.
-- View system status.
-
----
-
-## Modify Operations
-
-Examples:
-
-- Edit files.
-- Change settings.
-
----
-
-## Destructive Operations
-
-Examples:
-
-- Delete data.
-- Remove applications.
-
----
-
-# Interaction Logs
-
-Every action stores:
-
-Action
-
-Timestamp
-
-Application
-
-Permission Used
-
-Result
-
-Error
-
----
-
-# Failure Handling
-
-Possible failures:
-
-## Application Not Found
-
-Solution:
-
-- Suggest installation.
-- Ask user.
-
----
-
-## Permission Denied
-
-Solution:
-
-- Request permission.
-
----
-
-## Command Failed
-
-Solution:
-
-- Capture error.
-- Explain issue.
-- Suggest fix.
-
----
-
-# MVP Scope
-
-Initial implementation:
-
-Application Launcher
-
-File Search
-
-File Reading
-
-Basic Terminal Commands
-
-System Information
-
-Permission System
-
----
-
-# Future Capabilities
-
-Future:
-
-- Full GUI automation.
-- Screen understanding.
-- Autonomous troubleshooting.
-- Browser agents.
-- Remote device control.
-
----
-
-# Performance Requirements
-
-Application launch:
-
-<1 second
-
----
-
-File search:
-
-<500ms
-
----
-
-Command execution monitoring:
-
-Real-time
-
----
-
-# Related Documents
-
-Previous:
-
-- `22-AI-Orchestration-Architecture.md`
-
-Related:
-
-- `05-Tool-System-Architecture.md`
-- `06-Security-Architecture.md`
-- `11-Desktop-Application-Architecture.md`
-- `13-Workflow-Automation-Architecture.md`
-
-Next:
-
-- `24-Search-and-Retrieval-Architecture.md`
-
----
-
-# Conclusion
-
-The Computer Interaction Architecture provides Atlas with the ability to operate within the user's digital environment.
-
-Combined with AI orchestration, tools, memory, and security controls, this layer enables Atlas to become a true personal AI assistant capable of performing meaningful tasks on the user's computer.
+# Related documents
+
+- [Architecture/20-Database-Schema.md](./20-Database-Schema.md)
+- [Architecture/04-Memory-Architecture.md](./04-Memory-Architecture.md)
+- [Architecture/22-AI-Orchestration-Architecture.md](./22-AI-Orchestration-Architecture.md)
+- [guides/Knowledge-Graph.md](../guides/Knowledge-Graph.md)
+- [ADR-0046](../adr/0046-knowledge-graph-data-model.md)
+- [ADR-0009](../adr/0009-context-management.md)

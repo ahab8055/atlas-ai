@@ -1,0 +1,353 @@
+/**
+ * CLI: atlas knowledge — manage knowledge graph entities and relationships.
+ */
+import type { KnowledgeGraphManager } from "@atlas-ai/knowledge";
+
+import type { CliRuntime } from "./run.js";
+
+export function tryHandleKnowledgeCommand(
+  runtime: CliRuntime,
+  rawInput: string,
+): boolean {
+  const trimmed = rawInput.trim();
+  if (!trimmed.toLowerCase().startsWith("knowledge")) {
+    return false;
+  }
+
+  const tokens = tokenize(trimmed);
+  if (tokens[0]?.toLowerCase() !== "knowledge") {
+    return false;
+  }
+
+  if (!runtime.database || !runtime.knowledgeGraph) {
+    process.stderr.write(
+      "Knowledge graph requires the database. Remove --no-db / ATLAS_DB_DISABLED.\n",
+    );
+    process.exitCode = 1;
+    return true;
+  }
+
+  const graph = runtime.knowledgeGraph;
+  const sub = tokens[1]?.toLowerCase();
+
+  try {
+    if (!sub || sub === "help" || sub === "--help" || sub === "-h") {
+      process.stdout.write(`${knowledgeUsage()}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "entity") {
+      return handleEntity(graph, tokens.slice(2));
+    }
+
+    if (sub === "rel" || sub === "relationship") {
+      return handleRelationship(graph, tokens.slice(2));
+    }
+
+    if (sub === "neighbors") {
+      const id = tokens[2];
+      if (!id) {
+        throw new Error(
+          "Usage: knowledge neighbors <entityId> [--direction out|in|both]",
+        );
+      }
+      const direction = (readFlag(tokens, "--direction") ?? "both") as
+        "out" | "in" | "both";
+      const hits = graph.getNeighbors(id, { direction });
+      process.stdout.write(`${formatNeighbors(hits)}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "traverse") {
+      const id = tokens[2];
+      if (!id) {
+        throw new Error("Usage: knowledge traverse <entityId> [--depth N]");
+      }
+      const depth = Number(readFlag(tokens, "--depth") ?? "2");
+      const result = graph.traverse({
+        startId: id,
+        maxDepth: Number.isFinite(depth) ? depth : 2,
+      });
+      process.stdout.write(
+        `entities (${result.entities.length}):\n` +
+          `${formatEntityList(result.entities)}\n` +
+          `relationships (${result.relationships.length}):\n` +
+          `${formatRelList(result.relationships)}\n`,
+      );
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "export") {
+      const startId = readFlag(tokens, "--start");
+      const depth = Number(readFlag(tokens, "--depth") ?? "2");
+      const snap = graph.exportSnapshot({
+        startId: startId || undefined,
+        maxDepth: Number.isFinite(depth) ? depth : 2,
+      });
+      process.stdout.write(`${JSON.stringify(snap, null, 2)}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
+    throw new Error(
+      `Unknown knowledge subcommand: ${sub}\n${knowledgeUsage()}`,
+    );
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+    return true;
+  }
+}
+
+function handleEntity(graph: KnowledgeGraphManager, tokens: string[]): boolean {
+  const action = tokens[0]?.toLowerCase();
+  if (!action || action === "list") {
+    const type = readFlag(tokens, "--type");
+    const name = readFlag(tokens, "--name");
+    const limit = Number(readFlag(tokens, "--limit") ?? "50");
+    const rows = graph.listEntities({
+      type,
+      name,
+      limit: Number.isFinite(limit) ? limit : 50,
+    });
+    process.stdout.write(`${formatEntityList(rows)}\n`);
+    process.exitCode = 0;
+    return true;
+  }
+
+  if (action === "add") {
+    const type = readFlag(tokens, "--type");
+    const name =
+      readFlag(tokens, "--name") ?? positionalArgs(tokens, 1).join(" ").trim();
+    if (!type || !name) {
+      throw new Error(
+        "Usage: knowledge entity add --type <type> --name <name>",
+      );
+    }
+    const propsRaw = readFlag(tokens, "--properties");
+    const properties = propsRaw
+      ? (JSON.parse(propsRaw) as Record<string, unknown>)
+      : undefined;
+    const row = graph.upsertEntity({ type, name, properties });
+    process.stdout.write(`Entity ${row.id} (${row.type}: ${row.name})\n`);
+    process.exitCode = 0;
+    return true;
+  }
+
+  if (action === "get") {
+    const id = tokens[1];
+    if (!id) {
+      throw new Error("Usage: knowledge entity get <id>");
+    }
+    const row = graph.getEntity(id);
+    if (!row) {
+      throw new Error(`Entity not found: ${id}`);
+    }
+    process.stdout.write(`${formatEntityDetail(row)}\n`);
+    process.exitCode = 0;
+    return true;
+  }
+
+  if (action === "delete") {
+    const id = tokens[1];
+    if (!id) {
+      throw new Error("Usage: knowledge entity delete <id>");
+    }
+    const ok = graph.deleteEntity(id);
+    process.stdout.write(
+      ok ? `Deleted entity ${id}\n` : `Entity not found: ${id}\n`,
+    );
+    process.exitCode = ok ? 0 : 1;
+    return true;
+  }
+
+  throw new Error(`Unknown entity action: ${action}`);
+}
+
+function handleRelationship(
+  graph: KnowledgeGraphManager,
+  tokens: string[],
+): boolean {
+  const action = tokens[0]?.toLowerCase();
+  if (!action || action === "list") {
+    const type = readFlag(tokens, "--type");
+    const from = readFlag(tokens, "--from");
+    const to = readFlag(tokens, "--to");
+    const limit = Number(readFlag(tokens, "--limit") ?? "50");
+    const rows = graph.listRelationships({
+      type,
+      fromEntityId: from,
+      toEntityId: to,
+      limit: Number.isFinite(limit) ? limit : 50,
+    });
+    process.stdout.write(`${formatRelList(rows)}\n`);
+    process.exitCode = 0;
+    return true;
+  }
+
+  if (action === "add") {
+    const from = readFlag(tokens, "--from");
+    const to = readFlag(tokens, "--to");
+    const type = readFlag(tokens, "--type");
+    if (!from || !to || !type) {
+      throw new Error(
+        "Usage: knowledge rel add --from <id> --to <id> --type <type>",
+      );
+    }
+    const weightRaw = readFlag(tokens, "--weight");
+    const weight = weightRaw !== undefined ? Number(weightRaw) : undefined;
+    const row = graph.upsertRelationship({
+      fromEntityId: from,
+      toEntityId: to,
+      type,
+      weight:
+        weight !== undefined && Number.isFinite(weight) ? weight : undefined,
+    });
+    process.stdout.write(
+      `Relationship ${row.id} (${row.type}: ${row.fromEntityId} → ${row.toEntityId})\n`,
+    );
+    process.exitCode = 0;
+    return true;
+  }
+
+  if (action === "delete") {
+    const id = tokens[1];
+    if (!id) {
+      throw new Error("Usage: knowledge rel delete <id>");
+    }
+    const ok = graph.deleteRelationship(id);
+    process.stdout.write(
+      ok ? `Deleted relationship ${id}\n` : `Relationship not found: ${id}\n`,
+    );
+    process.exitCode = ok ? 0 : 1;
+    return true;
+  }
+
+  throw new Error(`Unknown relationship action: ${action}`);
+}
+
+function knowledgeUsage(): string {
+  return [
+    "atlas knowledge — personal knowledge graph",
+    "",
+    "  atlas knowledge entity add --type project --name Atlas",
+    "  atlas knowledge entity list [--type …] [--name …] [--limit N]",
+    "  atlas knowledge entity get <id>",
+    "  atlas knowledge entity delete <id>",
+    "  atlas knowledge rel add --from <id> --to <id> --type uses [--weight 0.9]",
+    "  atlas knowledge rel list [--from …] [--to …] [--type …]",
+    "  atlas knowledge rel delete <id>",
+    "  atlas knowledge neighbors <entityId> [--direction out|in|both]",
+    "  atlas knowledge traverse <entityId> [--depth 2]",
+    "  atlas knowledge export [--start <id>] [--depth 2]",
+  ].join("\n");
+}
+
+function formatEntityList(
+  rows: Array<{ id: string; type: string; name: string }>,
+): string {
+  if (rows.length === 0) {
+    return "(no entities)";
+  }
+  return rows.map((r) => `${r.id}  [${r.type}]  ${r.name}`).join("\n");
+}
+
+function formatEntityDetail(row: {
+  id: string;
+  type: string;
+  name: string;
+  properties: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}): string {
+  return [
+    `id: ${row.id}`,
+    `type: ${row.type}`,
+    `name: ${row.name}`,
+    `properties: ${JSON.stringify(row.properties)}`,
+    `created: ${row.createdAt}`,
+    `updated: ${row.updatedAt}`,
+  ].join("\n");
+}
+
+function formatRelList(
+  rows: Array<{
+    id: string;
+    type: string;
+    fromEntityId: string;
+    toEntityId: string;
+    weight?: number;
+  }>,
+): string {
+  if (rows.length === 0) {
+    return "(no relationships)";
+  }
+  return rows
+    .map(
+      (r) =>
+        `${r.id}  [${r.type}]  ${r.fromEntityId} → ${r.toEntityId}` +
+        (r.weight !== undefined ? `  w=${r.weight}` : ""),
+    )
+    .join("\n");
+}
+
+function formatNeighbors(
+  hits: Array<{
+    entityId: string;
+    entity?: { name: string; type: string };
+    relationship: { type: string; id: string };
+  }>,
+): string {
+  if (hits.length === 0) {
+    return "(no neighbors)";
+  }
+  return hits
+    .map((h) => {
+      const label = h.entity
+        ? `${h.entity.name} [${h.entity.type}]`
+        : h.entityId;
+      return `${h.relationship.type} → ${label}  (${h.relationship.id})`;
+    })
+    .join("\n");
+}
+
+function tokenize(input: string): string[] {
+  const tokens: string[] = [];
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(input)) !== null) {
+    tokens.push(match[1] ?? match[2] ?? match[3] ?? "");
+  }
+  return tokens;
+}
+
+function readFlag(tokens: string[], name: string): string | undefined {
+  const idx = tokens.indexOf(name);
+  if (idx === -1) {
+    return undefined;
+  }
+  return tokens[idx + 1];
+}
+
+function positionalArgs(tokens: string[], start: number): string[] {
+  const out: string[] = [];
+  for (let i = start; i < tokens.length; i += 1) {
+    const t = tokens[i];
+    if (t.startsWith("--")) {
+      i += 1;
+      continue;
+    }
+    out.push(t);
+  }
+  return out;
+}
+
+/** Exported for tests. */
+export function __testOnly() {
+  return { tokenize, readFlag, knowledgeUsage };
+}

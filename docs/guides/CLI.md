@@ -84,6 +84,14 @@ pnpm atlas memory consolidate --dry-run
 pnpm atlas memory conflicts
 pnpm atlas memory list
 pnpm atlas memory purge-expired
+
+# Knowledge graph (requires DB)
+pnpm atlas knowledge entity add --type project --name Atlas
+pnpm atlas knowledge entity list
+pnpm atlas knowledge rel add --from <id> --to <id> --type uses
+pnpm atlas knowledge neighbors <entityId>
+pnpm atlas knowledge traverse <entityId> --depth 2
+pnpm atlas knowledge export --start <id>
 pnpm atlas --no-db status
 ```
 

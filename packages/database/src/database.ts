@@ -5,9 +5,11 @@ import {
   type SqliteDatabase,
 } from "./client.js";
 import { EmbeddingsRepository } from "./repositories/embeddings.js";
+import { EntitiesRepository } from "./repositories/entities.js";
 import { ExecutionHistoryRepository } from "./repositories/execution-history.js";
 import { MemoriesRepository } from "./repositories/memories.js";
 import { ModelsRepository } from "./repositories/models.js";
+import { RelationshipsRepository } from "./repositories/relationships.js";
 import { SystemConfigRepository } from "./repositories/system-config.js";
 import { ToolsRepository } from "./repositories/tools.js";
 import { UserPreferencesRepository } from "./repositories/user-preferences.js";
@@ -24,6 +26,8 @@ export class AtlasDatabase {
   readonly models: ModelsRepository;
   readonly embeddings: EmbeddingsRepository;
   readonly memories: MemoriesRepository;
+  readonly entities: EntitiesRepository;
+  readonly relationships: RelationshipsRepository;
   readonly executionHistory: ExecutionHistoryRepository;
   /** UI-oriented task history tracking (query + display DTOs). */
   readonly taskHistory: TaskHistoryService;
@@ -38,6 +42,8 @@ export class AtlasDatabase {
     this.models = new ModelsRepository(db);
     this.embeddings = new EmbeddingsRepository(db);
     this.memories = new MemoriesRepository(db);
+    this.entities = new EntitiesRepository(db);
+    this.relationships = new RelationshipsRepository(db);
     this.executionHistory = new ExecutionHistoryRepository(db);
     this.taskHistory = new TaskHistoryService(this.executionHistory);
   }

@@ -202,6 +202,49 @@ describe("AtlasDatabase", () => {
       rmSync(path, { force: true });
     }
   });
+
+  it("persists knowledge graph entities and relationships", () => {
+    const path = join(tmpdir(), `atlas-kg-${Date.now()}.sqlite`);
+    try {
+      const atlas = openAtlasDatabase({ path });
+      expect(atlas.schemaVersion).toBe(SCHEMA_VERSION);
+
+      const project = atlas.entities.upsert({
+        type: "project",
+        name: "Atlas",
+        properties: { path: "/atlas" },
+      });
+      const tech = atlas.entities.upsert({
+        type: "technology",
+        name: "TypeScript",
+      });
+      const rel = atlas.relationships.upsert({
+        fromEntityId: project.id,
+        toEntityId: tech.id,
+        type: "uses",
+        weight: 0.9,
+      });
+      expect(rel.fromEntityId).toBe(project.id);
+      atlas.close();
+
+      const again = openAtlasDatabase({ path });
+      expect(again.entities.get(project.id)?.name).toBe("Atlas");
+      expect(again.relationships.get(rel.id)?.type).toBe("uses");
+
+      const neighbors = again.relationships.neighbors(project.id, {
+        direction: "out",
+      });
+      expect(neighbors).toHaveLength(1);
+      expect(neighbors[0]?.entityId).toBe(tech.id);
+
+      expect(again.entities.list({ type: "project" })).toHaveLength(1);
+      expect(again.entities.delete(project.id)).toBe(true);
+      expect(again.relationships.get(rel.id)).toBeUndefined();
+      again.close();
+    } finally {
+      rmSync(path, { force: true });
+    }
+  });
 });
 
 describe("TaskHistoryService", () => {

@@ -1,6 +1,7 @@
 import {
   ContextManager,
   EventBus,
+  createKnowledgeProvider,
   createMemoryProvider,
   createRequestHandler,
   type PipelineResult,
@@ -8,6 +9,12 @@ import {
 import { loadConfig } from "@atlas-ai/config";
 import type { AtlasConfig } from "@atlas-ai/config";
 import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
+import {
+  createKnowledgeGraph,
+  createLexicalKnowledgeRetriever,
+  createSqliteGraphStore,
+  type KnowledgeGraphManager,
+} from "@atlas-ai/knowledge";
 import {
   createLogger,
   formatLogRecord,
@@ -55,6 +62,7 @@ export interface CliRuntime {
   database?: AtlasDatabase;
   memoryManager: MemoryManager;
   longTermMemory?: LongTermMemory;
+  knowledgeGraph?: KnowledgeGraphManager;
 }
 
 /**
@@ -96,6 +104,9 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const longTermMemory = database
     ? createLongTermMemory(database.memories)
     : undefined;
+  const knowledgeGraph = database
+    ? createKnowledgeGraph(createSqliteGraphStore(database))
+    : undefined;
 
   const shortTerm = createShortTermMemory({
     maxEntries: config.memory.shortTerm.maxEntries,
@@ -103,19 +114,27 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     memoryManager,
   });
 
+  const providers: import("@atlas-ai/core").ContextProvider[] = [];
+  if (longTermMemory) {
+    providers.push(
+      createMemoryProvider(
+        longTermMemory.createRetriever({
+          limit: config.memory.retrieval.limit,
+          minScore: config.memory.retrieval.minScore,
+          recencyHalfLifeMs: config.memory.retrieval.recencyHalfLifeMs,
+        }),
+      ),
+    );
+  }
+  if (knowledgeGraph) {
+    providers.push(
+      createKnowledgeProvider(createLexicalKnowledgeRetriever(knowledgeGraph)),
+    );
+  }
+
   const contextManager = new ContextManager({
     conversationStore: shortTerm.toConversationStore(),
-    providers: longTermMemory
-      ? [
-          createMemoryProvider(
-            longTermMemory.createRetriever({
-              limit: config.memory.retrieval.limit,
-              minScore: config.memory.retrieval.minScore,
-              recencyHalfLifeMs: config.memory.retrieval.recencyHalfLifeMs,
-            }),
-          ),
-        ]
-      : undefined,
+    providers: providers.length > 0 ? providers : undefined,
   });
 
   if (options.debug) {
@@ -141,6 +160,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     database,
     memoryManager,
     longTermMemory,
+    knowledgeGraph,
   };
 }
 

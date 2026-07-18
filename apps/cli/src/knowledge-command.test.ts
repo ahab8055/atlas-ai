@@ -1,0 +1,169 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  ContextManager,
+  createKnowledgeProvider,
+  detectIntent,
+  loadContext,
+  normalizeRequest,
+} from "@atlas-ai/core";
+import { openAtlasDatabase } from "@atlas-ai/database";
+import {
+  createKnowledgeGraph,
+  createLexicalKnowledgeRetriever,
+  createSqliteGraphStore,
+} from "@atlas-ai/knowledge";
+import { createMemoryManager, createShortTermMemory } from "@atlas-ai/memory";
+
+import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
+import type { CliRuntime } from "./run.js";
+
+function stubRuntime(): CliRuntime {
+  const database = openAtlasDatabase({ path: ":memory:" });
+  const knowledgeGraph = createKnowledgeGraph(createSqliteGraphStore(database));
+  const memoryManager = createMemoryManager();
+  const shortTerm = createShortTermMemory({
+    maxEntries: 10,
+    ttlMs: 0,
+    memoryManager,
+  });
+  const contextManager = new ContextManager({
+    conversationStore: shortTerm.toConversationStore(),
+    providers: [
+      createKnowledgeProvider(createLexicalKnowledgeRetriever(knowledgeGraph)),
+    ],
+  });
+
+  return {
+    handler: {
+      handle: () => {
+        throw new Error("unused");
+      },
+    } as unknown as CliRuntime["handler"],
+    eventBus: {
+      subscribe: () => () => undefined,
+    } as unknown as CliRuntime["eventBus"],
+    contextManager,
+    logger: { info: () => undefined } as unknown as CliRuntime["logger"],
+    config: {
+      memory: {
+        shortTerm: { maxEntries: 10, ttlMs: 0 },
+        classification: {
+          minImportanceToStore: 0.45,
+          minConfidenceToStore: 0.35,
+          temporaryTtlMs: 86_400_000,
+        },
+        retrieval: {
+          limit: 5,
+          minScore: 0.15,
+          recencyHalfLifeMs: 2_592_000_000,
+        },
+        consolidation: {
+          mergeMinScore: 0.72,
+          conflictMinScore: 0.55,
+          candidateLimit: 10,
+          consolidateOnStore: true,
+        },
+      },
+    } as unknown as CliRuntime["config"],
+    database,
+    memoryManager,
+    knowledgeGraph,
+  };
+}
+
+describe("knowledge CLI + context wiring", () => {
+  it("adds entities/relationships and traverses via CLI", () => {
+    const runtime = stubRuntime();
+    try {
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          "knowledge entity add --type project --name Atlas",
+        ),
+      ).toBe(true);
+      expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
+        true,
+      );
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          "knowledge entity add --type technology --name TypeScript",
+        ),
+      ).toBe(true);
+
+      const entities = runtime.knowledgeGraph!.listEntities();
+      const project = entities.find((e) => e.name === "Atlas");
+      const tech = entities.find((e) => e.name === "TypeScript");
+      expect(project).toBeTruthy();
+      expect(tech).toBeTruthy();
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          `knowledge rel add --from ${project!.id} --to ${tech!.id} --type uses`,
+        ),
+      ).toBe(true);
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          `knowledge neighbors ${project!.id} --direction out`,
+        ),
+      ).toBe(true);
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          `knowledge traverse ${project!.id} --depth 1`,
+        ),
+      ).toBe(true);
+
+      const snap = runtime.knowledgeGraph!.exportSnapshot({
+        startId: project!.id,
+        maxDepth: 1,
+      });
+      expect(snap.nodes.length).toBeGreaterThanOrEqual(2);
+      expect(snap.edges.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      runtime.database?.close();
+    }
+  });
+
+  it("loads knowledge snippets into context when text matches entities", () => {
+    const runtime = stubRuntime();
+    try {
+      runtime.knowledgeGraph!.upsertEntity({
+        type: "project",
+        name: "Atlas",
+      });
+      const tech = runtime.knowledgeGraph!.upsertEntity({
+        type: "technology",
+        name: "React",
+      });
+      const project = runtime.knowledgeGraph!.listEntities({
+        name: "Atlas",
+      })[0]!;
+      runtime.knowledgeGraph!.upsertRelationship({
+        fromEntityId: project.id,
+        toEntityId: tech.id,
+        type: "uses",
+      });
+
+      const request = normalizeRequest({
+        source: "cli",
+        rawInput: "What is the Atlas stack?",
+        sessionId: "kg-test",
+      });
+      const intent = detectIntent(request);
+      const ctx = loadContext(request, intent, {
+        manager: runtime.contextManager,
+      });
+      expect(ctx.knowledge.some((k) => k.label === "Atlas")).toBe(true);
+      expect(ctx.knowledge.some((k) => k.label === "React")).toBe(true);
+    } finally {
+      runtime.database?.close();
+    }
+  });
+});

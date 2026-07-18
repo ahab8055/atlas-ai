@@ -30,7 +30,7 @@ recordAssistant(...)  (conversation continuity)
 | `systemState`         | Runtime / platform / input source     | Live `process` info                                                                  |
 | `project`             | Project context                       | Stub (`Atlas AI`)                                                                    |
 | `memories`            | `@atlas-ai/memory` long-term (SQLite) | Hybrid retrieval when DB enabled; see [Memory-Retrieval.md](./Memory-Retrieval.md)   |
-| `knowledge`           | Future knowledge graph                | Empty + swappable provider                                                           |
+| `knowledge`           | Personal knowledge graph              | Lexical name match → ego neighborhood when DB wired; else empty                      |
 | `sources`             | Provider ids that ran                 | Always listed                                                                        |
 | `conversationSummary` | Compact log/plan string               | Derived from turns                                                                   |
 

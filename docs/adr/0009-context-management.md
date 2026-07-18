@@ -32,5 +32,5 @@ Phase 1 requires Atlas to collect relevant context before execution (conversatio
 ### Follow-ups
 
 - Wire `@atlas-ai/memory` retrieval into `createMemoryProvider`.
-- Wire knowledge graph into `createKnowledgeProvider`.
+- ~~Wire knowledge graph into `createKnowledgeProvider`.~~ Done (ADR-0046).
 - Persist conversation store for desktop sessions.
