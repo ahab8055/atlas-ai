@@ -97,6 +97,23 @@ export {
 } from "./retrieval/index.js";
 
 export type {
+  MemorySearchHit,
+  MemorySearchMode,
+  MemorySearchQuery,
+  MemorySearchResult,
+  MemorySearchApiOptions,
+} from "./search/index.js";
+
+export {
+  KEYWORD_SEARCH_WEIGHTS,
+  SEMANTIC_SEARCH_WEIGHTS,
+  MemorySearchApi,
+  createMemorySearchApi,
+  toRetrievalOptions,
+  weightsForMode,
+} from "./search/index.js";
+
+export type {
   ConsolidateAgainstOptions,
   ConsolidateAgainstResult,
   ConsolidateOptions,

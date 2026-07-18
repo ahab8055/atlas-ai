@@ -32,6 +32,7 @@ export interface RetrievalOptions {
   type?: LongTermMemoryType;
   tags?: string[];
   userId?: string;
+  sessionId?: string;
   /** Prefer project-scoped + unscoped memories (ADR-0051). */
   projectId?: string;
   limit?: number;

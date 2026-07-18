@@ -78,6 +78,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0052](./0052-preference-learning-engine.md)              | Preference learning engine              | Accepted |
 | [0053](./0053-context-builder.md)                         | Context Builder                         | Accepted |
 | [0054](./0054-context-compression.md)                     | Context compression                     | Accepted |
+| [0055](./0055-memory-search-api.md)                       | Memory Search API                       | Accepted |
 
 ## Naming
 

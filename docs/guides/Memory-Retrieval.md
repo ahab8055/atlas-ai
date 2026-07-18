@@ -2,7 +2,7 @@
 
 Hybrid ranking so Atlas recalls relevant long-term memories into context automatically.
 
-Related: [Long-Term-Memory.md](./Long-Term-Memory.md), [Memory-Classification.md](./Memory-Classification.md), [Context-Management.md](./Context-Management.md), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [ADR-0044](../adr/0044-memory-retrieval-engine.md), [`@atlas-ai/memory`](../../packages/memory/).
+Related: [Memory-Search.md](./Memory-Search.md), [Long-Term-Memory.md](./Long-Term-Memory.md), [Memory-Classification.md](./Memory-Classification.md), [Context-Management.md](./Context-Management.md), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [ADR-0044](../adr/0044-memory-retrieval-engine.md), [ADR-0055](../adr/0055-memory-search-api.md), [`@atlas-ai/memory`](../../packages/memory/).
 
 ---
 
@@ -19,11 +19,15 @@ Related: [Long-Term-Memory.md](./Long-Term-Memory.md), [Memory-Classification.md
 
 ```
 User query
+  → MemorySearchApi.search (mode hybrid by default)
   → MemoryRetrievalEngine.retrieve()
   → hybrid score → top-K
   → createRetriever → LoadedContext.memories
   → plan goal note + response "Recalled memories"
 ```
+
+Prefer [Memory-Search.md](./Memory-Search.md) for the common module API
+(`keyword` / `semantic` / `hybrid` modes and filters including `sessionId`).
 
 ---
 
@@ -58,11 +62,15 @@ Sync path: no live EmbeddingService.embed in the hot path (pipeline stays sync).
 ## API
 
 ```ts
-import { createLongTermMemory } from "@atlas-ai/memory";
+import { createLongTermMemory, createMemorySearchApi } from "@atlas-ai/memory";
 
 const ltm = createLongTermMemory(db.memories);
 const hits = ltm.retrieve("change theme to dark", { limit: 5 });
 // hits[0].score, hits[0].record
+
+// Or the unified Search API (modes + tookMs):
+const api = createMemorySearchApi(db.memories);
+api.search({ query: "change theme to dark", mode: "hybrid" });
 ```
 
 ---
@@ -71,6 +79,7 @@ const hits = ltm.retrieve("change theme to dark", { limit: 5 });
 
 ```bash
 pnpm atlas memory retrieve "change theme to dark"
+pnpm atlas memory search "TypeScript" --mode keyword --tags lang
 ```
 
 When the DB is enabled, CLI context loading uses `createRetriever` with retrieval config automatically.

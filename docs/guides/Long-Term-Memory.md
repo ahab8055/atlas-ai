@@ -7,6 +7,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [Short-Term-Memory.md](./Short-Term-Memory.md),
 [Memory-Classification.md](./Memory-Classification.md),
 [Memory-Retrieval.md](./Memory-Retrieval.md),
+[Memory-Search.md](./Memory-Search.md),
 [Memory-Consolidation.md](./Memory-Consolidation.md),
 [Context-Management.md](./Context-Management.md),
 [Database.md](./Database.md),
@@ -16,6 +17,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [ADR-0043](../adr/0043-memory-classification-engine.md),
 [ADR-0044](../adr/0044-memory-retrieval-engine.md),
 [ADR-0045](../adr/0045-memory-consolidation-service.md),
+[ADR-0055](../adr/0055-memory-search-api.md),
 [`@atlas-ai/memory`](../../packages/memory/), [`@atlas-ai/database`](../../packages/database/).
 
 ---
@@ -50,11 +52,13 @@ ltm.store({
   tags: ["preference"],
 });
 
-const hits = ltm.search("editor", { limit: 5 });
+const hits = ltm.search("editor", { limit: 5, mode: "hybrid" });
 ```
 
-Relevance ranking: tokenized content matches + importance + recency (no embedding
-required).
+Relevance ranking uses the [Memory Search API](./Memory-Search.md): hybrid
+lexical + in-process hash semantic similarity + importance/confidence/recency
+(no live EmbeddingService in the hot path). Optional stored embedding vectors
+can boost the semantic component.
 
 ---
 
@@ -76,6 +80,9 @@ pnpm atlas memory update <id> --content "Prefers TypeScript strictly"
 pnpm atlas memory delete <id>
 pnpm atlas memory purge-expired
 ```
+
+Search/retrieve also accept `--mode keyword|semantic|hybrid`, `--tags a,b`,
+and `--session <id>` — see [Memory-Search.md](./Memory-Search.md).
 
 Use `--classify` to run the importance gate before store; see
 [Memory-Classification.md](./Memory-Classification.md). Ranking/retrieval:

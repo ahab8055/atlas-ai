@@ -240,6 +240,44 @@ describe("memory CLI + context wiring", () => {
     }
   });
 
+  it("search accepts --mode --tags --session filters", () => {
+    const runtime = stubRuntime();
+    try {
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "Prefers TypeScript for Atlas CLI",
+        tags: ["lang"],
+        sessionId: "sess-search",
+        importance: 0.9,
+      });
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "Prefers TypeScript for Atlas CLI",
+        tags: ["other"],
+        sessionId: "sess-other",
+        importance: 0.9,
+      });
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory search "TypeScript" --mode keyword --tags lang --session sess-search',
+        ),
+      ).toBe(true);
+      expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
+        true,
+      );
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory retrieve "TypeScript" --mode hybrid --session sess-search --limit 3',
+        ),
+      ).toBe(true);
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
   it("consolidates duplicates and lists conflicts via CLI", () => {
     const runtime = stubRuntime();
     try {

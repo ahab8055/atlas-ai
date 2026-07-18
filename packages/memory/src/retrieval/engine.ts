@@ -47,6 +47,7 @@ export class MemoryRetrievalEngine {
       type: options.type,
       tags: options.tags,
       userId: options.userId,
+      sessionId: options.sessionId,
       projectIdOrUnscoped: options.projectId,
       limit: poolSize,
     });

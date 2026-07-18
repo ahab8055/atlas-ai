@@ -27,12 +27,17 @@ import {
 } from "../consolidation/index.js";
 import { MemoryError } from "../errors.js";
 import {
-  createMemoryRetrievalEngine,
   type MemoryEmbeddingLookup,
-  type MemoryRetrievalEngine,
   type RetrievalOptions,
   type RetrievedMemory,
 } from "../retrieval/index.js";
+import {
+  createMemorySearchApi,
+  type MemorySearchApi,
+  type MemorySearchMode,
+  type MemorySearchQuery,
+  type MemorySearchResult,
+} from "../search/index.js";
 import type {
   CreateMemoryInput,
   MemoryRecord,
@@ -65,6 +70,7 @@ export interface LongTermSearchOptions extends RetrievalOptions {
   type?: LongTermMemoryType;
   tags?: string[];
   userId?: string;
+  mode?: MemorySearchMode;
 }
 
 export interface LongTermListOptions {
@@ -84,14 +90,14 @@ export interface LongTermMemoryOptions {
 }
 
 export class LongTermMemory {
-  private readonly engine: MemoryRetrievalEngine;
+  private readonly searchApi: MemorySearchApi;
   private readonly onStored?: (record: MemoryRecord) => void;
 
   constructor(
     private readonly repo: MemoriesRepository,
     options: LongTermMemoryOptions = {},
   ) {
-    this.engine = createMemoryRetrievalEngine(repo, {
+    this.searchApi = createMemorySearchApi(repo, {
       embeddingLookup: options.embeddingLookup,
     });
     this.onStored = options.onStored;
@@ -177,14 +183,44 @@ export class LongTermMemory {
       .map(rowToRecord);
   }
 
-  /** Hybrid relevance search (semantic + lexical + importance + recency). */
+  /** Relevance search via Memory Search API (ADR-0055); returns records only. */
   search(text: string, options: LongTermSearchOptions = {}): MemoryRecord[] {
     return this.retrieve(text, options).map((hit) => hit.record);
   }
 
-  /** Full ranked retrieval with scores. */
-  retrieve(text: string, options: RetrievalOptions = {}): RetrievedMemory[] {
-    return this.engine.retrieve(text, options);
+  /** Full ranked retrieval with scores (delegates to Memory Search API). */
+  retrieve(
+    text: string,
+    options: LongTermSearchOptions = {},
+  ): RetrievedMemory[] {
+    const mode = options.mode ?? "hybrid";
+    const result = this.searchApi.search({
+      query: text,
+      mode,
+      type: options.type,
+      tags: options.tags,
+      userId: options.userId,
+      sessionId: options.sessionId,
+      projectId: options.projectId,
+      limit: options.limit,
+      minScore: options.minScore,
+      recencyHalfLifeMs: options.recencyHalfLifeMs,
+    });
+    return result.hits.map((h) => ({
+      record: h.record,
+      score: h.score,
+      breakdown: h.breakdown!,
+    }));
+  }
+
+  /** Unified search entry returning mode + timing (ADR-0055). */
+  searchMemories(input: MemorySearchQuery): MemorySearchResult {
+    return this.searchApi.search(input);
+  }
+
+  /** Expose Search API for modules that prefer the facade directly. */
+  asSearchApi(): MemorySearchApi {
+    return this.searchApi;
   }
 
   /**
@@ -291,6 +327,8 @@ export class LongTermMemory {
       minScore?: number;
       recencyHalfLifeMs?: number;
       projectId?: string;
+      mode?: MemorySearchMode;
+      sessionId?: string;
     } = {},
   ): (input: {
     sessionId: string;
@@ -303,12 +341,15 @@ export class LongTermMemory {
       if (!text) {
         return [];
       }
-      const hits = this.retrieve(text, {
+      const hits = this.searchApi.search({
+        query: text,
+        mode: options.mode ?? "hybrid",
         limit,
         minScore: options.minScore,
         recencyHalfLifeMs: options.recencyHalfLifeMs,
         projectId: options.projectId,
-      });
+        sessionId: options.sessionId ?? input.sessionId,
+      }).hits;
       return hits.map((hit) => ({
         id: hit.record.id,
         content: hit.record.content,

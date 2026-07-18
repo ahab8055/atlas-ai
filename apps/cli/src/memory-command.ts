@@ -6,6 +6,7 @@ import {
   classifyMemory,
   type MemoryClassificationResult,
   type MemoryRecord,
+  type MemorySearchMode,
   type RetrievedMemory,
 } from "@atlas-ai/memory";
 
@@ -205,10 +206,19 @@ export function tryHandleMemoryCommand(
         throw new Error('Usage: memory search "query"');
       }
       const type = readFlag(tokens, "--type") as LongTermMemoryType | undefined;
+      if (type && !LONG_TERM_TYPES.has(type)) {
+        throw new Error(`Invalid --type (use episodic|semantic|procedural)`);
+      }
+      const mode = parseSearchMode(readFlag(tokens, "--mode"));
+      const tags = parseTags(readFlag(tokens, "--tags"));
+      const sessionId = readFlag(tokens, "--session");
       const limit = Number(readFlag(tokens, "--limit") ?? "5");
       const activeProjectId = runtime.workspace?.getActive()?.id;
       const hits = ltm.search(query, {
         type,
+        mode,
+        tags,
+        sessionId,
         limit: Number.isFinite(limit) ? limit : 5,
         projectId: activeProjectId,
       });
@@ -222,12 +232,23 @@ export function tryHandleMemoryCommand(
       if (!query) {
         throw new Error('Usage: memory retrieve "query"');
       }
+      const type = readFlag(tokens, "--type") as LongTermMemoryType | undefined;
+      if (type && !LONG_TERM_TYPES.has(type)) {
+        throw new Error(`Invalid --type (use episodic|semantic|procedural)`);
+      }
+      const mode = parseSearchMode(readFlag(tokens, "--mode"));
+      const tags = parseTags(readFlag(tokens, "--tags"));
+      const sessionId = readFlag(tokens, "--session");
       const limit = Number(
         readFlag(tokens, "--limit") ??
           String(runtime.config.memory.retrieval.limit),
       );
       const activeProjectId = runtime.workspace?.getActive()?.id;
       const hits = ltm.retrieve(query, {
+        type,
+        mode,
+        tags,
+        sessionId,
         limit: Number.isFinite(limit)
           ? limit
           : runtime.config.memory.retrieval.limit,
@@ -327,8 +348,10 @@ function memoryUsage(): string {
     "  atlas memory get <id>",
     '  atlas memory update <id> --content "..." [--importance 0.8]',
     "  atlas memory delete <id>",
-    '  atlas memory search "query" [--type …] [--limit N]',
-    '  atlas memory retrieve "query" [--limit N]',
+    '  atlas memory search "query" [--mode keyword|semantic|hybrid]',
+    "    [--type …] [--tags a,b] [--session id] [--limit N]",
+    '  atlas memory retrieve "query" [--mode …] [--type …]',
+    "    [--tags a,b] [--session id] [--limit N]",
     "  atlas memory consolidate [--dry-run] [--type …] [--limit N]",
     "  atlas memory conflicts",
     "  atlas memory purge-expired",
@@ -412,6 +435,35 @@ function readFlag(tokens: string[], name: string): string | undefined {
     return undefined;
   }
   return tokens[idx + 1];
+}
+
+const SEARCH_MODES = new Set<MemorySearchMode>([
+  "keyword",
+  "semantic",
+  "hybrid",
+]);
+
+function parseSearchMode(
+  raw: string | undefined,
+): MemorySearchMode | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (!SEARCH_MODES.has(raw as MemorySearchMode)) {
+    throw new Error(`Invalid --mode (use keyword|semantic|hybrid)`);
+  }
+  return raw as MemorySearchMode;
+}
+
+function parseTags(raw: string | undefined): string[] | undefined {
+  if (raw === undefined || raw.trim() === "") {
+    return undefined;
+  }
+  const tags = raw
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return tags.length > 0 ? tags : undefined;
 }
 
 function hasFlag(tokens: string[], name: string): boolean {
