@@ -179,6 +179,9 @@ importers:
       '@atlas-ai/memory':
         specifier: workspace:*
         version: link:../memory
+      '@atlas-ai/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@atlas-ai/security':
         specifier: workspace:*
         version: link:../security
@@ -233,6 +236,15 @@ importers:
         specifier: workspace:*
         version: link:../security
     devDependencies:
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
+  packages/platform:
+    devDependencies:
+      '@types/node':
+        specifier: '22'
+        version: 22.20.1
       typescript:
         specifier: ~5.8.3
         version: 5.8.3

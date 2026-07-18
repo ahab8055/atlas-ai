@@ -2,7 +2,9 @@
 
 Foundation desktop shell (Tauri 2 + React + TypeScript).
 
-Related: [Architecture/11-Desktop-Application-Architecture.md](../Architecture/11-Desktop-Application-Architecture.md).
+Related: [Architecture/11-Desktop-Application-Architecture.md](../Architecture/11-Desktop-Application-Architecture.md),
+[Platform-Abstraction.md](./Platform-Abstraction.md),
+[ADR-0060](../adr/0060-platform-abstraction.md).
 
 ---
 

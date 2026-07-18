@@ -21,6 +21,7 @@ Practical guides for contributing to Atlas AI.
 | [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md)                   | Cross-package Phase 1 runtime Vitest                         |
 | [Phase2-Local-AI-Integration-Testing.md](./Phase2-Local-AI-Integration-Testing.md) | Cross-package Phase 2 Local AI Vitest                        |
 | [Phase3-Memory-Integration-Testing.md](./Phase3-Memory-Integration-Testing.md)     | Cross-package Phase 3 Memory & Personal Context Vitest       |
+| [Platform-Abstraction.md](./Platform-Abstraction.md)                               | Host OS interfaces + PlatformManager (Win/macOS/Linux)       |
 | [Local-AI-Runtime.md](./Local-AI-Runtime.md)                                       | Local inference providers + AI facade                        |
 | [Model-Registry.md](./Model-Registry.md)                                           | Installed model catalog + SQLite persist                     |
 | [Model-Storage.md](./Model-Storage.md)                                             | Model dirs, usage, validate, remove                          |

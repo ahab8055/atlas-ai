@@ -1,6 +1,20 @@
+import type { PlatformInfo } from "@atlas-ai/platform";
+import { getDefaultPlatformManager } from "@atlas-ai/platform";
+
 import type { ContextContribution, ContextProvider } from "../types.js";
 
-export function createSystemStateProvider(): ContextProvider {
+function resolvePlatformInfo(platform?: PlatformInfo): PlatformInfo {
+  return platform ?? getDefaultPlatformManager().getServices().info;
+}
+
+/**
+ * System state provider — platform identity comes from @atlas-ai/platform
+ * (no direct process.platform / process.arch in core).
+ */
+export function createSystemStateProvider(
+  platform?: PlatformInfo,
+): ContextProvider {
+  const info = resolvePlatformInfo(platform);
   return {
     id: "system",
     load({ request }) {
@@ -9,9 +23,9 @@ export function createSystemStateProvider(): ContextProvider {
         systemState: {
           runtime: "atlas-core",
           source: request.source,
-          platform: process.platform,
-          arch: process.arch,
-          nodeVersion: process.versions.node,
+          platform: info.id,
+          arch: info.arch,
+          nodeVersion: info.versions.node ?? "unknown",
           collectedAt: new Date().toISOString(),
         },
       } satisfies ContextContribution;

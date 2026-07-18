@@ -83,6 +83,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0057](./0057-memory-backup-recovery.md)                  | Memory Backup and Recovery              | Accepted |
 | [0058](./0058-memory-analytics.md)                        | Memory Analytics                        | Accepted |
 | [0059](./0059-phase3-memory-integration-tests.md)         | Phase 3 Memory integration tests        | Accepted |
+| [0060](./0060-platform-abstraction.md)                    | Host OS platform abstraction            | Accepted |
 
 ## Naming
 

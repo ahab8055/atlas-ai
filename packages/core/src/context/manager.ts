@@ -2,6 +2,7 @@ import {
   createShortTermMemory,
   type ShortTermMemoryOptions,
 } from "@atlas-ai/memory";
+import type { PlatformInfo } from "@atlas-ai/platform";
 import type { DetectedIntent } from "../intent/types.js";
 import type { NormalizedRequest } from "../types.js";
 import {
@@ -38,6 +39,8 @@ export interface ContextManagerOptions {
   taskStore?: ActiveTaskStore;
   /** Active project loader (workspace detection). */
   projectLoader?: () => import("./types.js").ProjectContext | undefined;
+  /** Host platform identity for system-state (defaults via PlatformManager). */
+  platform?: PlatformInfo;
   /** Extra / replacement providers (by id). */
   providers?: ContextProvider[];
 }
@@ -65,7 +68,7 @@ export class ContextManager {
       createConversationProvider(this.conversationStore),
       createPreferencesProvider(this.preferenceStore),
       createActiveTasksProvider(this.taskStore),
-      createSystemStateProvider(),
+      createSystemStateProvider(options.platform),
       createProjectProvider(options.projectLoader),
       createMemoryProvider(),
       createKnowledgeProvider(),

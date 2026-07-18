@@ -1,4 +1,5 @@
 import type { Logger } from "@atlas-ai/logging";
+import { getDefaultPlatformManager } from "@atlas-ai/platform";
 
 import type { ContextManager } from "./context/manager.js";
 import { getDefaultContextManager } from "./context/manager.js";
@@ -80,6 +81,7 @@ function emitCoreEvent<T extends CoreEventType>(
 
 function emptyContext(request: NormalizedRequest): LoadedContext {
   const assembledAt = new Date().toISOString();
+  const platformInfo = getDefaultPlatformManager().getServices().info;
   return {
     assembledAt,
     sources: [],
@@ -93,9 +95,9 @@ function emptyContext(request: NormalizedRequest): LoadedContext {
     systemState: {
       runtime: "degraded",
       source: request.source,
-      platform: process.platform,
-      arch: process.arch,
-      nodeVersion: process.version,
+      platform: platformInfo.id,
+      arch: platformInfo.arch,
+      nodeVersion: platformInfo.versions.node ?? "unknown",
       collectedAt: assembledAt,
     },
     memories: [],

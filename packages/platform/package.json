@@ -1,8 +1,8 @@
 {
-  "name": "@atlas-ai/core",
+  "name": "@atlas-ai/platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Atlas AI core request processing pipeline",
+  "description": "Atlas AI host OS platform abstraction (paths, env, fs, PlatformManager)",
   "type": "module",
   "exports": {
     ".": {
@@ -18,13 +18,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit"
-  },
-  "dependencies": {
-    "@atlas-ai/logging": "workspace:*",
-    "@atlas-ai/memory": "workspace:*",
-    "@atlas-ai/platform": "workspace:*",
-    "@atlas-ai/security": "workspace:*",
-    "@atlas-ai/tools": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "22",
