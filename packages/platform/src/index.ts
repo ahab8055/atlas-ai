@@ -46,3 +46,32 @@ export {
 export { createNodeEnvService, createNodeFsService } from "./node/shared.js";
 
 export { createPathService } from "./node/paths.js";
+
+export type {
+  ApplicationService,
+  ClipboardService,
+  FileStat,
+  FileSystemService,
+  NotificationInput,
+  NotificationService,
+  NotificationUrgency,
+  OperatingSystem,
+  RunningApplication,
+  SystemInformationService,
+  TerminalExecuteOptions,
+  TerminalExecuteResult,
+  TerminalService,
+} from "./os/types.js";
+
+export type { PlatformErrorCode } from "./os/errors.js";
+export { PlatformError, isPlatformError } from "./os/errors.js";
+
+export {
+  createNodeOperatingSystem,
+  createNodeFileSystemService,
+  createNodeSystemInformationService,
+  createStubApplicationService,
+  createStubClipboardService,
+  createStubNotificationService,
+  createStubTerminalService,
+} from "./os/index.js";

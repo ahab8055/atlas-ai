@@ -1,5 +1,5 @@
 /**
- * PlatformManager — loads the correct Node OS adapter at runtime (ADR-0060 / 0061).
+ * PlatformManager — loads the correct Node OS adapter at runtime (ADR-0060 / 0061 / 0062).
  */
 import { createPlatformDetector } from "./detector.js";
 import { detectPlatformId } from "./detect.js";
@@ -7,6 +7,8 @@ import { createDarwinPlatformServices } from "./node/darwin.js";
 import { createLinuxPlatformServices } from "./node/linux.js";
 import { createWin32PlatformServices } from "./node/win32.js";
 import type { CreateNodeServicesOptions } from "./node/services.js";
+import { createNodeOperatingSystem } from "./os/create.js";
+import type { OperatingSystem } from "./os/types.js";
 import type { OsProbe } from "./probe.js";
 import type { PlatformId, PlatformInfo, PlatformServices } from "./types.js";
 
@@ -31,6 +33,8 @@ export interface PlatformManagerOptions {
   probe?: OsProbe;
   /** Dependency-injection overrides merged over the Node adapter. */
   services?: Partial<PlatformServices>;
+  /** Partial OperatingSystem capability overrides (merged onto Node default). */
+  os?: Partial<OperatingSystem>;
   /** Passed through to Node adapter construction (tests). */
   arch?: string;
   nodeVersion?: string;
@@ -95,6 +99,7 @@ export class PlatformManager {
       fs: options.fs,
       info,
       probe: options.probe,
+      osOverrides: options.os,
       arch: options.arch,
       nodeVersion: options.nodeVersion,
       kernelVersion: options.kernelVersion,
@@ -105,11 +110,25 @@ export class PlatformManager {
       },
     });
 
+    const paths = options.services?.paths ?? base.paths;
+    const env = options.services?.env ?? base.env;
+    const resolvedInfo = options.services?.info ?? base.info;
+
+    const os =
+      options.services?.os ??
+      createNodeOperatingSystem({
+        info: resolvedInfo,
+        paths,
+        env,
+        overrides: options.os,
+      });
+
     const services: PlatformServices = {
-      info: options.services?.info ?? base.info,
-      paths: options.services?.paths ?? base.paths,
-      env: options.services?.env ?? base.env,
+      info: resolvedInfo,
+      paths,
+      env,
       fs: options.services?.fs ?? base.fs,
+      os,
     };
     return new PlatformManager(platformId, services);
   }

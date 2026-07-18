@@ -55,6 +55,8 @@ export interface PlatformServices {
   paths: PathService;
   env: EnvService;
   fs: FsService;
+  /** Common OS facade — preferred API for new modules (ADR-0062). */
+  os: import("./os/types.js").OperatingSystem;
 }
 
 /** Absolute Atlas path layout under userDataDir (opt-in; does not change CLI relative defaults). */

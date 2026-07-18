@@ -2,6 +2,8 @@
  * Build PlatformServices for a Node PlatformId.
  */
 import { createPlatformDetector } from "../detector.js";
+import { createNodeOperatingSystem } from "../os/create.js";
+import type { OperatingSystem } from "../os/types.js";
 import type { OsProbe } from "../probe.js";
 import type {
   EnvService,
@@ -20,6 +22,8 @@ export interface CreateNodeServicesOptions {
   info?: PlatformInfo;
   /** Injectable probe when building info via PlatformDetector. */
   probe?: OsProbe;
+  /** Partial OperatingSystem capability overrides. */
+  osOverrides?: Partial<OperatingSystem>;
   /** Force platform id when detecting (tests). */
   platformId?: PlatformId;
   arch?: string;
@@ -83,10 +87,18 @@ export function createNodePlatformServices(
     env,
     ...options.pathOptions,
   });
+  const info = createNodePlatformInfo(id, options);
+  const os = createNodeOperatingSystem({
+    info,
+    paths,
+    env,
+    overrides: options.osOverrides,
+  });
   return {
-    info: createNodePlatformInfo(id, options),
+    info,
     paths,
     env,
     fs,
+    os,
   };
 }
