@@ -8,7 +8,7 @@ Related: [Architecture/20-Database-Schema.md](../Architecture/20-Database-Schema
 
 ## Purpose
 
-- Persist system settings, tool registry snapshots, execution history, and user preference placeholders
+- Persist system settings, tool registry snapshots, execution history, and user preferences
 - Initialize automatically on first open (zero config)
 - Stay local-first (file under `.data/` by default)
 
@@ -40,20 +40,20 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 
 ## Core runtime tables
 
-| Table               | Role (Architecture/20)                                   |
-| ------------------- | -------------------------------------------------------- |
-| `system_config`     | Runtime / system settings                                |
-| `user_preferences`  | Preference placeholders (`preferred_editor`, `theme`, …) |
-| `tools`             | Tool registry persistence                                |
-| `models`            | AI model registry (name, format, caps, requirements, …)  |
-| `embeddings`        | Embedding vectors for search/memory                      |
-| `memories`          | Long-term memory records (episodic/semantic/procedural)  |
-| `memory_tags`       | Tags for long-term memories                              |
-| `entities`          | Knowledge graph nodes (schema v6)                        |
-| `relationships`     | Knowledge graph directed edges (schema v6)               |
-| `execution_history` | Pipeline / task run history                              |
-| `task_executions`   | Per-step execution rows                                  |
-| `schema_migrations` | Applied schema version                                   |
+| Table               | Role (Architecture/20)                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `system_config`     | Runtime / system settings                                                                              |
+| `user_preferences`  | Structured profile prefs (`source`, `confidence`, `enabled`; see [User-Profile.md](./User-Profile.md)) |
+| `tools`             | Tool registry persistence                                                                              |
+| `models`            | AI model registry (name, format, caps, requirements, …)                                                |
+| `embeddings`        | Embedding vectors for search/memory                                                                    |
+| `memories`          | Long-term memory records (episodic/semantic/procedural)                                                |
+| `memory_tags`       | Tags for long-term memories                                                                            |
+| `entities`          | Knowledge graph nodes (schema v6)                                                                      |
+| `relationships`     | Knowledge graph directed edges (schema v6)                                                             |
+| `execution_history` | Pipeline / task run history                                                                            |
+| `task_executions`   | Per-step execution rows                                                                                |
+| `schema_migrations` | Applied schema version                                                                                 |
 
 ---
 

@@ -13,6 +13,7 @@ const workspaceAlias = {
   "@atlas-ai/tools": path.join(root, "packages/tools/dist/index.js"),
   "@atlas-ai/memory": path.join(root, "packages/memory/dist/index.js"),
   "@atlas-ai/knowledge": path.join(root, "packages/knowledge/dist/index.js"),
+  "@atlas-ai/profile": path.join(root, "packages/profile/dist/index.js"),
   "@atlas-ai/database": path.join(root, "packages/database/dist/index.js"),
   "@atlas-ai/config": path.join(root, "packages/config/dist/index.js"),
 };

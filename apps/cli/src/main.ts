@@ -10,6 +10,7 @@ import { tryHandleAiCommand } from "./ai-command.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
+import { tryHandleProfileCommand } from "./profile-command.js";
 import { usage } from "./options.js";
 import { parseCliArgs } from "./parse-args.js";
 import { runRepl } from "./repl.js";
@@ -70,7 +71,8 @@ async function main(): Promise<void> {
         } else if (
           tryHandleHistoryCommand(runtime, initial) ||
           tryHandleMemoryCommand(runtime, initial) ||
-          tryHandleKnowledgeCommand(runtime, initial)
+          tryHandleKnowledgeCommand(runtime, initial) ||
+          tryHandleProfileCommand(runtime, initial)
         ) {
           // continue into REPL
         } else {
@@ -85,7 +87,8 @@ async function main(): Promise<void> {
     if (
       tryHandleHistoryCommand(runtime, rawInput) ||
       tryHandleMemoryCommand(runtime, rawInput) ||
-      tryHandleKnowledgeCommand(runtime, rawInput)
+      tryHandleKnowledgeCommand(runtime, rawInput) ||
+      tryHandleProfileCommand(runtime, rawInput)
     ) {
       return;
     }

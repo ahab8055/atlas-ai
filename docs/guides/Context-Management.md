@@ -25,7 +25,7 @@ recordAssistant(...)  (conversation continuity)
 | Field                 | Source                                | MVP                                                                                                                                      |
 | --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `conversation`        | Current session turns                 | Short-term buffer (window + TTL); see [Short-Term-Memory.md](./Short-Term-Memory.md)                                                     |
-| `preferences`         | User preferences                      | Defaults (`preferredEditor: VS Code`)                                                                                                    |
+| `preferences`         | User preferences                      | SQLite via `@atlas-ai/profile` when DB enabled; else in-memory defaults. See [User-Profile.md](./User-Profile.md) / ADR-0050             |
 | `activeTasks`         | Active / working tasks                | In-memory store                                                                                                                          |
 | `systemState`         | Runtime / platform / input source     | Live `process` info                                                                                                                      |
 | `project`             | Project context                       | Stub (`Atlas AI`)                                                                                                                        |

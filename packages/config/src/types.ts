@@ -147,6 +147,19 @@ export interface AtlasKnowledgeConfig {
   retrieval: AtlasKnowledgeRetrievalConfig;
 }
 
+export interface AtlasProfileLearningConfig {
+  /** Master switch for preference learning (default true). */
+  enabled: boolean;
+  /** Auto-learn from successful CLI turns (default true). */
+  learnOnRequest: boolean;
+  /** Minimum candidate confidence to store (default 0.55). */
+  minConfidence: number;
+}
+
+export interface AtlasProfileConfig {
+  learning: AtlasProfileLearningConfig;
+}
+
 /** Non-secret, serializable application settings. */
 export interface AtlasAppConfig {
   env: AtlasEnvironment;
@@ -157,6 +170,7 @@ export interface AtlasAppConfig {
   ai: AtlasAiConfig;
   memory: AtlasMemoryConfig;
   knowledge: AtlasKnowledgeConfig;
+  profile: AtlasProfileConfig;
 }
 
 /**

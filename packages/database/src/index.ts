@@ -15,7 +15,10 @@ export {
 } from "./repositories/system-config.js";
 export {
   UserPreferencesRepository,
+  type PreferenceSource,
+  type UserPreferenceListOptions,
   type UserPreferenceRow,
+  type UserPreferenceSetOptions,
 } from "./repositories/user-preferences.js";
 export {
   ToolsRepository,

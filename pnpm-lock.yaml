@@ -89,6 +89,9 @@ importers:
       '@atlas-ai/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@atlas-ai/profile':
+        specifier: workspace:*
+        version: link:../../packages/profile
     devDependencies:
       '@types/node':
         specifier: '22'
@@ -213,6 +216,16 @@ importers:
         version: 5.8.3
 
   packages/memory:
+    dependencies:
+      '@atlas-ai/database':
+        specifier: workspace:*
+        version: link:../database
+    devDependencies:
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
+  packages/profile:
     dependencies:
       '@atlas-ai/database':
         specifier: workspace:*

@@ -98,6 +98,9 @@ pnpm atlas knowledge link --from <id> --to <id> --type uses
 pnpm atlas knowledge rel update <id> --weight 0.9
 pnpm atlas knowledge retrieve "Atlas TypeScript"
 pnpm atlas knowledge traverse <id> --types uses --direction out
+pnpm atlas profile list
+pnpm atlas profile set preferred_editor Cursor
+pnpm atlas profile learn "I prefer concise answers"
 pnpm atlas --no-db status
 ```
 

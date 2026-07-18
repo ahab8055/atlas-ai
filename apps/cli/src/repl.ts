@@ -6,6 +6,7 @@ import { exitCodeForResult } from "./display.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
+import { tryHandleProfileCommand } from "./profile-command.js";
 import type { CliOptions } from "./options.js";
 import { createCliRuntime, runCommand, type CliRuntime } from "./run.js";
 
@@ -78,6 +79,14 @@ export async function runRepl(
       }
 
       if (tryHandleKnowledgeCommand(runtime, trimmed)) {
+        lastCode =
+          process.exitCode === 1 || process.exitCode === 2
+            ? process.exitCode
+            : 0;
+        continue;
+      }
+
+      if (tryHandleProfileCommand(runtime, trimmed)) {
         lastCode =
           process.exitCode === 1 || process.exitCode === 2
             ? process.exitCode

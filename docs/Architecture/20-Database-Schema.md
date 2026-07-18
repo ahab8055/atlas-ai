@@ -217,12 +217,20 @@ value
 
 category
 
+source
+
+confidence
+
+enabled
+
 created_at
 
 updated_at
 
 ```
 
+`source` is `manual` | `learned` | `seed`. Disabled rows stay stored but are
+omitted from context snapshots (`enabled = 0`).
 ---
 
 ## Examples

@@ -153,6 +153,25 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     `);
   }
 
+  if (version < 7) {
+    const columns = tableColumns(db, "user_preferences");
+    if (!columns.has("source")) {
+      db.exec(
+        "ALTER TABLE user_preferences ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'",
+      );
+    }
+    if (!columns.has("confidence")) {
+      db.exec(
+        "ALTER TABLE user_preferences ADD COLUMN confidence REAL NOT NULL DEFAULT 1",
+      );
+    }
+    if (!columns.has("enabled")) {
+      db.exec(
+        "ALTER TABLE user_preferences ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1",
+      );
+    }
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

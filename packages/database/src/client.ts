@@ -58,28 +58,35 @@ function seedDefaults(db: SqliteDatabase): void {
   upsertConfig.run("cfg_runtime", "runtime.initialized", "true", now);
 
   const upsertPref = db.prepare(`
-    INSERT INTO user_preferences (id, user_id, key, value, category, created_at, updated_at)
-    VALUES (?, 'local', ?, ?, ?, ?, ?)
+    INSERT INTO user_preferences (
+      id, user_id, key, value, category, source, confidence, enabled, created_at, updated_at
+    )
+    VALUES (?, 'local', ?, ?, ?, 'seed', 1, 1, ?, ?)
     ON CONFLICT(user_id, key) DO NOTHING
   `);
 
-  upsertPref.run(
-    "pref_editor",
-    "preferred_editor",
-    "VS Code",
-    "editor",
-    now,
-    now,
-  );
-  upsertPref.run("pref_theme", "theme", "system", "appearance", now, now);
-  upsertPref.run(
-    "pref_language",
-    "preferred_language",
-    "English",
-    "general",
-    now,
-    now,
-  );
+  const seeds: Array<[string, string, string, string]> = [
+    ["pref_editor", "preferred_editor", "VS Code", "tools"],
+    ["pref_terminal", "preferred_terminal", "system", "tools"],
+    ["pref_theme", "theme", "system", "appearance"],
+    ["pref_language", "preferred_language", "English", "language"],
+    ["pref_coding_style", "coding_style", "clean", "coding"],
+    ["pref_coding_lang", "coding_language", "TypeScript", "coding"],
+    ["pref_ai_verbosity", "ai_verbosity", "balanced", "ai"],
+    ["pref_ai_depth", "ai_explanation_depth", "medium", "ai"],
+    [
+      "pref_productivity",
+      "productivity_habits",
+      "focus-blocks",
+      "productivity",
+    ],
+    ["pref_comm_style", "communication_style", "clear", "communication"],
+    ["pref_resp_length", "response_length", "concise", "communication"],
+  ];
+
+  for (const [id, key, value, category] of seeds) {
+    upsertPref.run(id, key, value, category, now, now);
+  }
 }
 
 /**

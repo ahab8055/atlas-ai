@@ -81,4 +81,11 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       recencyHalfLifeMs: 2_592_000_000,
     },
   },
+  profile: {
+    learning: {
+      enabled: true,
+      learnOnRequest: true,
+      minConfidence: 0.55,
+    },
+  },
 };

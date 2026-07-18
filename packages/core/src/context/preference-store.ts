@@ -1,7 +1,7 @@
 import type { UserPreferences } from "./types.js";
 
 /**
- * Preference store — defaults today; settings/memory later.
+ * Preference store — in-memory defaults, or SQLite via @atlas-ai/profile.
  */
 export interface PreferenceStore {
   get(): UserPreferences;

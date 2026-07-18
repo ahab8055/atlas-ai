@@ -88,6 +88,13 @@ function stubRuntime(): CliRuntime {
           recencyHalfLifeMs: 2_592_000_000,
         },
       },
+      profile: {
+        learning: {
+          enabled: true,
+          learnOnRequest: false,
+          minConfidence: 0.55,
+        },
+      },
     } as unknown as CliRuntime["config"],
     database,
     memoryManager,

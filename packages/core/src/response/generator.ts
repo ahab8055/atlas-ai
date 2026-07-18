@@ -36,12 +36,16 @@ export class ResponseGenerator {
     const withTrace = { traceId: request.traceId };
     const memoryNote = formatRecalledMemoryNote(context);
     const knowledgeNote = formatRelatedKnowledgeNote(context);
+    const preferenceNote = formatUserPreferencesNote(context);
     const contextNotes: string[] = [];
     if (memoryNote) {
       contextNotes.push(memoryNote);
     }
     if (knowledgeNote) {
       contextNotes.push(knowledgeNote);
+    }
+    if (preferenceNote) {
+      contextNotes.push(preferenceNote);
     }
 
     if (intent.name === "help") {
@@ -218,4 +222,35 @@ function formatRelatedKnowledgeNote(
     return undefined;
   }
   return `Related knowledge:\n${lines.join("\n")}`;
+}
+
+const PREFERENCE_NOTE_KEYS = [
+  "preferredEditor",
+  "preferredLanguage",
+  "codingStyle",
+  "codingLanguage",
+  "communicationStyle",
+  "responseLength",
+  "aiVerbosity",
+  "productivityHabits",
+] as const;
+
+function formatUserPreferencesNote(
+  context: GenerateResponseInput["context"],
+): string | undefined {
+  const prefs = context?.preferences;
+  if (!prefs) {
+    return undefined;
+  }
+  const lines: string[] = [];
+  for (const key of PREFERENCE_NOTE_KEYS) {
+    const value = prefs[key];
+    if (typeof value === "string" && value.trim()) {
+      lines.push(`- ${key}: ${value.trim()}`);
+    }
+  }
+  if (lines.length === 0) {
+    return undefined;
+  }
+  return `User preferences:\n${lines.slice(0, 5).join("\n")}`;
 }

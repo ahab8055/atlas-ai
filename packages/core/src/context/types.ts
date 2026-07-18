@@ -29,9 +29,19 @@ export interface ConversationContext {
   summary: string;
 }
 
-/** User preferences (later backed by memory / settings). */
+/** User preferences (SQLite-backed via @atlas-ai/profile when DB enabled). */
 export interface UserPreferences {
   preferredEditor?: string;
+  preferredLanguage?: string;
+  codingStyle?: string;
+  codingLanguage?: string;
+  preferredTerminal?: string;
+  theme?: string;
+  aiVerbosity?: string;
+  aiExplanationDepth?: string;
+  productivityHabits?: string;
+  communicationStyle?: string;
+  responseLength?: string;
   timezone?: string;
   [key: string]: string | number | boolean | undefined;
 }

@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   key TEXT NOT NULL,
   value TEXT NOT NULL,
   category TEXT NOT NULL DEFAULT 'general',
+  source TEXT NOT NULL DEFAULT 'manual',
+  confidence REAL NOT NULL DEFAULT 1,
+  enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   UNIQUE (user_id, key)

@@ -109,6 +109,17 @@ describe("applyEnvOverrides", () => {
     expect(next.knowledge.retrieval.maxDepth).toBe(1);
     expect(next.knowledge.retrieval.recencyHalfLifeMs).toBe(86_400_000);
   });
+
+  it("overrides profile learning settings from env", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_PROFILE_LEARNING_ENABLED: "false",
+      ATLAS_PROFILE_LEARN_ON_REQUEST: "false",
+      ATLAS_PROFILE_LEARN_MIN_CONFIDENCE: "0.7",
+    });
+    expect(next.profile.learning.enabled).toBe(false);
+    expect(next.profile.learning.learnOnRequest).toBe(false);
+    expect(next.profile.learning.minConfidence).toBe(0.7);
+  });
 });
 
 describe("loadConfig", () => {

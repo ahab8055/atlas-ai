@@ -10,6 +10,8 @@ import type {
   AtlasKnowledgeExtractionConfig,
   AtlasKnowledgeRelationshipsConfig,
   AtlasKnowledgeRetrievalConfig,
+  AtlasProfileConfig,
+  AtlasProfileLearningConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -379,6 +381,32 @@ function mergeKnowledge(
   };
 }
 
+function mergeProfileLearning(
+  base: AtlasProfileLearningConfig,
+  patch: unknown,
+): AtlasProfileLearningConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    enabled: asBoolean(patch.enabled, base.enabled),
+    learnOnRequest: asBoolean(patch.learnOnRequest, base.learnOnRequest),
+    minConfidence: clamp01(asNumber(patch.minConfidence, base.minConfidence)),
+  };
+}
+
+function mergeProfile(
+  base: AtlasProfileConfig,
+  patch: unknown,
+): AtlasProfileConfig {
+  if (!isRecord(patch)) {
+    return { learning: { ...base.learning } };
+  }
+  return {
+    learning: mergeProfileLearning(base.learning, patch.learning),
+  };
+}
+
 /** Deep-merge a partial JSON object onto defaults (non-secret fields only). */
 export function mergeAppConfig(
   base: AtlasAppConfig,
@@ -393,6 +421,7 @@ export function mergeAppConfig(
       ai: mergeAi(base.ai, undefined),
       memory: mergeMemory(base.memory, undefined),
       knowledge: mergeKnowledge(base.knowledge, undefined),
+      profile: mergeProfile(base.profile, undefined),
     };
   }
 
@@ -405,6 +434,7 @@ export function mergeAppConfig(
     ai: mergeAi(base.ai, patch.ai),
     memory: mergeMemory(base.memory, patch.memory),
     knowledge: mergeKnowledge(base.knowledge, patch.knowledge),
+    profile: mergeProfile(base.profile, patch.profile),
   };
 }
 
@@ -596,6 +626,22 @@ export function applyEnvOverrides(
           envVars.ATLAS_KNOWLEDGE_RETRIEVAL_RECENCY_HALFLIFE_MS !== undefined
             ? Number(envVars.ATLAS_KNOWLEDGE_RETRIEVAL_RECENCY_HALFLIFE_MS)
             : config.knowledge.retrieval.recencyHalfLifeMs,
+      },
+    },
+    profile: {
+      learning: {
+        enabled:
+          envVars.ATLAS_PROFILE_LEARNING_ENABLED !== undefined
+            ? envVars.ATLAS_PROFILE_LEARNING_ENABLED === "true"
+            : config.profile.learning.enabled,
+        learnOnRequest:
+          envVars.ATLAS_PROFILE_LEARN_ON_REQUEST !== undefined
+            ? envVars.ATLAS_PROFILE_LEARN_ON_REQUEST === "true"
+            : config.profile.learning.learnOnRequest,
+        minConfidence:
+          envVars.ATLAS_PROFILE_LEARN_MIN_CONFIDENCE !== undefined
+            ? Number(envVars.ATLAS_PROFILE_LEARN_MIN_CONFIDENCE)
+            : config.profile.learning.minConfidence,
       },
     },
   });

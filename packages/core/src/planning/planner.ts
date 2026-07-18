@@ -64,10 +64,19 @@ export function createPlan(
     registry.get(intent.name) ?? registry.get("unknown") ?? fallbackUnknown;
 
   const built = template.build({ request, intent, context });
-  const notes = [
-    formatRecalledMemories(context),
-    formatRelatedKnowledge(context),
-  ].filter(Boolean);
+  const notes: string[] = [];
+  const recalled = formatRecalledMemories(context);
+  if (recalled) {
+    notes.push(recalled);
+  }
+  const knowledge = formatRelatedKnowledge(context);
+  if (knowledge) {
+    notes.push(knowledge);
+  }
+  const prefs = formatUserPreferences(context);
+  if (prefs) {
+    notes.push(prefs);
+  }
   const goal =
     notes.length > 0 ? `${built.goal} | ${notes.join(" | ")}` : built.goal;
   return finalizePlan({
@@ -108,6 +117,37 @@ function formatRelatedKnowledge(
     return undefined;
   }
   return `Related knowledge: ${snippets.join("; ")}`;
+}
+
+const PREFERENCE_DISPLAY_KEYS = [
+  "preferredEditor",
+  "preferredLanguage",
+  "codingStyle",
+  "codingLanguage",
+  "communicationStyle",
+  "responseLength",
+  "aiVerbosity",
+  "productivityHabits",
+] as const;
+
+function formatUserPreferences(
+  context: PlanInput["context"],
+): string | undefined {
+  const prefs = context.preferences;
+  if (!prefs) {
+    return undefined;
+  }
+  const parts: string[] = [];
+  for (const key of PREFERENCE_DISPLAY_KEYS) {
+    const value = prefs[key];
+    if (typeof value === "string" && value.trim()) {
+      parts.push(`${key}=${value.trim()}`);
+    }
+  }
+  if (parts.length === 0) {
+    return undefined;
+  }
+  return `User preferences: ${parts.slice(0, 4).join("; ")}`;
 }
 
 const fallbackUnknown: PlanTemplate = {

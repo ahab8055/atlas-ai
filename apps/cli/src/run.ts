@@ -29,6 +29,7 @@ import {
   type LongTermMemory,
   type MemoryManager,
 } from "@atlas-ai/memory";
+import { createProfileManager, type ProfileManager } from "@atlas-ai/profile";
 
 import {
   createDebugEventPrinter,
@@ -62,6 +63,7 @@ export interface CliRuntime {
   memoryManager: MemoryManager;
   longTermMemory?: LongTermMemory;
   knowledgeGraph?: KnowledgeGraphManager;
+  profile?: ProfileManager;
 }
 
 /**
@@ -106,6 +108,9 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const knowledgeGraph = database
     ? createKnowledgeGraph(createSqliteGraphStore(database))
     : undefined;
+  const profile = database
+    ? createProfileManager(database.userPreferences)
+    : undefined;
 
   const shortTerm = createShortTermMemory({
     maxEntries: config.memory.shortTerm.maxEntries,
@@ -140,6 +145,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
 
   const contextManager = new ContextManager({
     conversationStore: shortTerm.toConversationStore(),
+    preferenceStore: profile?.asPreferenceStore(),
     providers: providers.length > 0 ? providers : undefined,
   });
 
@@ -167,6 +173,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     memoryManager,
     longTermMemory,
     knowledgeGraph,
+    profile,
   };
 }
 
@@ -201,6 +208,7 @@ export function runCommand(
   }
 
   maybeExtractKnowledge(runtime, rawInput, result);
+  maybeLearnProfile(runtime, rawInput, result);
 
   displayResponse(result);
   if (shouldPrintDebugMeta(options)) {
@@ -244,6 +252,35 @@ function maybeExtractKnowledge(
     });
   } catch {
     // Extraction must not break the user-facing response path
+  }
+}
+
+function maybeLearnProfile(
+  runtime: CliRuntime,
+  rawInput: string,
+  result: PipelineResult,
+): void {
+  const learning = runtime.config.profile?.learning;
+  if (!runtime.profile || !learning?.enabled || !learning.learnOnRequest) {
+    return;
+  }
+  if (
+    result.execution.status === "failed" ||
+    result.execution.status === "blocked" ||
+    result.response.status === "failed"
+  ) {
+    return;
+  }
+  const text = rawInput.trim();
+  if (!text || text.length < 8) {
+    return;
+  }
+  try {
+    runtime.profile.learnFromText(text, {
+      minConfidence: learning.minConfidence,
+    });
+  } catch {
+    // Learning must not break the user-facing response path
   }
 }
 

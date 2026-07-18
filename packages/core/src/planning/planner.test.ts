@@ -196,4 +196,22 @@ describe("task planning engine", () => {
     expect(plan.goal).toContain("Related knowledge");
     expect(plan.goal).toContain("React");
   });
+
+  it("appends user preferences to the goal when present", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "Open VS Code",
+    });
+    const intent = detectIntent(request);
+    const context = loadContext(request, intent, {
+      manager: new ContextManager(),
+    });
+    context.preferences = {
+      preferredEditor: "Cursor",
+      communicationStyle: "concise",
+    };
+    const plan = createPlan(request, intent, context);
+    expect(plan.goal).toContain("User preferences");
+    expect(plan.goal).toContain("Cursor");
+  });
 });

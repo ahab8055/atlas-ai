@@ -277,6 +277,29 @@ describe("response generation", () => {
     expect(response.text).toContain("Related knowledge");
     expect(response.text).toContain("Atlas");
   });
+
+  it("appends user preferences when context has preferences", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "echo hello",
+    });
+    const response = generateResponse(
+      request,
+      echoIntent(),
+      baseExecution(),
+      undefined,
+      undefined,
+      {
+        preferences: {
+          preferredEditor: "Cursor",
+          communicationStyle: "concise",
+        },
+      } as never,
+    );
+
+    expect(response.text).toContain("User preferences");
+    expect(response.text).toContain("Cursor");
+  });
 });
 
 describe("explainFailures", () => {

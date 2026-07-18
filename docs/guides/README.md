@@ -39,6 +39,7 @@ Practical guides for contributing to Atlas AI.
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)                               | GGUF load, CPU/GPU, inference params                         |
 | [Intent-Detection.md](./Intent-Detection.md)                                       | Intent categories, params, registry                          |
 | [Context-Management.md](./Context-Management.md)                                   | Context sources before execution                             |
+| [User-Profile.md](./User-Profile.md)                                               | Structured preferences, learning, CLI                        |
 | [Memory-Architecture.md](./Memory-Architecture.md)                                 | Typed memory providers + MemoryManager                       |
 | [Short-Term-Memory.md](./Short-Term-Memory.md)                                     | Session conversation window + TTL                            |
 | [Long-Term-Memory.md](./Long-Term-Memory.md)                                       | Persistent memories + relevance search                       |

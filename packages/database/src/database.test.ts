@@ -26,10 +26,21 @@ describe("AtlasDatabase", () => {
     expect(atlas.systemConfig.get("logging.level")).toBe("debug");
 
     atlas.userPreferences.set("preferred_editor", "Cursor", {
-      category: "editor",
+      category: "tools",
+      source: "manual",
     });
     expect(atlas.userPreferences.get("preferred_editor")).toBe("Cursor");
     expect(atlas.userPreferences.list().length).toBeGreaterThanOrEqual(3);
+    expect(atlas.userPreferences.getRow("preferred_editor")?.source).toBe(
+      "manual",
+    );
+    expect(atlas.userPreferences.setEnabled("theme", false)?.enabled).toBe(
+      false,
+    );
+    expect(
+      atlas.userPreferences.list({ enabledOnly: true }).every((r) => r.enabled),
+    ).toBe(true);
+    expect(atlas.userPreferences.delete("theme")).toBe(true);
 
     atlas.close();
   });
