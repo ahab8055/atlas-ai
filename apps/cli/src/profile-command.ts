@@ -1,6 +1,7 @@
 /**
  * CLI: atlas profile — manage structured user preferences.
  */
+import type { PreferenceSuggestionRow } from "@atlas-ai/database";
 import type { ProfilePreference } from "@atlas-ai/profile";
 
 import type { CliRuntime } from "./run.js";
@@ -23,6 +24,15 @@ export function tryHandleProfileCommand(
 
   if (sub === "learn") {
     return handleLearn(runtime, tokens.slice(2));
+  }
+  if (sub === "suggestions") {
+    return handleSuggestions(runtime, tokens.slice(2));
+  }
+  if (sub === "approve") {
+    return handleApproveReject(runtime, "approve", tokens.slice(2));
+  }
+  if (sub === "reject") {
+    return handleApproveReject(runtime, "reject", tokens.slice(2));
   }
 
   if (!runtime.database || !runtime.profile) {
@@ -133,30 +143,140 @@ function handleLearn(runtime: CliRuntime, args: string[]): boolean {
   }
 
   try {
-    const text = args.join(" ").trim();
+    const forceApply = args.includes("--apply");
+    const text = args
+      .filter((a) => a !== "--apply")
+      .join(" ")
+      .trim();
     if (!text) {
-      throw new Error('Usage: profile learn "I prefer Cursor"');
+      throw new Error('Usage: profile learn "I prefer Cursor" [--apply]');
     }
     const learning = runtime.config.profile?.learning ?? {
       enabled: true,
       learnOnRequest: true,
       minConfidence: 0.55,
+      minOccurrences: 2,
+      requireApproval: true,
+      autoApply: false,
     };
     if (!learning.enabled) {
       process.stderr.write("Profile learning is disabled in config.\n");
       process.exitCode = 1;
       return true;
     }
-    const result = runtime.profile.learnFromText(text, {
-      minConfidence: learning.minConfidence,
-    });
-    process.stdout.write(
-      `candidates: ${result.candidates.length}\nstored: ${result.stored.length}\n`,
-    );
-    for (const row of result.stored) {
+
+    const autoApply =
+      forceApply ||
+      learning.autoApply === true ||
+      learning.requireApproval === false;
+
+    if (autoApply) {
+      const result = runtime.profile.learnFromText(text, {
+        minConfidence: learning.minConfidence,
+        autoApply: true,
+      });
       process.stdout.write(
-        `${row.confidence.toFixed(2)}  [${row.category}]  ${row.key}=${row.value}\n`,
+        `candidates: ${result.candidates.length}\nstored: ${result.stored.length}\n`,
       );
+      for (const row of result.stored) {
+        process.stdout.write(
+          `${row.confidence.toFixed(2)}  [${row.category}]  ${row.key}=${row.value}\n`,
+        );
+      }
+    } else {
+      const result = runtime.profile.observeFromText(text, {
+        minConfidence: learning.minConfidence,
+        minOccurrences: learning.minOccurrences ?? 2,
+      });
+      process.stdout.write(
+        `candidates: ${result.candidates.length}\n` +
+          `observations: ${result.observations.length}\n` +
+          `suggestions: ${result.suggestionsCreated.length}\n`,
+      );
+      for (const obs of result.observations) {
+        process.stdout.write(
+          `obs  ${obs.key}=${obs.value}  count=${obs.count}\n`,
+        );
+      }
+      for (const sug of result.suggestionsCreated) {
+        process.stdout.write(
+          `sug  ${sug.id}  ${sug.key}=${sug.value}  (c=${sug.confidence.toFixed(2)})\n`,
+        );
+      }
+      if (
+        result.suggestionsCreated.length === 0 &&
+        result.candidates.length > 0
+      ) {
+        process.stdout.write(
+          `(need ${learning.minOccurrences ?? 2} occurrences to suggest — atlas profile suggestions)\n`,
+        );
+      }
+    }
+    process.exitCode = 0;
+    return true;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+    return true;
+  }
+}
+
+function handleSuggestions(runtime: CliRuntime, args: string[]): boolean {
+  if (!runtime.database || !runtime.profile) {
+    process.stderr.write(
+      "Profile suggestions require the database. Remove --no-db / ATLAS_DB_DISABLED.\n",
+    );
+    process.exitCode = 1;
+    return true;
+  }
+  try {
+    const statusRaw = readFlag(args, "--status") ?? "pending";
+    const status =
+      statusRaw === "approved" ||
+      statusRaw === "rejected" ||
+      statusRaw === "pending"
+        ? statusRaw
+        : "pending";
+    const rows = runtime.profile.listSuggestions({ status });
+    process.stdout.write(`${formatSuggestionList(rows)}\n`);
+    process.exitCode = 0;
+    return true;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+    return true;
+  }
+}
+
+function handleApproveReject(
+  runtime: CliRuntime,
+  action: "approve" | "reject",
+  args: string[],
+): boolean {
+  if (!runtime.database || !runtime.profile) {
+    process.stderr.write(
+      `Profile ${action} requires the database. Remove --no-db / ATLAS_DB_DISABLED.\n`,
+    );
+    process.exitCode = 1;
+    return true;
+  }
+  try {
+    const idOrKey = args[0];
+    if (!idOrKey) {
+      throw new Error(`Usage: profile ${action} <id|key>`);
+    }
+    if (action === "approve") {
+      const result = runtime.profile.approveSuggestion(idOrKey);
+      process.stdout.write(
+        `Approved ${result.preference.key}=${result.preference.value}\n`,
+      );
+    } else {
+      const row = runtime.profile.rejectSuggestion(idOrKey);
+      process.stdout.write(`Rejected ${row.key}=${row.value}\n`);
     }
     process.exitCode = 0;
     return true;
@@ -179,7 +299,10 @@ function profileUsage(): string {
     "  atlas profile delete <key>",
     "  atlas profile disable <key>",
     "  atlas profile enable <key>",
-    '  atlas profile learn "I prefer Cursor and concise answers"',
+    '  atlas profile learn "I prefer Cursor" [--apply]',
+    "  atlas profile suggestions [--status pending]",
+    "  atlas profile approve <id|key>",
+    "  atlas profile reject <id|key>",
   ].join("\n");
 }
 
@@ -206,6 +329,19 @@ function formatPreferenceDetail(row: ProfilePreference): string {
     `enabled: ${row.enabled}`,
     `updated: ${row.updatedAt}`,
   ].join("\n");
+}
+
+function formatSuggestionList(rows: PreferenceSuggestionRow[]): string {
+  if (rows.length === 0) {
+    return "(no suggestions)";
+  }
+  return rows
+    .map(
+      (r) =>
+        `${r.status.padEnd(8)}  ${r.id}  ${r.key}=${r.value}` +
+        `  (c=${r.confidence.toFixed(2)}, n=${r.observationCount})`,
+    )
+    .join("\n");
 }
 
 function tokenize(input: string): string[] {

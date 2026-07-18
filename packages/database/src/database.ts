@@ -9,6 +9,8 @@ import { EntitiesRepository } from "./repositories/entities.js";
 import { ExecutionHistoryRepository } from "./repositories/execution-history.js";
 import { MemoriesRepository } from "./repositories/memories.js";
 import { ModelsRepository } from "./repositories/models.js";
+import { PreferenceObservationsRepository } from "./repositories/preference-observations.js";
+import { PreferenceSuggestionsRepository } from "./repositories/preference-suggestions.js";
 import { ProjectsRepository } from "./repositories/projects.js";
 import { RelationshipsRepository } from "./repositories/relationships.js";
 import { SystemConfigRepository } from "./repositories/system-config.js";
@@ -23,6 +25,8 @@ import { TaskHistoryService } from "./task-history.js";
 export class AtlasDatabase {
   readonly systemConfig: SystemConfigRepository;
   readonly userPreferences: UserPreferencesRepository;
+  readonly preferenceObservations: PreferenceObservationsRepository;
+  readonly preferenceSuggestions: PreferenceSuggestionsRepository;
   readonly tools: ToolsRepository;
   readonly models: ModelsRepository;
   readonly embeddings: EmbeddingsRepository;
@@ -40,6 +44,8 @@ export class AtlasDatabase {
   ) {
     this.systemConfig = new SystemConfigRepository(db);
     this.userPreferences = new UserPreferencesRepository(db);
+    this.preferenceObservations = new PreferenceObservationsRepository(db);
+    this.preferenceSuggestions = new PreferenceSuggestionsRepository(db);
     this.tools = new ToolsRepository(db);
     this.models = new ModelsRepository(db);
     this.embeddings = new EmbeddingsRepository(db);

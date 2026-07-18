@@ -261,6 +261,48 @@ updated_at
 
 ---
 
+# 2c. preference_observations / preference_suggestions
+
+## Purpose
+
+Preference learning engine (ADR-0052): count repeated preference signals and
+hold pending suggestions until the user approves or rejects.
+
+## Schema
+
+```
+preference_observations
+
+id
+user_id
+key
+value
+category
+count
+last_confidence
+last_seen_at
+created_at
+updated_at
+
+preference_suggestions
+
+id
+user_id
+key
+value
+category
+confidence
+observation_count
+status
+reason
+created_at
+updated_at
+```
+
+`status` is `pending` | `approved` | `rejected`.
+
+---
+
 ## Examples
 
 ```

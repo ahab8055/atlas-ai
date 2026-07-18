@@ -85,6 +85,9 @@ function stubRuntime(): CliRuntime {
           enabled: true,
           learnOnRequest: false,
           minConfidence: 0.55,
+          minOccurrences: 2,
+          requireApproval: true,
+          autoApply: false,
         },
       },
       workspace: {

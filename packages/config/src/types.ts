@@ -150,10 +150,16 @@ export interface AtlasKnowledgeConfig {
 export interface AtlasProfileLearningConfig {
   /** Master switch for preference learning (default true). */
   enabled: boolean;
-  /** Auto-learn from successful CLI turns (default true). */
+  /** Observe/suggest after successful CLI turns (default true). */
   learnOnRequest: boolean;
-  /** Minimum candidate confidence to store (default 0.55). */
+  /** Minimum candidate confidence (default 0.55). */
   minConfidence: number;
+  /** Repeats before opening a suggestion (default 2). */
+  minOccurrences: number;
+  /** Require user approve before saving learned prefs (default true). */
+  requireApproval: boolean;
+  /** Opt-in silent write (ADR-0050); skips suggestion queue (default false). */
+  autoApply: boolean;
 }
 
 export interface AtlasProfileConfig {

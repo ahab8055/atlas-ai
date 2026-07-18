@@ -55,6 +55,17 @@ export {
   type ProjectUpsertInput,
 } from "./repositories/projects.js";
 export {
+  PreferenceObservationsRepository,
+  type PreferenceObservationIncrementInput,
+  type PreferenceObservationRow,
+} from "./repositories/preference-observations.js";
+export {
+  PreferenceSuggestionsRepository,
+  type PreferenceSuggestionRow,
+  type PreferenceSuggestionStatus,
+  type PreferenceSuggestionUpsertInput,
+} from "./repositories/preference-suggestions.js";
+export {
   EntitiesRepository,
   type EntityListQuery,
   type EntityRecordInput,

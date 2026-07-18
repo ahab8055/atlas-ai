@@ -53,11 +53,68 @@ describe("ProfileManager", () => {
       const profile = createProfileManager(db.userPreferences);
       const result = profile.learnFromText(
         "I prefer Cursor and be concise please",
-        { minConfidence: 0.55 },
+        { minConfidence: 0.55, autoApply: true },
       );
       expect(result.stored.length).toBeGreaterThanOrEqual(1);
       expect(profile.get("preferred_editor")?.source).toBe("learned");
       expect(profile.get("preferred_editor")?.value).toBe("Cursor");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("observes repeats then suggests; approve persists preference", () => {
+    const db = openAtlasDatabase({ path: ":memory:", skipSeed: true });
+    try {
+      const profile = createProfileManager(db.userPreferences, {
+        observations: db.preferenceObservations,
+        suggestions: db.preferenceSuggestions,
+      });
+
+      const first = profile.observeFromText("I prefer Cursor for editing", {
+        minOccurrences: 2,
+      });
+      expect(first.suggestionsCreated).toHaveLength(0);
+      expect(first.observations.some((o) => o.count === 1)).toBe(true);
+
+      const second = profile.observeFromText("I prefer Cursor for editing", {
+        minOccurrences: 2,
+      });
+      expect(second.suggestionsCreated.length).toBeGreaterThanOrEqual(1);
+      expect(profile.get("preferred_editor")).toBeUndefined();
+
+      const pending = profile.listSuggestions({ status: "pending" });
+      expect(pending.length).toBeGreaterThanOrEqual(1);
+      const approved = profile.approveSuggestion(pending[0]!.id);
+      expect(approved.preference.value).toBe("Cursor");
+      expect(profile.get("preferred_editor")?.source).toBe("learned");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("reject clears pending and resets observation streak", () => {
+    const db = openAtlasDatabase({ path: ":memory:", skipSeed: true });
+    try {
+      const profile = createProfileManager(db.userPreferences, {
+        observations: db.preferenceObservations,
+        suggestions: db.preferenceSuggestions,
+      });
+      profile.observeFromText("I prefer Cursor", { minOccurrences: 2 });
+      const second = profile.observeFromText("I prefer Cursor", {
+        minOccurrences: 2,
+      });
+      expect(second.suggestionsCreated.length).toBeGreaterThanOrEqual(1);
+      for (const sug of second.suggestionsCreated) {
+        profile.rejectSuggestion(sug.id);
+      }
+      expect(profile.listSuggestions({ status: "pending" })).toHaveLength(0);
+      expect(profile.get("preferred_editor")).toBeUndefined();
+
+      const again = profile.observeFromText("I prefer Cursor", {
+        minOccurrences: 2,
+      });
+      expect(again.suggestionsCreated).toHaveLength(0);
     } finally {
       db.close();
     }

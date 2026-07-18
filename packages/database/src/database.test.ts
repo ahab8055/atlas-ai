@@ -282,6 +282,44 @@ describe("AtlasDatabase", () => {
 
     atlas.close();
   });
+
+  it("tracks preference observations and pending suggestions", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:" });
+    expect(atlas.schemaVersion).toBe(SCHEMA_VERSION);
+
+    const obs = atlas.preferenceObservations.increment({
+      key: "preferred_editor",
+      value: "Cursor",
+      category: "tools",
+      confidence: 0.7,
+    });
+    expect(obs.count).toBe(1);
+    const again = atlas.preferenceObservations.increment({
+      key: "preferred_editor",
+      value: "Cursor",
+      category: "tools",
+      confidence: 0.8,
+    });
+    expect(again.count).toBe(2);
+
+    const sug = atlas.preferenceSuggestions.upsertPending({
+      key: "preferred_editor",
+      value: "Cursor",
+      category: "tools",
+      confidence: 0.8,
+      observationCount: 2,
+      reason: "seen 2 times",
+    });
+    expect(sug.status).toBe("pending");
+    expect(
+      atlas.preferenceSuggestions.getPendingByKey("preferred_editor")?.id,
+    ).toBe(sug.id);
+
+    atlas.preferenceSuggestions.setStatus(sug.id, "approved");
+    expect(atlas.preferenceSuggestions.get(sug.id)?.status).toBe("approved");
+
+    atlas.close();
+  });
 });
 
 describe("TaskHistoryService", () => {

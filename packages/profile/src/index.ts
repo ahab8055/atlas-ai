@@ -21,6 +21,8 @@ export {
   type LearnFromTextOptions,
   type LearnFromTextResult,
   type ListPreferencesOptions,
+  type ObserveFromTextOptions,
+  type ObserveFromTextResult,
   type ProfileManagerOptions,
   type SetPreferenceOptions,
 } from "./manager.js";
@@ -33,6 +35,12 @@ export {
 
 export {
   extractPreferences,
+  observePreferences,
+  promoteSuggestions,
   type ExtractedPreference,
   type ExtractPreferencesOptions,
+  type ObservePreferencesOptions,
+  type ObservePreferencesResult,
+  type PromoteSuggestionsOptions,
+  type PromoteSuggestionsResult,
 } from "./learning/index.js";

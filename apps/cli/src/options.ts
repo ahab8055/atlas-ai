@@ -59,6 +59,8 @@ export function usage(): string {
     "  atlas profile set preferred_editor Cursor",
     "  atlas profile list",
     '  atlas profile learn "I prefer concise answers"',
+    "  atlas profile suggestions",
+    "  atlas profile approve <id>",
     "  atlas project detect",
     "  atlas project status",
     "  atlas echo hello",

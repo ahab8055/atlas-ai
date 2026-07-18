@@ -101,8 +101,8 @@ pnpm atlas knowledge traverse <id> --types uses --direction out
 pnpm atlas profile list
 pnpm atlas profile set preferred_editor Cursor
 pnpm atlas profile learn "I prefer concise answers"
-
-# Workspace / project (requires DB; see Workspace-Awareness.md)
+pnpm atlas profile suggestions
+pnpm atlas profile approve <id>
 pnpm atlas project detect
 pnpm atlas project list
 pnpm atlas project status

@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -180,6 +180,42 @@ CREATE TABLE IF NOT EXISTS projects (
 
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_last_seen ON projects(last_seen_at);
+
+CREATE TABLE IF NOT EXISTS preference_observations (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'local',
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  count INTEGER NOT NULL DEFAULT 0,
+  last_confidence REAL NOT NULL DEFAULT 0,
+  last_seen_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (user_id, key, value)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pref_obs_user ON preference_observations(user_id);
+CREATE INDEX IF NOT EXISTS idx_pref_obs_key ON preference_observations(user_id, key);
+
+CREATE TABLE IF NOT EXISTS preference_suggestions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'local',
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  confidence REAL NOT NULL,
+  observation_count INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'pending',
+  reason TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pref_sug_user_status
+  ON preference_suggestions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_pref_sug_pending_key
+  ON preference_suggestions(user_id, key, status);
 
 CREATE TABLE IF NOT EXISTS entities (
   id TEXT PRIMARY KEY,

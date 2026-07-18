@@ -393,6 +393,12 @@ function mergeProfileLearning(
     enabled: asBoolean(patch.enabled, base.enabled),
     learnOnRequest: asBoolean(patch.learnOnRequest, base.learnOnRequest),
     minConfidence: clamp01(asNumber(patch.minConfidence, base.minConfidence)),
+    minOccurrences: Math.max(
+      1,
+      Math.floor(asNumber(patch.minOccurrences, base.minOccurrences)),
+    ),
+    requireApproval: asBoolean(patch.requireApproval, base.requireApproval),
+    autoApply: asBoolean(patch.autoApply, base.autoApply),
   };
 }
 
@@ -658,6 +664,18 @@ export function applyEnvOverrides(
           envVars.ATLAS_PROFILE_LEARN_MIN_CONFIDENCE !== undefined
             ? Number(envVars.ATLAS_PROFILE_LEARN_MIN_CONFIDENCE)
             : config.profile.learning.minConfidence,
+        minOccurrences:
+          envVars.ATLAS_PROFILE_LEARN_MIN_OCCURRENCES !== undefined
+            ? Number(envVars.ATLAS_PROFILE_LEARN_MIN_OCCURRENCES)
+            : config.profile.learning.minOccurrences,
+        requireApproval:
+          envVars.ATLAS_PROFILE_LEARN_REQUIRE_APPROVAL !== undefined
+            ? envVars.ATLAS_PROFILE_LEARN_REQUIRE_APPROVAL === "true"
+            : config.profile.learning.requireApproval,
+        autoApply:
+          envVars.ATLAS_PROFILE_LEARN_AUTO_APPLY !== undefined
+            ? envVars.ATLAS_PROFILE_LEARN_AUTO_APPLY === "true"
+            : config.profile.learning.autoApply,
       },
     },
     workspace: {

@@ -114,7 +114,10 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     ? createKnowledgeGraph(createSqliteGraphStore(database))
     : undefined;
   const profile = database
-    ? createProfileManager(database.userPreferences)
+    ? createProfileManager(database.userPreferences, {
+        observations: database.preferenceObservations,
+        suggestions: database.preferenceSuggestions,
+      })
     : undefined;
   const workspace = database
     ? createWorkspaceManager(database.projects, database.userPreferences)
@@ -296,9 +299,25 @@ function maybeLearnProfile(
     return;
   }
   try {
-    runtime.profile.learnFromText(text, {
+    const autoApply =
+      learning.autoApply === true || learning.requireApproval === false;
+    if (autoApply) {
+      runtime.profile.learnFromText(text, {
+        minConfidence: learning.minConfidence,
+        autoApply: true,
+      });
+      return;
+    }
+    const observed = runtime.profile.observeFromText(text, {
       minConfidence: learning.minConfidence,
+      minOccurrences: learning.minOccurrences ?? 2,
     });
+    if (observed.suggestionsCreated.length > 0) {
+      const n = observed.suggestionsCreated.length;
+      process.stdout.write(
+        `${n} preference suggestion(s) — atlas profile suggestions\n`,
+      );
+    }
   } catch {
     // Learning must not break the user-facing response path
   }

@@ -1,13 +1,14 @@
 # Atlas AI — User Profile
 
-Structured, categorized user preferences with SQLite persistence, heuristic
-auto-learn, and context injection so Atlas behaves according to the user's
-workflow.
+Structured, categorized user preferences with SQLite persistence, context
+injection, and optional preference learning (observe → suggest → approve).
 
 Related: [Context-Management.md](./Context-Management.md),
+[Preference-Learning.md](./Preference-Learning.md),
 [Database.md](./Database.md),
 [Architecture/20-Database-Schema.md](../Architecture/20-Database-Schema.md),
 [ADR-0050](../adr/0050-user-profile-management.md),
+[ADR-0052](../adr/0052-preference-learning-engine.md),
 [`@atlas-ai/profile`](../../packages/profile/).
 
 ---
@@ -19,7 +20,8 @@ Related: [Context-Management.md](./Context-Management.md),
 - Load preferences into `LoadedContext` every request
 - Influence planner goals and response notes
 - Allow list / get / set / delete / enable / disable
-- Optionally learn from conversation text (heuristics, no LLM)
+- Learn from conversation text via suggestions (see
+  [Preference-Learning.md](./Preference-Learning.md))
 
 ---
 
@@ -30,7 +32,7 @@ packages/profile/src/
 ├── types.ts           # categories, PROFILE_KEYS, snapshot
 ├── manager.ts         # ProfileManager
 ├── store-adapter.ts   # duck-typed PreferenceStore
-├── learning/          # extractPreferences
+├── learning/          # extract / observe / suggest
 └── index.ts
 ```
 
@@ -43,10 +45,15 @@ import { createProfileManager } from "@atlas-ai/profile";
 import { openAtlasDatabase } from "@atlas-ai/database";
 
 const db = openAtlasDatabase(":memory:");
-const profile = createProfileManager(db.userPreferences);
+const profile = createProfileManager(db.userPreferences, {
+  observations: db.preferenceObservations,
+  suggestions: db.preferenceSuggestions,
+});
 
 profile.set("preferredEditor", "Cursor", { category: "tools" });
-profile.learnFromText("I prefer concise answers");
+profile.observeFromText("I prefer concise answers");
+// after enough occurrences:
+// profile.approveSuggestion(id)
 
 const store = profile.asPreferenceStore();
 // pass store into ContextManager as preferenceStore
@@ -66,16 +73,8 @@ const store = profile.asPreferenceStore();
 
 Context uses camelCase (`preferredEditor`). DB stores snake_case.
 
-### Config (`profile.learning`)
-
-| Key              | Default | Meaning                          |
-| ---------------- | ------- | -------------------------------- |
-| `enabled`        | `true`  | Master switch                    |
-| `learnOnRequest` | `true`  | Learn after successful CLI turns |
-| `minConfidence`  | `0.55`  | Store threshold                  |
-
-Env: `ATLAS_PROFILE_LEARNING_ENABLED`, `ATLAS_PROFILE_LEARN_ON_REQUEST`,
-`ATLAS_PROFILE_LEARN_MIN_CONFIDENCE`.
+Learning config lives under `profile.learning` — see
+[Preference-Learning.md](./Preference-Learning.md).
 
 ---
 
@@ -89,6 +88,9 @@ atlas profile disable theme
 atlas profile enable theme
 atlas profile delete theme
 atlas profile learn "I prefer Cursor and concise answers"
+atlas profile suggestions
+atlas profile approve <id|key>
+atlas profile reject <id|key>
 ```
 
 ---

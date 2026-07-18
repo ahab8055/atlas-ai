@@ -14,8 +14,11 @@ import { tryHandleProfileCommand } from "./profile-command.js";
 import type { CliRuntime } from "./run.js";
 
 function stubRuntime(): CliRuntime {
-  const database = openAtlasDatabase({ path: ":memory:" });
-  const profile = createProfileManager(database.userPreferences);
+  const database = openAtlasDatabase({ path: ":memory:", skipSeed: true });
+  const profile = createProfileManager(database.userPreferences, {
+    observations: database.preferenceObservations,
+    suggestions: database.preferenceSuggestions,
+  });
   const memoryManager = createMemoryManager();
   const shortTerm = createShortTermMemory({
     maxEntries: 10,
@@ -44,6 +47,9 @@ function stubRuntime(): CliRuntime {
           enabled: true,
           learnOnRequest: true,
           minConfidence: 0.55,
+          minOccurrences: 2,
+          requireApproval: true,
+          autoApply: false,
         },
       },
       workspace: {
@@ -73,12 +79,43 @@ describe("profile CLI + context wiring", () => {
       expect(
         tryHandleProfileCommand(
           runtime,
-          'profile learn "I prefer concise answers"',
+          'profile learn "I prefer concise answers" --apply',
         ),
       ).toBe(true);
       expect(runtime.profile!.get("communication_style")?.value).toBe(
         "concise",
       );
+    } finally {
+      runtime.database?.close();
+    }
+  });
+
+  it("suggests after repeated learn and approve persists", () => {
+    const runtime = stubRuntime();
+    try {
+      expect(
+        tryHandleProfileCommand(
+          runtime,
+          'profile learn "I prefer Cursor for editing"',
+        ),
+      ).toBe(true);
+      expect(runtime.profile!.get("preferred_editor")).toBeUndefined();
+
+      expect(
+        tryHandleProfileCommand(
+          runtime,
+          'profile learn "I prefer Cursor for editing"',
+        ),
+      ).toBe(true);
+      expect(tryHandleProfileCommand(runtime, "profile suggestions")).toBe(
+        true,
+      );
+      const pending = runtime.profile!.listSuggestions({ status: "pending" });
+      expect(pending.length).toBeGreaterThanOrEqual(1);
+      expect(
+        tryHandleProfileCommand(runtime, `profile approve ${pending[0]!.id}`),
+      ).toBe(true);
+      expect(runtime.profile!.get("preferred_editor")?.value).toBe("Cursor");
     } finally {
       runtime.database?.close();
     }

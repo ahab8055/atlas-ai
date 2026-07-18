@@ -86,6 +86,9 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       enabled: true,
       learnOnRequest: true,
       minConfidence: 0.55,
+      minOccurrences: 2,
+      requireApproval: true,
+      autoApply: false,
     },
   },
   workspace: {
