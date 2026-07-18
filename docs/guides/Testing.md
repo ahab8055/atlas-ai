@@ -31,7 +31,7 @@ atlas-ai/
 ├── tests/
 │   ├── README.md
 │   ├── unit/                  # optional shared unit helpers
-│   ├── integration/           # cross-package Phase 1 + Phase 2 suites
+│   ├── integration/           # cross-package Phase 1–3 suites
 │   └── e2e/                   # Playwright (later)
 └── apps/desktop/src-tauri/    # #[cfg(test)] modules
 ```
@@ -40,7 +40,7 @@ Rules:
 
 - Prefer **colocated** `*.test.ts` beside implementation.
 - Use `tests/integration/` for **cross-package** workflows (Phase 1 core runtime;
-  Phase 2 Local AI Engine).
+  Phase 2 Local AI Engine; Phase 3 Memory & Personal Context).
 - Use `tests/e2e/` only for cross-cutting UI flows.
 - Do not commit secrets or live `.env` values into fixtures; use inline `envVars` like config tests.
 
@@ -70,6 +70,7 @@ Workspace packages export `dist/`. `pnpm test` builds them first so CI and fresh
 | `@atlas-ai/logging`  | `packages/logging/src/logger.test.ts`                                                                                                |
 | Phase 1 core runtime | `tests/integration/phase1-core-runtime.test.ts` — see [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md)               |
 | Phase 2 Local AI     | `tests/integration/phase2-local-ai.test.ts` — see [Phase2-Local-AI-Integration-Testing.md](./Phase2-Local-AI-Integration-Testing.md) |
+| Phase 3 Memory       | `tests/integration/phase3-memory.test.ts` — see [Phase3-Memory-Integration-Testing.md](./Phase3-Memory-Integration-Testing.md)       |
 | Desktop smoke        | `apps/desktop/src/smoke.test.ts`                                                                                                     |
 | Rust greet helper    | `apps/desktop/src-tauri/src/lib.rs` (`tests` module)                                                                                 |
 
