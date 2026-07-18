@@ -21,6 +21,7 @@ export type {
   AtlasWorkspaceConfig,
   AtlasContextConfig,
   AtlasContextBuilderConfig,
+  AtlasContextCompressionConfig,
   AtlasPathsConfig,
   AtlasSecrets,
   AtlasServerConfig,

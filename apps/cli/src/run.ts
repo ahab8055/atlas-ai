@@ -4,6 +4,7 @@ import {
   createKnowledgeProvider,
   createMemoryProvider,
   createRequestHandler,
+  type ContextBuilderOptions,
   type PipelineResult,
 } from "@atlas-ai/core";
 import { loadConfig } from "@atlas-ai/config";
@@ -183,7 +184,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     logger,
     eventBus,
     contextManager,
-    contextBuilder: config.context?.builder,
+    contextBuilder: resolveContextBuilderOptions(config),
   });
 
   return {
@@ -326,4 +327,32 @@ function maybeLearnProfile(
 
 export function closeCliRuntime(runtime: CliRuntime): void {
   runtime.database?.close();
+}
+
+/** Merge context builder + compression config; optionally scale maxChars to model window. */
+export function resolveContextBuilderOptions(
+  config: AtlasConfig,
+): ContextBuilderOptions {
+  const builder = config.context?.builder;
+  const compression = config.context?.compression;
+  let maxChars = builder?.maxChars ?? 4000;
+  if (builder?.scaleToModelContext !== false) {
+    const contextSize = config.ai?.hardware?.contextSize ?? 4096;
+    const scaled = Math.floor(contextSize * 4 * 0.35);
+    maxChars = Math.min(maxChars, Math.max(1024, scaled));
+  }
+  return {
+    maxChars,
+    maxMemorySnippets: builder?.maxMemorySnippets,
+    maxKnowledgeSnippets: builder?.maxKnowledgeSnippets,
+    maxConversationTurns: builder?.maxConversationTurns,
+    compression: compression
+      ? {
+          enabled: compression.enabled,
+          keepRecentTurns: compression.keepRecentTurns,
+          maxSummaryLines: compression.maxSummaryLines,
+          nearDuplicateThreshold: compression.nearDuplicateThreshold,
+        }
+      : undefined,
+  };
 }

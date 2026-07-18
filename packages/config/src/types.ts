@@ -182,10 +182,27 @@ export interface AtlasContextBuilderConfig {
   maxKnowledgeSnippets: number;
   /** Cap on prior conversation turns (default 6). */
   maxConversationTurns: number;
+  /**
+   * When true, CLI scales maxChars from ai.hardware.contextSize
+   * (min of configured maxChars and floor(contextSize * 4 * 0.35)).
+   */
+  scaleToModelContext: boolean;
+}
+
+export interface AtlasContextCompressionConfig {
+  /** Enable extractive conversation compression (default true). */
+  enabled: boolean;
+  /** Raw turns kept after compression (default 4). */
+  keepRecentTurns: number;
+  /** Max extractive summary bullets (default 8). */
+  maxSummaryLines: number;
+  /** Jaccard threshold for near-duplicate drop (default 0.85). */
+  nearDuplicateThreshold: number;
 }
 
 export interface AtlasContextConfig {
   builder: AtlasContextBuilderConfig;
+  compression: AtlasContextCompressionConfig;
 }
 
 /** Non-secret, serializable application settings. */

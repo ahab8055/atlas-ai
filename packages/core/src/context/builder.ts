@@ -1,10 +1,16 @@
 /**
- * Context Builder — ranked, deduped, budgeted ContextPackage (ADR-0053).
+ * Context Builder — ranked, deduped, budgeted ContextPackage (ADR-0053/0054).
  */
+import {
+  compressConversation,
+  isNearDuplicate,
+  type CompressConversationOptions,
+} from "./compress.js";
 import type {
   ContextPackage,
   ContextSection,
   ContextSectionKind,
+  ConversationTurn,
   LoadedContext,
   UserPreferences,
 } from "./types.js";
@@ -14,6 +20,10 @@ export interface ContextBuilderOptions {
   maxMemorySnippets?: number;
   maxKnowledgeSnippets?: number;
   maxConversationTurns?: number;
+  /** Heuristic conversation compression (ADR-0054). */
+  compression?: CompressConversationOptions & {
+    nearDuplicateThreshold?: number;
+  };
 }
 
 export const DEFAULT_CONTEXT_BUILDER_OPTIONS = {
@@ -21,7 +31,7 @@ export const DEFAULT_CONTEXT_BUILDER_OPTIONS = {
   maxMemorySnippets: 5,
   maxKnowledgeSnippets: 5,
   maxConversationTurns: 6,
-} as const satisfies Required<ContextBuilderOptions>;
+} as const satisfies Required<Omit<ContextBuilderOptions, "compression">>;
 
 const PREFERENCE_KEYS = [
   "preferredEditor",
@@ -40,10 +50,11 @@ const SECTION_PRIORITY: Record<ContextSectionKind, number> = {
   active_tasks: 2,
   project: 3,
   preferences: 4,
-  memories: 5,
-  knowledge: 6,
-  conversation: 7,
-  system: 8,
+  conversation_summary: 5,
+  memories: 6,
+  knowledge: 7,
+  conversation: 8,
+  system: 9,
 };
 
 /**
@@ -66,13 +77,15 @@ export function buildContextPackage(
   const maxTurns =
     options.maxConversationTurns ??
     DEFAULT_CONTEXT_BUILDER_OPTIONS.maxConversationTurns;
+  const nearDupThreshold = options.compression?.nearDuplicateThreshold ?? 0.85;
 
-  const seen = new Set<string>();
+  const seenExact = new Set<string>();
+  const seenLines: string[] = [];
   const draftSections: ContextSection[] = [];
 
   const requestText = latestUserText(context);
   if (requestText) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "request",
       lines: [`Current request: ${requestText}`],
     });
@@ -83,7 +96,7 @@ export function buildContextPackage(
     .map((t) => `${t.status}: ${t.description.trim()}`)
     .filter(Boolean);
   if (taskLines.length > 0) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "active_tasks",
       lines: taskLines,
     });
@@ -91,7 +104,7 @@ export function buildContextPackage(
 
   const projectLines = formatProjectLines(context);
   if (projectLines.length > 0) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "project",
       lines: projectLines,
     });
@@ -99,9 +112,25 @@ export function buildContextPackage(
 
   const prefLines = formatPreferenceLines(context.preferences);
   if (prefLines.length > 0) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "preferences",
       lines: prefLines,
+    });
+  }
+
+  const allTurns = context.conversation?.turns ?? [];
+  const compressed = compressConversation(allTurns, {
+    enabled: options.compression?.enabled !== false,
+    keepRecentTurns:
+      options.compression?.keepRecentTurns ?? Math.min(4, maxTurns),
+    maxSummaryLines: options.compression?.maxSummaryLines ?? 8,
+    maxConversationChars: Math.floor(maxChars * 0.35),
+  });
+
+  if (compressed.summaryLines.length > 0) {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
+      kind: "conversation_summary",
+      lines: compressed.summaryLines,
     });
   }
 
@@ -111,7 +140,7 @@ export function buildContextPackage(
     .map((m) => m.content.trim())
     .filter(Boolean);
   if (memoryLines.length > 0) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "memories",
       lines: memoryLines,
     });
@@ -123,19 +152,22 @@ export function buildContextPackage(
     .map((k) => (k.content || k.label).trim())
     .filter(Boolean);
   if (knowledgeLines.length > 0) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "knowledge",
       lines: knowledgeLines,
     });
   }
 
+  const conversationSource: ConversationTurn[] = compressed.stats.compressed
+    ? compressed.recentTurns
+    : allTurns;
   const conversationLines = formatConversationLines(
-    context,
+    conversationSource,
     requestText,
     maxTurns,
   );
   if (conversationLines.length > 0) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "conversation",
       lines: conversationLines,
     });
@@ -143,7 +175,7 @@ export function buildContextPackage(
 
   const systemLine = formatSystemLine(context);
   if (systemLine) {
-    pushSection(draftSections, seen, {
+    pushSection(draftSections, seenExact, seenLines, nearDupThreshold, {
       kind: "system",
       lines: [systemLine],
     });
@@ -205,18 +237,28 @@ export function buildContextPackage(
 
 /**
  * Attach a fresh ContextPackage onto LoadedContext (mutates and returns).
+ * When compression produces summary facts, refresh conversationSummary.
  */
 export function attachContextPackage(
   context: LoadedContext,
   options?: ContextBuilderOptions,
 ): LoadedContext {
-  context.contextPackage = buildContextPackage(context, options);
+  const pkg = buildContextPackage(context, options);
+  context.contextPackage = pkg;
+  const summarySection = pkg.sections.find(
+    (s) => s.kind === "conversation_summary",
+  );
+  if (summarySection && summarySection.lines.length > 0) {
+    context.conversationSummary = summarySection.lines.join("; ");
+  }
   return context;
 }
 
 function pushSection(
   sections: ContextSection[],
-  seen: Set<string>,
+  seenExact: Set<string>,
+  seenLines: string[],
+  nearDupThreshold: number,
   input: { kind: ContextSectionKind; lines: string[] },
 ): void {
   const lines: string[] = [];
@@ -226,10 +268,16 @@ function pushSection(
       continue;
     }
     const key = normalizeDedup(line);
-    if (seen.has(key)) {
+    if (seenExact.has(key)) {
       continue;
     }
-    seen.add(key);
+    if (
+      seenLines.some((prev) => isNearDuplicate(prev, line, nearDupThreshold))
+    ) {
+      continue;
+    }
+    seenExact.add(key);
+    seenLines.push(line);
     lines.push(line);
   }
   if (lines.length === 0) {
@@ -291,11 +339,10 @@ function formatPreferenceLines(prefs: UserPreferences | undefined): string[] {
 }
 
 function formatConversationLines(
-  context: LoadedContext,
+  turns: readonly ConversationTurn[],
   requestText: string | undefined,
   maxTurns: number,
 ): string[] {
-  const turns = context.conversation?.turns ?? [];
   if (turns.length === 0) {
     return [];
   }
@@ -333,6 +380,8 @@ function sectionHeader(kind: ContextSectionKind): string {
       return "Active project";
     case "preferences":
       return "User preferences";
+    case "conversation_summary":
+      return "Conversation summary";
     case "memories":
       return "Recalled memories";
     case "knowledge":
@@ -350,6 +399,10 @@ function buildPlanNotes(sections: ContextSection[]): string[] {
   const notes: string[] = [];
   for (const section of sections) {
     if (section.kind === "request" || section.kind === "system") {
+      continue;
+    }
+    if (section.kind === "conversation_summary") {
+      notes.push(`Conversation summary: ${section.lines.join("; ")}`);
       continue;
     }
     if (section.kind === "memories") {

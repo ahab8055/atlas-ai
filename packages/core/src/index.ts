@@ -70,6 +70,7 @@ export {
   ContextManager,
   attachContextPackage,
   buildContextPackage,
+  compressConversation,
   createActiveTasksProvider,
   createConversationProvider,
   createKnowledgeProvider,

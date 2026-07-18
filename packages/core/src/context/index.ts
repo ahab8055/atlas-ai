@@ -47,6 +47,16 @@ export {
   type ContextBuilderOptions,
 } from "./builder.js";
 
+export {
+  compressConversation,
+  isNearDuplicate,
+  tokenizeForDedup,
+  DEFAULT_COMPRESS_OPTIONS,
+  type CompressConversationOptions,
+  type CompressConversationResult,
+  type CompressConversationStats,
+} from "./compress.js";
+
 export { createConversationProvider } from "./providers/conversation.js";
 export { createPreferencesProvider } from "./providers/preferences.js";
 export { createActiveTasksProvider } from "./providers/active-tasks.js";

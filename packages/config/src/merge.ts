@@ -15,6 +15,7 @@ import type {
   AtlasWorkspaceConfig,
   AtlasContextConfig,
   AtlasContextBuilderConfig,
+  AtlasContextCompressionConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -457,6 +458,33 @@ function mergeContextBuilder(
         asNumber(patch.maxConversationTurns, base.maxConversationTurns),
       ),
     ),
+    scaleToModelContext: asBoolean(
+      patch.scaleToModelContext,
+      base.scaleToModelContext,
+    ),
+  };
+}
+
+function mergeContextCompression(
+  base: AtlasContextCompressionConfig,
+  patch: unknown,
+): AtlasContextCompressionConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    enabled: asBoolean(patch.enabled, base.enabled),
+    keepRecentTurns: Math.max(
+      1,
+      Math.floor(asNumber(patch.keepRecentTurns, base.keepRecentTurns)),
+    ),
+    maxSummaryLines: Math.max(
+      1,
+      Math.floor(asNumber(patch.maxSummaryLines, base.maxSummaryLines)),
+    ),
+    nearDuplicateThreshold: clamp01(
+      asNumber(patch.nearDuplicateThreshold, base.nearDuplicateThreshold),
+    ),
   };
 }
 
@@ -465,10 +493,14 @@ function mergeContext(
   patch: unknown,
 ): AtlasContextConfig {
   if (!isRecord(patch)) {
-    return { builder: { ...base.builder } };
+    return {
+      builder: { ...base.builder },
+      compression: { ...base.compression },
+    };
   }
   return {
     builder: mergeContextBuilder(base.builder, patch.builder),
+    compression: mergeContextCompression(base.compression, patch.compression),
   };
 }
 
@@ -753,6 +785,26 @@ export function applyEnvOverrides(
           envVars.ATLAS_CONTEXT_MAX_CONVERSATION_TURNS !== undefined
             ? Number(envVars.ATLAS_CONTEXT_MAX_CONVERSATION_TURNS)
             : config.context.builder.maxConversationTurns,
+        scaleToModelContext:
+          envVars.ATLAS_CONTEXT_SCALE_TO_MODEL !== undefined
+            ? envVars.ATLAS_CONTEXT_SCALE_TO_MODEL === "true"
+            : config.context.builder.scaleToModelContext,
+      },
+      compression: {
+        enabled:
+          envVars.ATLAS_CONTEXT_COMPRESSION_ENABLED !== undefined
+            ? envVars.ATLAS_CONTEXT_COMPRESSION_ENABLED === "true"
+            : config.context.compression.enabled,
+        keepRecentTurns:
+          envVars.ATLAS_CONTEXT_KEEP_RECENT_TURNS !== undefined
+            ? Number(envVars.ATLAS_CONTEXT_KEEP_RECENT_TURNS)
+            : config.context.compression.keepRecentTurns,
+        maxSummaryLines:
+          envVars.ATLAS_CONTEXT_MAX_SUMMARY_LINES !== undefined
+            ? Number(envVars.ATLAS_CONTEXT_MAX_SUMMARY_LINES)
+            : config.context.compression.maxSummaryLines,
+        nearDuplicateThreshold:
+          config.context.compression.nearDuplicateThreshold,
       },
     },
   });

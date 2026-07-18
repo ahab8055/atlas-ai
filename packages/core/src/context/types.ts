@@ -113,6 +113,7 @@ export interface LoadedContext {
 export type ContextSectionKind =
   | "request"
   | "conversation"
+  | "conversation_summary"
   | "preferences"
   | "project"
   | "memories"

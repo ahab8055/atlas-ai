@@ -15,6 +15,8 @@ Related: [Request-Pipeline.md](./Request-Pipeline.md),
 [Workspace-Awareness.md](./Workspace-Awareness.md),
 [ADR-0009](../adr/0009-context-management.md),
 [ADR-0053](../adr/0053-context-builder.md),
+[ADR-0054](../adr/0054-context-compression.md),
+[Context-Compression.md](./Context-Compression.md),
 [`@atlas-ai/core`](../../packages/core/).
 
 ---
@@ -26,7 +28,7 @@ Intent Detection
       ↓
 Context Loading   ← ContextManager.load(...) → LoadedContext
       ↓
-Context Builder   ← buildContextPackage(...) → ContextPackage
+Context Builder   ← compress + buildContextPackage(...) → ContextPackage
       ↓
 Planning → Execution → Response  (consume package notes)
       ↓
@@ -56,24 +58,31 @@ recordAssistant(...)  (conversation continuity)
 
 `buildContextPackage` turns `LoadedContext` into a `ContextPackage`:
 
-- **Priority:** request → active tasks → project → preferences → memories →
-  knowledge → conversation → system
-- **Budget:** `maxChars` (default 4000; ~1k tokens at 4 chars/token)
-- **Dedup:** skip lines already included from an earlier section
+- **Priority:** request → active tasks → project → preferences →
+  **conversation summary** → memories → knowledge → conversation → system
+- **Budget:** `maxChars` (default 4000; optionally scaled from model
+  `contextSize` — see [Context-Compression.md](./Context-Compression.md))
+- **Dedup:** exact + near-duplicate (Jaccard) across sections
+- **Compression:** older turns → extractive `conversation_summary` bullets
+  (ADR-0054)
 - **Outputs:** `text`, `planNotes` (pipe-join into plan goals),
   `responseNotes` (multi-line response blocks)
 
 ### Config (`context.builder`)
 
-| Key                    | Default | Meaning                             |
-| ---------------------- | ------- | ----------------------------------- |
-| `maxChars`             | `4000`  | Package character budget            |
-| `maxMemorySnippets`    | `5`     | Memory line cap                     |
-| `maxKnowledgeSnippets` | `5`     | Knowledge line cap                  |
-| `maxConversationTurns` | `6`     | Prior turns (excludes live request) |
+| Key                    | Default | Meaning                                   |
+| ---------------------- | ------- | ----------------------------------------- |
+| `maxChars`             | `4000`  | Package character budget                  |
+| `maxMemorySnippets`    | `5`     | Memory line cap                           |
+| `maxKnowledgeSnippets` | `5`     | Knowledge line cap                        |
+| `maxConversationTurns` | `6`     | Prior turns (excludes live request)       |
+| `scaleToModelContext`  | `true`  | Cap budget from `ai.hardware.contextSize` |
 
 Env: `ATLAS_CONTEXT_MAX_CHARS`, `ATLAS_CONTEXT_MAX_MEMORY_SNIPPETS`,
-`ATLAS_CONTEXT_MAX_KNOWLEDGE_SNIPPETS`, `ATLAS_CONTEXT_MAX_CONVERSATION_TURNS`.
+`ATLAS_CONTEXT_MAX_KNOWLEDGE_SNIPPETS`, `ATLAS_CONTEXT_MAX_CONVERSATION_TURNS`,
+`ATLAS_CONTEXT_SCALE_TO_MODEL`.
+
+Compression settings: see [Context-Compression.md](./Context-Compression.md).
 
 ```ts
 import { buildContextPackage, loadContext } from "@atlas-ai/core";

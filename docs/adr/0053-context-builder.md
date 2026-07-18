@@ -34,10 +34,10 @@ AI-ready context with token limits, priority ranking, and duplicate removal.
 ### Negative / trade-offs
 
 - Char heuristic, not a real tokenizer.
-- No LLM summarization of long histories yet.
 
 ### Follow-ups
 
 - Search-results provider into the builder.
 - Optional joint memory+KG ranking.
 - Desktop durable conversation sessions.
+- Heuristic conversation compression — see [ADR-0054](./0054-context-compression.md).

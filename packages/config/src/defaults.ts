@@ -101,6 +101,13 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       maxMemorySnippets: 5,
       maxKnowledgeSnippets: 5,
       maxConversationTurns: 6,
+      scaleToModelContext: true,
+    },
+    compression: {
+      enabled: true,
+      keepRecentTurns: 4,
+      maxSummaryLines: 8,
+      nearDuplicateThreshold: 0.85,
     },
   },
 };
