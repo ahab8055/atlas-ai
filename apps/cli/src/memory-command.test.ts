@@ -73,6 +73,12 @@ function stubRuntime(): CliRuntime {
           reinforceOnLink: true,
           reinforceStep: 0.05,
         },
+        retrieval: {
+          limit: 8,
+          minScore: 0.2,
+          maxDepth: 2,
+          recencyHalfLifeMs: 2_592_000_000,
+        },
       },
     } as unknown as CliRuntime["config"],
     database,

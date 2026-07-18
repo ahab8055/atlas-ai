@@ -35,6 +35,14 @@ export class ResponseGenerator {
     const modality = this.options.modality ?? modalityForSource(request.source);
     const withTrace = { traceId: request.traceId };
     const memoryNote = formatRecalledMemoryNote(context);
+    const knowledgeNote = formatRelatedKnowledgeNote(context);
+    const contextNotes: string[] = [];
+    if (memoryNote) {
+      contextNotes.push(memoryNote);
+    }
+    if (knowledgeNote) {
+      contextNotes.push(knowledgeNote);
+    }
 
     if (intent.name === "help") {
       const { text, spokenText } = buildHelpText();
@@ -135,9 +143,10 @@ export class ResponseGenerator {
     }
 
     const body = buildCompletedBody(intent, execution, plan);
-    const textBody = memoryNote
-      ? [...body.textBody, "", memoryNote]
-      : body.textBody;
+    const textBody =
+      contextNotes.length > 0
+        ? [...body.textBody, "", ...contextNotes]
+        : body.textBody;
     return assembleResponse({
       intent,
       execution,
@@ -194,4 +203,19 @@ function formatRecalledMemoryNote(
     return undefined;
   }
   return `Recalled memories:\n${lines.join("\n")}`;
+}
+
+function formatRelatedKnowledgeNote(
+  context: GenerateResponseInput["context"],
+): string | undefined {
+  if (!context?.knowledge || context.knowledge.length === 0) {
+    return undefined;
+  }
+  const lines = context.knowledge
+    .slice(0, 3)
+    .map((k) => `- ${(k.content || k.label).trim()}`);
+  if (lines.length === 0) {
+    return undefined;
+  }
+  return `Related knowledge:\n${lines.join("\n")}`;
 }

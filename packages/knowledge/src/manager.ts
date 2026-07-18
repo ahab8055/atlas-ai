@@ -1,3 +1,7 @@
+import {
+  createKnowledgeRetriever,
+  type KnowledgeRetrieverOptions,
+} from "./context.js";
 import { KnowledgeError } from "./errors.js";
 import {
   extractAndStoreEntities,
@@ -13,6 +17,11 @@ import {
   type LinkEntitiesInput,
   type LinkResult,
 } from "./relationships/index.js";
+import {
+  KnowledgeRetrievalEngine,
+  type KnowledgeRetrievalOptions,
+  type RetrievedEntity,
+} from "./retrieval/index.js";
 import { toGraphSnapshot } from "./snapshot.js";
 import type { GraphStore } from "./store.js";
 import { getNeighbors, traverseGraph } from "./traverse.js";
@@ -24,6 +33,7 @@ import type {
   EntityType,
   ExportSnapshotOptions,
   GraphSnapshot,
+  KnowledgeSnippetView,
   NeighborHit,
   NeighborOptions,
   Relationship,
@@ -137,6 +147,29 @@ export class KnowledgeGraphManager {
     options?: IngestOptions,
   ): ExtractAndStoreResult {
     return extractAndStoreEntities(this, text, options);
+  }
+
+  /**
+   * Ranked context retrieval (ADR-0049).
+   */
+  retrieve(
+    text: string,
+    options: KnowledgeRetrievalOptions = {},
+  ): RetrievedEntity[] {
+    return new KnowledgeRetrievalEngine(this).retrieve(text, options);
+  }
+
+  /**
+   * Sync retriever for core ContextManager createKnowledgeProvider (ADR-0049).
+   */
+  createRetriever(
+    options: KnowledgeRetrieverOptions = {},
+  ): (input: {
+    sessionId: string;
+    text: string;
+    intentName: string;
+  }) => KnowledgeSnippetView[] {
+    return createKnowledgeRetriever(this, options);
   }
 
   /**

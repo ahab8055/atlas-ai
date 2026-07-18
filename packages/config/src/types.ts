@@ -130,9 +130,21 @@ export interface AtlasKnowledgeRelationshipsConfig {
   reinforceStep: number;
 }
 
+export interface AtlasKnowledgeRetrievalConfig {
+  /** Max ranked snippets for context (default 8). */
+  limit: number;
+  /** Drop hits below this hybrid score (default 0.2). */
+  minScore: number;
+  /** Neighbor expansion depth from lexical seeds (default 2). */
+  maxDepth: number;
+  /** Recency half-life in ms (default 30 days). */
+  recencyHalfLifeMs: number;
+}
+
 export interface AtlasKnowledgeConfig {
   extraction: AtlasKnowledgeExtractionConfig;
   relationships: AtlasKnowledgeRelationshipsConfig;
+  retrieval: AtlasKnowledgeRetrievalConfig;
 }
 
 /** Non-secret, serializable application settings. */

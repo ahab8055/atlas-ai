@@ -174,4 +174,26 @@ describe("task planning engine", () => {
     expect(plan.goal).toContain("Recalled memories");
     expect(plan.goal).toContain("dark mode");
   });
+
+  it("appends related knowledge to the goal when present", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "What uses React?",
+    });
+    const intent = detectIntent(request);
+    const context = loadContext(request, intent, {
+      manager: new ContextManager(),
+    });
+    context.knowledge = [
+      {
+        id: "e1",
+        label: "React",
+        content: "technology: React (via uses←Atlas)",
+        score: 0.7,
+      },
+    ];
+    const plan = createPlan(request, intent, context);
+    expect(plan.goal).toContain("Related knowledge");
+    expect(plan.goal).toContain("React");
+  });
 });

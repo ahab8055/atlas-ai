@@ -191,10 +191,14 @@ UI rendering is out of scope; exporters and CLI `export` produce this JSON only.
 # Context Integration
 
 `createKnowledgeProvider` in `@atlas-ai/core` accepts a `KnowledgeRetriever`.
-When a graph is available, lexical name match on the request text loads a
-shallow ego neighborhood and maps hits to `KnowledgeSnippet { id, label, content }`.
+When a graph is available, `KnowledgeRetrievalEngine` (ADR-0049) lexical-matches
+entity names, expands neighbors up to `maxDepth`, and ranks hits by lexical +
+graph hop/weight + recency into `KnowledgeSnippet { id, label, content, score? }`.
 
-Default retriever remains empty when no database is configured.
+Planner and response generation surface top hits as **Related knowledge** next
+to recalled memories (separate lists; not fused). Config:
+`knowledge.retrieval`. Default retriever remains empty when no database is
+configured.
 
 ---
 
@@ -224,4 +228,5 @@ graph is structural. They may reference each other later but are not merged.
 - [ADR-0046](../adr/0046-knowledge-graph-data-model.md)
 - [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md)
 - [ADR-0048](../adr/0048-knowledge-graph-relationship-management.md)
+- [ADR-0049](../adr/0049-knowledge-graph-context-retrieval.md)
 - [ADR-0009](../adr/0009-context-management.md)

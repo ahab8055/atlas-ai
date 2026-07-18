@@ -93,6 +93,10 @@ describe("applyEnvOverrides", () => {
       ATLAS_KNOWLEDGE_AUTO_LINK_ON_EXTRACT: "false",
       ATLAS_KNOWLEDGE_REINFORCE_ON_LINK: "false",
       ATLAS_KNOWLEDGE_REINFORCE_STEP: "0.1",
+      ATLAS_KNOWLEDGE_RETRIEVAL_LIMIT: "4",
+      ATLAS_KNOWLEDGE_RETRIEVAL_MIN_SCORE: "0.3",
+      ATLAS_KNOWLEDGE_RETRIEVAL_MAX_DEPTH: "1",
+      ATLAS_KNOWLEDGE_RETRIEVAL_RECENCY_HALFLIFE_MS: "86400000",
     });
     expect(next.knowledge.extraction.enabled).toBe(false);
     expect(next.knowledge.extraction.minConfidence).toBe(0.7);
@@ -100,6 +104,10 @@ describe("applyEnvOverrides", () => {
     expect(next.knowledge.relationships.autoLinkOnExtract).toBe(false);
     expect(next.knowledge.relationships.reinforceOnLink).toBe(false);
     expect(next.knowledge.relationships.reinforceStep).toBe(0.1);
+    expect(next.knowledge.retrieval.limit).toBe(4);
+    expect(next.knowledge.retrieval.minScore).toBe(0.3);
+    expect(next.knowledge.retrieval.maxDepth).toBe(1);
+    expect(next.knowledge.retrieval.recencyHalfLifeMs).toBe(86_400_000);
   });
 });
 

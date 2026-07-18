@@ -62,11 +62,13 @@ export interface MemorySnippet {
   score?: number;
 }
 
-/** Knowledge graph snippet placeholder. */
+/** Knowledge graph snippet. */
 export interface KnowledgeSnippet {
   id: string;
   label: string;
   content: string;
+  /** Hybrid retrieval score when present (ADR-0049). */
+  score?: number;
 }
 
 export interface ProjectContext {

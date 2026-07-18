@@ -54,6 +54,7 @@ export function usage(): string {
     "  atlas knowledge entity add --type project --name Atlas",
     '  atlas knowledge extract --store "using TypeScript"',
     "  atlas knowledge link --from <id> --to <id> --type uses",
+    '  atlas knowledge retrieve "Atlas TypeScript"',
     "  atlas knowledge traverse <entityId>",
     "  atlas echo hello",
     '  atlas --debug "Open VS Code"',

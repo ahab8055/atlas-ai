@@ -9,6 +9,7 @@ import type {
   AtlasKnowledgeConfig,
   AtlasKnowledgeExtractionConfig,
   AtlasKnowledgeRelationshipsConfig,
+  AtlasKnowledgeRetrievalConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -339,6 +340,24 @@ function mergeKnowledgeRelationships(
   };
 }
 
+function mergeKnowledgeRetrieval(
+  base: AtlasKnowledgeRetrievalConfig,
+  patch: unknown,
+): AtlasKnowledgeRetrievalConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    limit: Math.max(1, Math.floor(asNumber(patch.limit, base.limit))),
+    minScore: clamp01(asNumber(patch.minScore, base.minScore)),
+    maxDepth: Math.max(0, Math.floor(asNumber(patch.maxDepth, base.maxDepth))),
+    recencyHalfLifeMs: Math.max(
+      0,
+      Math.floor(asNumber(patch.recencyHalfLifeMs, base.recencyHalfLifeMs)),
+    ),
+  };
+}
+
 function mergeKnowledge(
   base: AtlasKnowledgeConfig,
   patch: unknown,
@@ -347,6 +366,7 @@ function mergeKnowledge(
     return {
       extraction: { ...base.extraction },
       relationships: { ...base.relationships },
+      retrieval: { ...base.retrieval },
     };
   }
   return {
@@ -355,6 +375,7 @@ function mergeKnowledge(
       base.relationships,
       patch.relationships,
     ),
+    retrieval: mergeKnowledgeRetrieval(base.retrieval, patch.retrieval),
   };
 }
 
@@ -557,6 +578,24 @@ export function applyEnvOverrides(
           envVars.ATLAS_KNOWLEDGE_REINFORCE_STEP !== undefined
             ? Number(envVars.ATLAS_KNOWLEDGE_REINFORCE_STEP)
             : config.knowledge.relationships.reinforceStep,
+      },
+      retrieval: {
+        limit:
+          envVars.ATLAS_KNOWLEDGE_RETRIEVAL_LIMIT !== undefined
+            ? Number(envVars.ATLAS_KNOWLEDGE_RETRIEVAL_LIMIT)
+            : config.knowledge.retrieval.limit,
+        minScore:
+          envVars.ATLAS_KNOWLEDGE_RETRIEVAL_MIN_SCORE !== undefined
+            ? Number(envVars.ATLAS_KNOWLEDGE_RETRIEVAL_MIN_SCORE)
+            : config.knowledge.retrieval.minScore,
+        maxDepth:
+          envVars.ATLAS_KNOWLEDGE_RETRIEVAL_MAX_DEPTH !== undefined
+            ? Number(envVars.ATLAS_KNOWLEDGE_RETRIEVAL_MAX_DEPTH)
+            : config.knowledge.retrieval.maxDepth,
+        recencyHalfLifeMs:
+          envVars.ATLAS_KNOWLEDGE_RETRIEVAL_RECENCY_HALFLIFE_MS !== undefined
+            ? Number(envVars.ATLAS_KNOWLEDGE_RETRIEVAL_RECENCY_HALFLIFE_MS)
+            : config.knowledge.retrieval.recencyHalfLifeMs,
       },
     },
   });

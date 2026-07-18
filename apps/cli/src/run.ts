@@ -11,7 +11,6 @@ import type { AtlasConfig } from "@atlas-ai/config";
 import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
 import {
   createKnowledgeGraph,
-  createLexicalKnowledgeRetriever,
   createSqliteGraphStore,
   type KnowledgeGraphManager,
 } from "@atlas-ai/knowledge";
@@ -128,7 +127,14 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   }
   if (knowledgeGraph) {
     providers.push(
-      createKnowledgeProvider(createLexicalKnowledgeRetriever(knowledgeGraph)),
+      createKnowledgeProvider(
+        knowledgeGraph.createRetriever({
+          limit: config.knowledge.retrieval.limit,
+          minScore: config.knowledge.retrieval.minScore,
+          maxDepth: config.knowledge.retrieval.maxDepth,
+          recencyHalfLifeMs: config.knowledge.retrieval.recencyHalfLifeMs,
+        }),
+      ),
     );
   }
 

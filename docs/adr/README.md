@@ -72,6 +72,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0046](./0046-knowledge-graph-data-model.md)              | Knowledge graph data model              | Accepted |
 | [0047](./0047-knowledge-graph-entity-extraction.md)       | Knowledge graph entity extraction       | Accepted |
 | [0048](./0048-knowledge-graph-relationship-management.md) | Knowledge graph relationship management | Accepted |
+| [0049](./0049-knowledge-graph-context-retrieval.md)       | Knowledge graph context retrieval       | Accepted |
 
 ## Naming
 

@@ -64,8 +64,12 @@ export function createPlan(
     registry.get(intent.name) ?? registry.get("unknown") ?? fallbackUnknown;
 
   const built = template.build({ request, intent, context });
-  const recalled = formatRecalledMemories(context);
-  const goal = recalled ? `${built.goal} | ${recalled}` : built.goal;
+  const notes = [
+    formatRecalledMemories(context),
+    formatRelatedKnowledge(context),
+  ].filter(Boolean);
+  const goal =
+    notes.length > 0 ? `${built.goal} | ${notes.join(" | ")}` : built.goal;
   return finalizePlan({
     goal,
     intentName: intent.name,
@@ -88,6 +92,22 @@ function formatRecalledMemories(
     return undefined;
   }
   return `Recalled memories: ${snippets.join("; ")}`;
+}
+
+function formatRelatedKnowledge(
+  context: PlanInput["context"],
+): string | undefined {
+  if (!context.knowledge || context.knowledge.length === 0) {
+    return undefined;
+  }
+  const snippets = context.knowledge
+    .slice(0, 3)
+    .map((k) => (k.content || k.label).trim())
+    .filter(Boolean);
+  if (snippets.length === 0) {
+    return undefined;
+  }
+  return `Related knowledge: ${snippets.join("; ")}`;
 }
 
 const fallbackUnknown: PlanTemplate = {

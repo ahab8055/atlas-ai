@@ -10,7 +10,6 @@ import {
 import { openAtlasDatabase } from "@atlas-ai/database";
 import {
   createKnowledgeGraph,
-  createLexicalKnowledgeRetriever,
   createSqliteGraphStore,
 } from "@atlas-ai/knowledge";
 import { createMemoryManager, createShortTermMemory } from "@atlas-ai/memory";
@@ -30,7 +29,13 @@ function stubRuntime(): CliRuntime {
   const contextManager = new ContextManager({
     conversationStore: shortTerm.toConversationStore(),
     providers: [
-      createKnowledgeProvider(createLexicalKnowledgeRetriever(knowledgeGraph)),
+      createKnowledgeProvider(
+        knowledgeGraph.createRetriever({
+          limit: 8,
+          minScore: 0.1,
+          maxDepth: 2,
+        }),
+      ),
     ],
   });
 
@@ -75,6 +80,12 @@ function stubRuntime(): CliRuntime {
           autoLinkOnExtract: true,
           reinforceOnLink: true,
           reinforceStep: 0.05,
+        },
+        retrieval: {
+          limit: 8,
+          minScore: 0.2,
+          maxDepth: 2,
+          recencyHalfLifeMs: 2_592_000_000,
         },
       },
     } as unknown as CliRuntime["config"],
@@ -216,6 +227,10 @@ describe("knowledge CLI + context wiring", () => {
           runtime,
           `knowledge traverse ${project.id} --depth 1 --direction out --types uses`,
         ),
+      ).toBe(true);
+
+      expect(
+        tryHandleKnowledgeCommand(runtime, 'knowledge retrieve "Atlas React"'),
       ).toBe(true);
     } finally {
       runtime.database?.close();

@@ -5,7 +5,7 @@ import type {
 } from "../types.js";
 
 /**
- * Knowledge graph provider port — swap for graph retrieval later.
+ * Knowledge graph provider port — ranked retrieval via KnowledgeRetriever.
  */
 export type KnowledgeRetriever = (input: {
   sessionId: string;

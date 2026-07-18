@@ -41,12 +41,28 @@ export { toGraphSnapshot } from "./snapshot.js";
 export { getNeighbors, traverseGraph } from "./traverse.js";
 
 export {
+  createKnowledgeRetriever,
   createLexicalKnowledgeRetriever,
   entityToSnippet,
   toKnowledgeSnippets,
   traverseToSnippets,
-  type LexicalKnowledgeRetrieverOptions,
+  type KnowledgeRetrieverOptions,
+  type KnowledgeRetrieverOptions as LexicalKnowledgeRetrieverOptions,
 } from "./context.js";
+
+export {
+  KnowledgeRetrievalEngine,
+  createKnowledgeRetrievalEngine,
+  DEFAULT_KNOWLEDGE_RECENCY_HALF_LIFE_MS,
+  DEFAULT_KNOWLEDGE_RETRIEVAL_LIMIT,
+  DEFAULT_KNOWLEDGE_RETRIEVAL_MAX_DEPTH,
+  DEFAULT_KNOWLEDGE_RETRIEVAL_MIN_SCORE,
+  DEFAULT_KNOWLEDGE_RETRIEVAL_WEIGHTS,
+  type KnowledgeRetrievalOptions,
+  type KnowledgeRetrievalWeights,
+  type KnowledgeScoreBreakdown,
+  type RetrievedEntity,
+} from "./retrieval/index.js";
 
 export type {
   ExtractAndStoreResult,

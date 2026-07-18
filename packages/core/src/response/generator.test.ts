@@ -250,6 +250,33 @@ describe("response generation", () => {
     expect(response.text).toContain("Recalled memories");
     expect(response.text).toContain("dark mode");
   });
+
+  it("appends related knowledge when context has knowledge snippets", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "echo hello",
+    });
+    const response = generateResponse(
+      request,
+      echoIntent(),
+      baseExecution(),
+      undefined,
+      undefined,
+      {
+        knowledge: [
+          {
+            id: "e1",
+            label: "Atlas",
+            content: "project: Atlas",
+            score: 0.8,
+          },
+        ],
+      } as never,
+    );
+
+    expect(response.text).toContain("Related knowledge");
+    expect(response.text).toContain("Atlas");
+  });
 });
 
 describe("explainFailures", () => {

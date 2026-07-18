@@ -4,6 +4,7 @@
 import {
   extractEntities,
   type KnowledgeGraphManager,
+  type RetrievedEntity,
 } from "@atlas-ai/knowledge";
 
 import type { CliRuntime } from "./run.js";
@@ -120,6 +121,31 @@ export function tryHandleKnowledgeCommand(
         maxDepth: Number.isFinite(depth) ? depth : 2,
       });
       process.stdout.write(`${JSON.stringify(snap, null, 2)}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "retrieve") {
+      const query = positionalArgs(tokens, 2).join(" ").trim();
+      if (!query) {
+        throw new Error('Usage: knowledge retrieve "query"');
+      }
+      const retrieval = runtime.config.knowledge?.retrieval ?? {
+        limit: 8,
+        minScore: 0.2,
+        maxDepth: 2,
+        recencyHalfLifeMs: 2_592_000_000,
+      };
+      const limit = Number(
+        readFlag(tokens, "--limit") ?? String(retrieval.limit),
+      );
+      const hits = graph.retrieve(query, {
+        limit: Number.isFinite(limit) ? limit : retrieval.limit,
+        minScore: retrieval.minScore,
+        maxDepth: retrieval.maxDepth,
+        recencyHalfLifeMs: retrieval.recencyHalfLifeMs,
+      });
+      process.stdout.write(`${formatRetrievedList(hits)}\n`);
       process.exitCode = 0;
       return true;
     }
@@ -470,6 +496,7 @@ function knowledgeUsage(): string {
     "  atlas knowledge neighbors <entityId> [--direction out|in|both] [--types uses,related_to]",
     "  atlas knowledge traverse <entityId> [--depth 2] [--direction …] [--types …]",
     "  atlas knowledge export [--start <id>] [--depth 2]",
+    '  atlas knowledge retrieve "query" [--limit N]',
     '  atlas knowledge extract "I talked to Alice about project Atlas"',
     '  atlas knowledge extract --store "using TypeScript in VS Code"',
   ].join("\n");
@@ -482,6 +509,26 @@ function formatEntityList(
     return "(no entities)";
   }
   return rows.map((r) => `${r.id}  [${r.type}]  ${r.name}`).join("\n");
+}
+
+function formatRetrievedList(hits: RetrievedEntity[]): string {
+  if (hits.length === 0) {
+    return "(no matches)";
+  }
+  return hits
+    .map((h) => {
+      const via =
+        h.hop > 0 && h.via
+          ? ` via ${h.via.type}@hop${h.hop}`
+          : h.hop === 0
+            ? " (seed)"
+            : "";
+      return (
+        `${h.score.toFixed(3)}  [${h.entity.type}]  ${h.entity.name}` +
+        `${via}  ${h.entity.id}`
+      );
+    })
+    .join("\n");
 }
 
 function formatEntityDetail(row: {

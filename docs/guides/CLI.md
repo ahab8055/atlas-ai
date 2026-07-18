@@ -96,6 +96,7 @@ pnpm atlas knowledge extract "I talked to Alice about project Atlas"
 pnpm atlas knowledge extract --store "using TypeScript in VS Code"
 pnpm atlas knowledge link --from <id> --to <id> --type uses
 pnpm atlas knowledge rel update <id> --weight 0.9
+pnpm atlas knowledge retrieve "Atlas TypeScript"
 pnpm atlas knowledge traverse <id> --types uses --direction out
 pnpm atlas --no-db status
 ```

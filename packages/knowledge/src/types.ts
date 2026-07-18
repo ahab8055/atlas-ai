@@ -171,4 +171,6 @@ export interface KnowledgeSnippetView {
   id: string;
   label: string;
   content: string;
+  /** Hybrid retrieval score when present (ADR-0049). */
+  score?: number;
 }

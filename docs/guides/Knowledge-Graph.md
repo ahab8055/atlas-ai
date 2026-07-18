@@ -1,7 +1,8 @@
 # Atlas AI — Knowledge Graph
 
 Property-graph foundation for entities, relationships, traversal,
-heuristic extraction, co-mention linking, and viz-ready export.
+heuristic extraction, co-mention linking, ranked context retrieval, and
+viz-ready export.
 
 Related: [Architecture/23-Knowledge-Graph-Architecture.md](../Architecture/23-Knowledge-Graph-Architecture.md),
 [Architecture/20-Database-Schema.md](../Architecture/20-Database-Schema.md),
@@ -9,6 +10,7 @@ Related: [Architecture/23-Knowledge-Graph-Architecture.md](../Architecture/23-Kn
 [ADR-0046](../adr/0046-knowledge-graph-data-model.md),
 [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md),
 [ADR-0048](../adr/0048-knowledge-graph-relationship-management.md),
+[ADR-0049](../adr/0049-knowledge-graph-context-retrieval.md),
 [`@atlas-ai/knowledge`](../../packages/knowledge/).
 
 ---
@@ -19,6 +21,7 @@ Related: [Architecture/23-Knowledge-Graph-Architecture.md](../Architecture/23-Kn
 - Create / update / reinforce typed relationships over time
 - Query neighbors and traverse with depth and type filters
 - Extract entities and auto-link co-mentions from conversation text
+- Rank related entities for context (lexical + hop + weight + recency)
 - Deduplicate entities case-insensitively
 - Export `GraphSnapshot` JSON for future visualization
 
@@ -36,6 +39,7 @@ packages/knowledge/src/
 ├── context.ts
 ├── extraction/           # Heuristic extract + ingest
 ├── relationships/        # linkEntities, reinforce, co-mention
+├── retrieval/            # Ranked context retrieval (ADR-0049)
 ├── errors.ts
 └── providers/
     ├── in-memory.ts
@@ -108,6 +112,40 @@ Env: `ATLAS_KNOWLEDGE_AUTO_LINK_ON_EXTRACT`,
 
 ---
 
+## Context retrieval (ADR-0049)
+
+`KnowledgeRetrievalEngine` / `createRetriever` / `createKnowledgeRetriever`:
+
+1. Lexical-match entity names in the request text (seeds).
+2. Expand neighbors via BFS up to `maxDepth`.
+3. Score each unique entity: lexical **0.45** + graph hop/weight **0.30** +
+   recency **0.25**; drop below `minScore`; take top `limit`.
+4. Map to `KnowledgeSnippet` with optional `score`. Snippets appear as
+   **Related knowledge** in planner goals and responses (alongside memories;
+   lists are not fused).
+
+### Config (`knowledge.retrieval`)
+
+| Key                 | Default            | Meaning                         |
+| ------------------- | ------------------ | ------------------------------- |
+| `limit`             | `8`                | Max ranked snippets             |
+| `minScore`          | `0.2`              | Drop weaker hits                |
+| `maxDepth`          | `2`                | Neighbor expansion depth        |
+| `recencyHalfLifeMs` | `2592000000` (30d) | Half-life on `entity.updatedAt` |
+
+Env: `ATLAS_KNOWLEDGE_RETRIEVAL_LIMIT`, `_MIN_SCORE`, `_MAX_DEPTH`,
+`_RECENCY_HALFLIFE_MS`.
+
+```ts
+const snippets = graph.createRetriever({
+  limit: 8,
+  minScore: 0.2,
+  maxDepth: 2,
+})({ sessionId: "s1", text: "How does Atlas use React?", intentName: "query" });
+```
+
+---
+
 ## Entity extraction
 
 Deterministic heuristics (no LLM). Default `minConfidence` is **0.55**.
@@ -124,6 +162,7 @@ atlas knowledge rel update <id> --weight 0.9
 atlas knowledge link --from <id> --to <id> --type uses
 atlas knowledge neighbors <id> --direction out --types uses
 atlas knowledge traverse <id> --depth 2 --types uses,depends_on
+atlas knowledge retrieve "Atlas TypeScript"
 atlas knowledge extract --store "project Atlas using TypeScript"
 ```
 
@@ -142,5 +181,7 @@ atlas knowledge extract --store "project Atlas using TypeScript"
 ## Out of scope
 
 - LLM NER / relationship inference
+- Architecture/24 hybrid file/vector search
+- Fused memory+graph score list
 - Relationship history table
 - Graph UI / Cypher
