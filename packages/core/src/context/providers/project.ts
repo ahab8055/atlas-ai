@@ -1,15 +1,25 @@
-import type { ContextContribution, ContextProvider } from "../types.js";
+import type {
+  ContextContribution,
+  ContextProvider,
+  ProjectContext,
+} from "../types.js";
 
-/** Project context stub — later from workspace / active project detection. */
-export function createProjectProvider(): ContextProvider {
+export type ProjectContextLoader = () => ProjectContext | undefined;
+
+/**
+ * Project context provider — loader supplies active workspace project (ADR-0051).
+ * Without a loader, returns a minimal stub for offline/no-db runs.
+ */
+export function createProjectProvider(
+  load?: ProjectContextLoader,
+): ContextProvider {
   return {
     id: "project",
     load() {
+      const project = load?.() ?? { name: "Atlas AI" };
       return {
         source: "project",
-        project: {
-          name: "Atlas AI",
-        },
+        project,
       } satisfies ContextContribution;
     },
   };

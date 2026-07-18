@@ -23,7 +23,8 @@
     "@atlas-ai/knowledge": "workspace:*",
     "@atlas-ai/logging": "workspace:*",
     "@atlas-ai/memory": "workspace:*",
-    "@atlas-ai/profile": "workspace:*"
+    "@atlas-ai/profile": "workspace:*",
+    "@atlas-ai/workspace": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "22",

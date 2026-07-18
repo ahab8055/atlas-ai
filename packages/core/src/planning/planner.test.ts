@@ -214,4 +214,23 @@ describe("task planning engine", () => {
     expect(plan.goal).toContain("User preferences");
     expect(plan.goal).toContain("Cursor");
   });
+
+  it("appends active project to the goal when present", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "Open VS Code",
+    });
+    const intent = detectIntent(request);
+    const context = loadContext(request, intent, {
+      manager: new ContextManager(),
+    });
+    context.project = {
+      id: "proj_1",
+      name: "Atlas",
+      path: "/tmp/atlas-ai",
+    };
+    const plan = createPlan(request, intent, context);
+    expect(plan.goal).toContain("Active project");
+    expect(plan.goal).toContain("Atlas");
+  });
 });

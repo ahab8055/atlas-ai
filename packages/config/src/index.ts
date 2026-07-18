@@ -18,6 +18,7 @@ export type {
   AtlasKnowledgeRetrievalConfig,
   AtlasProfileConfig,
   AtlasProfileLearningConfig,
+  AtlasWorkspaceConfig,
   AtlasPathsConfig,
   AtlasSecrets,
   AtlasServerConfig,

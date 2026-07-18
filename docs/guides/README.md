@@ -40,6 +40,7 @@ Practical guides for contributing to Atlas AI.
 | [Intent-Detection.md](./Intent-Detection.md)                                       | Intent categories, params, registry                          |
 | [Context-Management.md](./Context-Management.md)                                   | Context sources before execution                             |
 | [User-Profile.md](./User-Profile.md)                                               | Structured preferences, learning, CLI                        |
+| [Workspace-Awareness.md](./Workspace-Awareness.md)                                 | Project detect, repo tracking, context load                  |
 | [Memory-Architecture.md](./Memory-Architecture.md)                                 | Typed memory providers + MemoryManager                       |
 | [Short-Term-Memory.md](./Short-Term-Memory.md)                                     | Session conversation window + TTL                            |
 | [Long-Term-Memory.md](./Long-Term-Memory.md)                                       | Persistent memories + relevance search                       |

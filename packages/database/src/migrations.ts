@@ -172,6 +172,33 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     }
   }
 
+  if (version < 8) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'local',
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        repo_url TEXT,
+        default_branch TEXT,
+        metadata TEXT NOT NULL DEFAULT '{}',
+        last_seen_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (user_id, path)
+      );
+      CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
+      CREATE INDEX IF NOT EXISTS idx_projects_last_seen ON projects(last_seen_at);
+    `);
+    const memCols = tableColumns(db, "memories");
+    if (!memCols.has("project_id")) {
+      db.exec("ALTER TABLE memories ADD COLUMN project_id TEXT");
+    }
+    db.exec(
+      "CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project_id)",
+    );
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

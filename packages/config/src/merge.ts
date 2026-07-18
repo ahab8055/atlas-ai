@@ -12,6 +12,7 @@ import type {
   AtlasKnowledgeRetrievalConfig,
   AtlasProfileConfig,
   AtlasProfileLearningConfig,
+  AtlasWorkspaceConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -407,6 +408,19 @@ function mergeProfile(
   };
 }
 
+function mergeWorkspace(
+  base: AtlasWorkspaceConfig,
+  patch: unknown,
+): AtlasWorkspaceConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    autoDetect: asBoolean(patch.autoDetect, base.autoDetect),
+    rememberOnDetect: asBoolean(patch.rememberOnDetect, base.rememberOnDetect),
+  };
+}
+
 /** Deep-merge a partial JSON object onto defaults (non-secret fields only). */
 export function mergeAppConfig(
   base: AtlasAppConfig,
@@ -422,6 +436,7 @@ export function mergeAppConfig(
       memory: mergeMemory(base.memory, undefined),
       knowledge: mergeKnowledge(base.knowledge, undefined),
       profile: mergeProfile(base.profile, undefined),
+      workspace: mergeWorkspace(base.workspace, undefined),
     };
   }
 
@@ -435,6 +450,7 @@ export function mergeAppConfig(
     memory: mergeMemory(base.memory, patch.memory),
     knowledge: mergeKnowledge(base.knowledge, patch.knowledge),
     profile: mergeProfile(base.profile, patch.profile),
+    workspace: mergeWorkspace(base.workspace, patch.workspace),
   };
 }
 
@@ -643,6 +659,16 @@ export function applyEnvOverrides(
             ? Number(envVars.ATLAS_PROFILE_LEARN_MIN_CONFIDENCE)
             : config.profile.learning.minConfidence,
       },
+    },
+    workspace: {
+      autoDetect:
+        envVars.ATLAS_WORKSPACE_AUTO_DETECT !== undefined
+          ? envVars.ATLAS_WORKSPACE_AUTO_DETECT === "true"
+          : config.workspace.autoDetect,
+      rememberOnDetect:
+        envVars.ATLAS_WORKSPACE_REMEMBER_ON_DETECT !== undefined
+          ? envVars.ATLAS_WORKSPACE_REMEMBER_ON_DETECT === "true"
+          : config.workspace.rememberOnDetect,
     },
   });
 

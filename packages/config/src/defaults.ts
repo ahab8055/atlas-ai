@@ -88,4 +88,8 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       minConfidence: 0.55,
     },
   },
+  workspace: {
+    autoDetect: true,
+    rememberOnDetect: true,
+  },
 };

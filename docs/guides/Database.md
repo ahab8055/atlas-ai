@@ -44,10 +44,11 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 | ------------------- | ------------------------------------------------------------------------------------------------------ |
 | `system_config`     | Runtime / system settings                                                                              |
 | `user_preferences`  | Structured profile prefs (`source`, `confidence`, `enabled`; see [User-Profile.md](./User-Profile.md)) |
+| `projects`          | Workspace projects (path, repo, metadata; see [Workspace-Awareness.md](./Workspace-Awareness.md))      |
 | `tools`             | Tool registry persistence                                                                              |
 | `models`            | AI model registry (name, format, caps, requirements, …)                                                |
 | `embeddings`        | Embedding vectors for search/memory                                                                    |
-| `memories`          | Long-term memory records (episodic/semantic/procedural)                                                |
+| `memories`          | Long-term memory records (optional `project_id`; episodic/semantic/procedural)                         |
 | `memory_tags`       | Tags for long-term memories                                                                            |
 | `entities`          | Knowledge graph nodes (schema v6)                                                                      |
 | `relationships`     | Knowledge graph directed edges (schema v6)                                                             |

@@ -37,6 +37,7 @@ export interface MemoryRecord {
   confidence?: number;
   tags?: string[];
   sessionId?: string;
+  projectId?: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +51,7 @@ export interface CreateMemoryInput {
   confidence?: number;
   tags?: string[];
   sessionId?: string;
+  projectId?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -59,6 +61,7 @@ export interface UpdateMemoryInput {
   confidence?: number;
   tags?: string[];
   sessionId?: string;
+  projectId?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -66,6 +69,8 @@ export interface MemoryQuery {
   type?: MemoryType;
   scope?: MemoryScope;
   sessionId?: string;
+  projectId?: string;
+  projectIdOrUnscoped?: string;
   text?: string;
   tags?: string[];
   limit?: number;

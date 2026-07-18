@@ -54,6 +54,7 @@ export interface ConsolidationStore {
     confidence?: number;
     tags?: string[];
     sessionId?: string;
+    projectId?: string;
     metadata?: Record<string, unknown>;
   }): MemoryRecord;
 }
@@ -202,6 +203,7 @@ export function consolidateAgainstText(
       confidence: options.confidence,
       tags: options.tags,
       sessionId: options.sessionId,
+      projectId: options.projectId,
       metadata: options.metadata,
     });
     return { action: "insert", record };
@@ -216,6 +218,7 @@ export function consolidateAgainstText(
     confidence: options.confidence,
     tags: options.tags,
     sessionId: options.sessionId,
+    projectId: options.projectId,
     metadata: options.metadata,
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -273,6 +276,7 @@ export function consolidateAgainstText(
       confidence: options.confidence,
       tags: options.tags,
       sessionId: options.sessionId,
+      projectId: options.projectId,
       metadata: buildConflictMetadata(
         options.metadata,
         existing.id,
@@ -307,6 +311,7 @@ export function consolidateAgainstText(
     confidence: options.confidence,
     tags: options.tags,
     sessionId: options.sessionId,
+    projectId: options.projectId,
     metadata: options.metadata,
   });
   return { action: "insert", record, decision };

@@ -256,6 +256,32 @@ describe("AtlasDatabase", () => {
       rmSync(path, { force: true });
     }
   });
+
+  it("persists projects and associates memories with project_id", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:" });
+    expect(atlas.schemaVersion).toBe(SCHEMA_VERSION);
+
+    const project = atlas.projects.upsertByPath({
+      name: "Atlas",
+      path: "/tmp/atlas-ai",
+      repoUrl: "https://github.com/example/atlas-ai.git",
+      defaultBranch: "main",
+    });
+    expect(project.name).toBe("Atlas");
+    expect(atlas.projects.getByPath("/tmp/atlas-ai")?.id).toBe(project.id);
+
+    const mem = atlas.memories.upsert({
+      type: "semantic",
+      content: "Atlas uses TypeScript",
+      projectId: project.id,
+    });
+    expect(mem.projectId).toBe(project.id);
+    expect(
+      atlas.memories.list({ projectIdOrUnscoped: project.id }),
+    ).toHaveLength(1);
+
+    atlas.close();
+  });
 });
 
 describe("TaskHistoryService", () => {

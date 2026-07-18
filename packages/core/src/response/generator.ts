@@ -37,6 +37,7 @@ export class ResponseGenerator {
     const memoryNote = formatRecalledMemoryNote(context);
     const knowledgeNote = formatRelatedKnowledgeNote(context);
     const preferenceNote = formatUserPreferencesNote(context);
+    const projectNote = formatActiveProjectNote(context);
     const contextNotes: string[] = [];
     if (memoryNote) {
       contextNotes.push(memoryNote);
@@ -46,6 +47,9 @@ export class ResponseGenerator {
     }
     if (preferenceNote) {
       contextNotes.push(preferenceNote);
+    }
+    if (projectNote) {
+      contextNotes.push(projectNote);
     }
 
     if (intent.name === "help") {
@@ -253,4 +257,17 @@ function formatUserPreferencesNote(
     return undefined;
   }
   return `User preferences:\n${lines.slice(0, 5).join("\n")}`;
+}
+
+function formatActiveProjectNote(
+  context: GenerateResponseInput["context"],
+): string | undefined {
+  const project = context?.project;
+  if (!project?.path?.trim() && !project?.name?.trim()) {
+    return undefined;
+  }
+  const name = project.name?.trim() || "project";
+  const path = project.path?.trim();
+  const line = path ? `${name} (${path})` : name;
+  return `Active project:\n- ${line}`;
 }

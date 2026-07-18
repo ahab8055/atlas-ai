@@ -87,6 +87,10 @@ function stubRuntime(): CliRuntime {
           minConfidence: 0.55,
         },
       },
+      workspace: {
+        autoDetect: false,
+        rememberOnDetect: false,
+      },
     } as unknown as CliRuntime["config"],
     database,
     memoryManager,

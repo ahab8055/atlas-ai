@@ -28,7 +28,7 @@ recordAssistant(...)  (conversation continuity)
 | `preferences`         | User preferences                      | SQLite via `@atlas-ai/profile` when DB enabled; else in-memory defaults. See [User-Profile.md](./User-Profile.md) / ADR-0050             |
 | `activeTasks`         | Active / working tasks                | In-memory store                                                                                                                          |
 | `systemState`         | Runtime / platform / input source     | Live `process` info                                                                                                                      |
-| `project`             | Project context                       | Stub (`Atlas AI`)                                                                                                                        |
+| `project`             | Active workspace project              | Detected via `@atlas-ai/workspace` when DB enabled; see [Workspace-Awareness.md](./Workspace-Awareness.md) / ADR-0051                    |
 | `memories`            | `@atlas-ai/memory` long-term (SQLite) | Hybrid retrieval when DB enabled; see [Memory-Retrieval.md](./Memory-Retrieval.md)                                                       |
 | `knowledge`           | Personal knowledge graph              | Ranked neighbors (lexical + hop + weight + recency) when DB wired; see [Knowledge-Graph.md](./Knowledge-Graph.md) / ADR-0049; else empty |
 | `sources`             | Provider ids that ran                 | Always listed                                                                                                                            |

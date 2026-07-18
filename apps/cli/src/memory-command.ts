@@ -97,6 +97,8 @@ export function tryHandleMemoryCommand(
         );
       }
 
+      const activeProjectId = runtime.workspace?.getActive()?.id;
+
       if (useClassify) {
         const thresholds = runtime.config.memory.classification;
         const consolidation = runtime.config.memory.consolidation;
@@ -104,6 +106,7 @@ export function tryHandleMemoryCommand(
           thresholds,
           consolidation,
           consolidateOnStore: consolidation.consolidateOnStore,
+          projectId: activeProjectId,
         });
         if (result.stored && result.record) {
           const via =
@@ -137,6 +140,7 @@ export function tryHandleMemoryCommand(
         type,
         content: finalContent,
         importance: Number.isFinite(importance) ? importance : undefined,
+        projectId: activeProjectId,
       });
       process.stdout.write(`Stored ${stored.type} memory ${stored.id}\n`);
       process.exitCode = 0;
@@ -202,9 +206,11 @@ export function tryHandleMemoryCommand(
       }
       const type = readFlag(tokens, "--type") as LongTermMemoryType | undefined;
       const limit = Number(readFlag(tokens, "--limit") ?? "5");
+      const activeProjectId = runtime.workspace?.getActive()?.id;
       const hits = ltm.search(query, {
         type,
         limit: Number.isFinite(limit) ? limit : 5,
+        projectId: activeProjectId,
       });
       process.stdout.write(`${formatMemoryList(hits)}\n`);
       process.exitCode = 0;
@@ -220,12 +226,14 @@ export function tryHandleMemoryCommand(
         readFlag(tokens, "--limit") ??
           String(runtime.config.memory.retrieval.limit),
       );
+      const activeProjectId = runtime.workspace?.getActive()?.id;
       const hits = ltm.retrieve(query, {
         limit: Number.isFinite(limit)
           ? limit
           : runtime.config.memory.retrieval.limit,
         minScore: runtime.config.memory.retrieval.minScore,
         recencyHalfLifeMs: runtime.config.memory.retrieval.recencyHalfLifeMs,
+        projectId: activeProjectId,
       });
       process.stdout.write(`${formatRetrievedList(hits)}\n`);
       process.exitCode = 0;

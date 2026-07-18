@@ -37,6 +37,10 @@ User query
 
 Selection: `limit=5`, `minScore=0.15`.
 
+When an active workspace project is set, retrieval filters to
+`project_id = active OR project_id IS NULL` and ranks project-scoped hits first
+(see [Workspace-Awareness.md](./Workspace-Awareness.md) / ADR-0051).
+
 Sync path: no live EmbeddingService.embed in the hot path (pipeline stays sync).
 
 ---

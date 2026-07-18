@@ -59,6 +59,8 @@ export function usage(): string {
     "  atlas profile set preferred_editor Cursor",
     "  atlas profile list",
     '  atlas profile learn "I prefer concise answers"',
+    "  atlas project detect",
+    "  atlas project status",
     "  atlas echo hello",
     '  atlas --debug "Open VS Code"',
     "  atlas -i",

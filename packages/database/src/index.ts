@@ -49,6 +49,12 @@ export {
   type MemoryUpdateInput,
 } from "./repositories/memories.js";
 export {
+  ProjectsRepository,
+  type ProjectListQuery,
+  type ProjectRow,
+  type ProjectUpsertInput,
+} from "./repositories/projects.js";
+export {
   EntitiesRepository,
   type EntityListQuery,
   type EntityRecordInput,

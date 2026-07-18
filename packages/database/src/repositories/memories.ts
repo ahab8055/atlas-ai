@@ -16,6 +16,7 @@ export interface MemoryRecordInput {
   confidence?: number;
   source?: string;
   sessionId?: string;
+  projectId?: string;
   metadata?: Record<string, unknown>;
   tags?: string[];
 }
@@ -29,6 +30,7 @@ export interface MemoryRow {
   confidence?: number;
   source?: string;
   sessionId?: string;
+  projectId?: string;
   metadata: Record<string, unknown>;
   tags: string[];
   createdAt: string;
@@ -40,6 +42,13 @@ export interface MemoryListQuery {
   type?: LongTermMemoryType;
   tags?: string[];
   sessionId?: string;
+  /** Exact project match. */
+  projectId?: string;
+  /**
+   * When set, return rows where project_id = value OR project_id IS NULL
+   * (unscoped memories included for cross-project context).
+   */
+  projectIdOrUnscoped?: string;
   text?: string;
   limit?: number;
 }
@@ -50,6 +59,7 @@ export interface MemoryUpdateInput {
   confidence?: number;
   source?: string;
   sessionId?: string;
+  projectId?: string | null;
   metadata?: Record<string, unknown>;
   tags?: string[];
 }
@@ -63,6 +73,7 @@ interface MemorySqlRow {
   confidence: number | null;
   source: string | null;
   session_id: string | null;
+  project_id: string | null;
   metadata: string | null;
   created_at: string;
   updated_at: string;
@@ -110,8 +121,8 @@ export class MemoriesRepository {
         `
         INSERT INTO memories (
           id, user_id, type, content, importance, confidence,
-          source, session_id, metadata, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          source, session_id, project_id, metadata, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           user_id = excluded.user_id,
           type = excluded.type,
@@ -120,6 +131,7 @@ export class MemoriesRepository {
           confidence = excluded.confidence,
           source = excluded.source,
           session_id = excluded.session_id,
+          project_id = excluded.project_id,
           metadata = excluded.metadata,
           updated_at = excluded.updated_at
       `,
@@ -133,6 +145,7 @@ export class MemoriesRepository {
         input.confidence ?? existing?.confidence ?? null,
         input.source ?? existing?.source ?? null,
         input.sessionId ?? existing?.sessionId ?? null,
+        input.projectId ?? existing?.projectId ?? null,
         metadata,
         createdAt,
         now,
@@ -183,6 +196,7 @@ export class MemoriesRepository {
           confidence = ?,
           source = ?,
           session_id = ?,
+          project_id = ?,
           metadata = ?,
           updated_at = ?
         WHERE id = ?
@@ -200,6 +214,9 @@ export class MemoriesRepository {
         patch.sessionId !== undefined
           ? patch.sessionId
           : (existing.sessionId ?? null),
+        patch.projectId !== undefined
+          ? patch.projectId
+          : (existing.projectId ?? null),
         metadata,
         now,
         id,
@@ -255,6 +272,13 @@ export class MemoriesRepository {
       sql += " AND session_id = ?";
       params.push(query.sessionId);
     }
+    if (query.projectId !== undefined) {
+      sql += " AND project_id = ?";
+      params.push(query.projectId);
+    } else if (query.projectIdOrUnscoped !== undefined) {
+      sql += " AND (project_id = ? OR project_id IS NULL)";
+      params.push(query.projectIdOrUnscoped);
+    }
     if (query.tags && query.tags.length > 0) {
       const placeholders = query.tags.map(() => "?").join(", ");
       sql += ` AND id IN (
@@ -263,7 +287,13 @@ export class MemoriesRepository {
       params.push(...query.tags);
     }
 
-    sql += " ORDER BY updated_at DESC LIMIT ?";
+    // Prefer project-scoped rows when filtering with projectIdOrUnscoped
+    if (query.projectIdOrUnscoped !== undefined) {
+      sql +=
+        " ORDER BY CASE WHEN project_id IS NULL THEN 1 ELSE 0 END, updated_at DESC LIMIT ?";
+    } else {
+      sql += " ORDER BY updated_at DESC LIMIT ?";
+    }
     params.push(limit);
 
     let rows = (
@@ -308,6 +338,7 @@ export class MemoriesRepository {
       confidence: row.confidence ?? undefined,
       source: row.source ?? undefined,
       sessionId: row.session_id ?? undefined,
+      projectId: row.project_id ?? undefined,
       metadata: parseMetadata(row.metadata),
       tags: tags.map((t) => t.tag),
       createdAt: row.created_at,

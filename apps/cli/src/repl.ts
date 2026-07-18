@@ -7,6 +7,7 @@ import { tryHandleHistoryCommand } from "./history-command.js";
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import { tryHandleProfileCommand } from "./profile-command.js";
+import { tryHandleProjectCommand } from "./project-command.js";
 import type { CliOptions } from "./options.js";
 import { createCliRuntime, runCommand, type CliRuntime } from "./run.js";
 
@@ -87,6 +88,14 @@ export async function runRepl(
       }
 
       if (tryHandleProfileCommand(runtime, trimmed)) {
+        lastCode =
+          process.exitCode === 1 || process.exitCode === 2
+            ? process.exitCode
+            : 0;
+        continue;
+      }
+
+      if (tryHandleProjectCommand(runtime, trimmed)) {
         lastCode =
           process.exitCode === 1 || process.exitCode === 2
             ? process.exitCode

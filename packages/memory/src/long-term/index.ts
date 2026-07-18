@@ -46,6 +46,7 @@ export interface EvaluateAndStoreExtras {
   frequency?: number;
   tags?: string[];
   sessionId?: string;
+  projectId?: string;
   metadata?: Record<string, unknown>;
   thresholds?: Partial<ClassificationThresholds>;
   /** Override consolidation thresholds / disable consolidate-on-store. */
@@ -72,6 +73,8 @@ export interface LongTermListOptions {
   limit?: number;
   userId?: string;
   sessionId?: string;
+  projectId?: string;
+  projectIdOrUnscoped?: string;
 }
 
 export interface LongTermMemoryOptions {
@@ -109,6 +112,7 @@ export class LongTermMemory {
       importance: input.importance,
       confidence: input.confidence,
       sessionId: input.sessionId,
+      projectId: input.projectId,
       metadata: input.metadata,
       tags: input.tags,
     });
@@ -137,6 +141,7 @@ export class LongTermMemory {
         importance: patch.importance,
         confidence: patch.confidence,
         sessionId: patch.sessionId,
+        projectId: patch.projectId,
         metadata,
         tags: patch.tags,
       });
@@ -164,6 +169,8 @@ export class LongTermMemory {
         type: options.type,
         tags: options.tags,
         sessionId: options.sessionId,
+        projectId: options.projectId,
+        projectIdOrUnscoped: options.projectIdOrUnscoped,
         userId: options.userId,
         limit: options.limit ?? 50,
       })
@@ -230,6 +237,7 @@ export class LongTermMemory {
           confidence: classification.confidence,
           tags: extras.tags,
           sessionId: extras.sessionId,
+          projectId: extras.projectId,
           metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
           thresholds: extras.consolidation,
         },
@@ -249,6 +257,7 @@ export class LongTermMemory {
       confidence: classification.confidence,
       tags: extras.tags,
       sessionId: extras.sessionId,
+      projectId: extras.projectId,
       metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
     });
 
@@ -281,6 +290,7 @@ export class LongTermMemory {
       limit?: number;
       minScore?: number;
       recencyHalfLifeMs?: number;
+      projectId?: string;
     } = {},
   ): (input: {
     sessionId: string;
@@ -297,6 +307,7 @@ export class LongTermMemory {
         limit,
         minScore: options.minScore,
         recencyHalfLifeMs: options.recencyHalfLifeMs,
+        projectId: options.projectId,
       });
       return hits.map((hit) => ({
         id: hit.record.id,
@@ -348,6 +359,7 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     confidence: row.confidence,
     tags: row.tags.length > 0 ? [...row.tags] : undefined,
     sessionId: row.sessionId,
+    projectId: row.projectId,
     metadata: { ...row.metadata },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

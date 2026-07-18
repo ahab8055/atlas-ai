@@ -47,6 +47,7 @@ export class MemoryRetrievalEngine {
       type: options.type,
       tags: options.tags,
       userId: options.userId,
+      projectIdOrUnscoped: options.projectId,
       limit: poolSize,
     });
 
@@ -74,11 +75,20 @@ export class MemoryRetrievalEngine {
       };
     });
 
+    const activeProjectId = options.projectId;
     return scored
       .filter((m) => m.score >= minScore)
       .sort((a, b) => {
         if (b.score !== a.score) {
           return b.score - a.score;
+        }
+        // Prefer project-scoped over unscoped when filtering by project (ADR-0051).
+        if (activeProjectId) {
+          const aScoped = a.record.projectId === activeProjectId ? 1 : 0;
+          const bScoped = b.record.projectId === activeProjectId ? 1 : 0;
+          if (bScoped !== aScoped) {
+            return bScoped - aScoped;
+          }
         }
         return b.record.updatedAt.localeCompare(a.record.updatedAt);
       })
@@ -103,6 +113,7 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     confidence: row.confidence,
     tags: row.tags.length > 0 ? [...row.tags] : undefined,
     sessionId: row.sessionId,
+    projectId: row.projectId,
     metadata: { ...row.metadata },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

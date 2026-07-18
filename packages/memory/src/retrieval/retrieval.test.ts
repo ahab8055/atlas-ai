@@ -169,4 +169,46 @@ describe("MemoryRetrievalEngine", () => {
       db.close();
     }
   });
+
+  it("filters by project and ranks project-scoped first", () => {
+    const db = openAtlasDatabase({ path: ":memory:" });
+    try {
+      const project = db.projects.upsertByPath({
+        name: "demo",
+        path: "/tmp/demo-project",
+      });
+      const ltm = createLongTermMemory(db.memories);
+      ltm.store({
+        type: "semantic",
+        content: "Preferred stack is TypeScript",
+        importance: 0.8,
+        confidence: 0.8,
+        projectId: project.id,
+      });
+      ltm.store({
+        type: "semantic",
+        content: "Preferred stack is TypeScript",
+        importance: 0.8,
+        confidence: 0.8,
+      });
+      ltm.store({
+        type: "semantic",
+        content: "Preferred stack is TypeScript",
+        importance: 0.8,
+        confidence: 0.8,
+        projectId: "proj_other",
+      });
+
+      const hits = ltm.retrieve("Preferred stack TypeScript", {
+        projectId: project.id,
+        limit: 5,
+        minScore: 0.05,
+      });
+      expect(hits.length).toBeGreaterThanOrEqual(2);
+      expect(hits.every((h) => h.record.projectId !== "proj_other")).toBe(true);
+      expect(hits[0]?.record.projectId).toBe(project.id);
+    } finally {
+      db.close();
+    }
+  });
 });

@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS memories (
   confidence REAL,
   source TEXT,
   session_id TEXT,
+  project_id TEXT,
   metadata TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -150,6 +151,7 @@ CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
 CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id);
 CREATE INDEX IF NOT EXISTS idx_memories_updated ON memories(updated_at);
 CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id);
+CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project_id);
 
 CREATE TABLE IF NOT EXISTS memory_tags (
   id TEXT PRIMARY KEY,
@@ -161,6 +163,23 @@ CREATE TABLE IF NOT EXISTS memory_tags (
 
 CREATE INDEX IF NOT EXISTS idx_memory_tags_tag ON memory_tags(tag);
 CREATE INDEX IF NOT EXISTS idx_memory_tags_memory ON memory_tags(memory_id);
+
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'local',
+  name TEXT NOT NULL,
+  path TEXT NOT NULL,
+  repo_url TEXT,
+  default_branch TEXT,
+  metadata TEXT NOT NULL DEFAULT '{}',
+  last_seen_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (user_id, path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_last_seen ON projects(last_seen_at);
 
 CREATE TABLE IF NOT EXISTS entities (
   id TEXT PRIMARY KEY,

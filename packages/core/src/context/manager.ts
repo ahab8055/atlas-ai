@@ -36,6 +36,8 @@ export interface ContextManagerOptions {
   shortTermOptions?: ShortTermMemoryOptions;
   preferenceStore?: PreferenceStore;
   taskStore?: ActiveTaskStore;
+  /** Active project loader (workspace detection). */
+  projectLoader?: () => import("./types.js").ProjectContext | undefined;
   /** Extra / replacement providers (by id). */
   providers?: ContextProvider[];
 }
@@ -64,7 +66,7 @@ export class ContextManager {
       createPreferencesProvider(this.preferenceStore),
       createActiveTasksProvider(this.taskStore),
       createSystemStateProvider(),
-      createProjectProvider(),
+      createProjectProvider(options.projectLoader),
       createMemoryProvider(),
       createKnowledgeProvider(),
     ];

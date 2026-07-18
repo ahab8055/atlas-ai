@@ -160,6 +160,13 @@ export interface AtlasProfileConfig {
   learning: AtlasProfileLearningConfig;
 }
 
+export interface AtlasWorkspaceConfig {
+  /** Detect project root on CLI startup (default true). */
+  autoDetect: boolean;
+  /** Upsert detected project into SQLite (default true). */
+  rememberOnDetect: boolean;
+}
+
 /** Non-secret, serializable application settings. */
 export interface AtlasAppConfig {
   env: AtlasEnvironment;
@@ -171,6 +178,7 @@ export interface AtlasAppConfig {
   memory: AtlasMemoryConfig;
   knowledge: AtlasKnowledgeConfig;
   profile: AtlasProfileConfig;
+  workspace: AtlasWorkspaceConfig;
 }
 
 /**

@@ -231,6 +231,34 @@ updated_at
 
 `source` is `manual` | `learned` | `seed`. Disabled rows stay stored but are
 omitted from context snapshots (`enabled = 0`).
+
+---
+
+# 2b. projects
+
+## Purpose
+
+Stores detected workspace projects and repository metadata (ADR-0051).
+
+## Schema
+
+```
+projects
+
+id
+user_id
+name
+path
+repo_url
+default_branch
+metadata
+last_seen_at
+created_at
+updated_at
+```
+
+`memories.project_id` optionally references `projects.id`.
+
 ---
 
 ## Examples

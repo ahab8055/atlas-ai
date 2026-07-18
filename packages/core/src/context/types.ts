@@ -82,8 +82,11 @@ export interface KnowledgeSnippet {
 }
 
 export interface ProjectContext {
+  id?: string;
   name?: string;
   path?: string;
+  repoUrl?: string;
+  defaultBranch?: string;
 }
 
 /**

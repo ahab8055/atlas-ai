@@ -77,6 +77,10 @@ export function createPlan(
   if (prefs) {
     notes.push(prefs);
   }
+  const project = formatActiveProject(context);
+  if (project) {
+    notes.push(project);
+  }
   const goal =
     notes.length > 0 ? `${built.goal} | ${notes.join(" | ")}` : built.goal;
   return finalizePlan({
@@ -148,6 +152,20 @@ function formatUserPreferences(
     return undefined;
   }
   return `User preferences: ${parts.slice(0, 4).join("; ")}`;
+}
+
+function formatActiveProject(
+  context: PlanInput["context"],
+): string | undefined {
+  const project = context.project;
+  if (!project?.name && !project?.path) {
+    return undefined;
+  }
+  const name = project.name?.trim() || "project";
+  if (project.path?.trim()) {
+    return `Active project: ${name} (${project.path.trim()})`;
+  }
+  return `Active project: ${name}`;
 }
 
 const fallbackUnknown: PlanTemplate = {

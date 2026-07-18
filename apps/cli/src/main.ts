@@ -11,6 +11,7 @@ import { tryHandleHistoryCommand } from "./history-command.js";
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import { tryHandleProfileCommand } from "./profile-command.js";
+import { tryHandleProjectCommand } from "./project-command.js";
 import { usage } from "./options.js";
 import { parseCliArgs } from "./parse-args.js";
 import { runRepl } from "./repl.js";
@@ -72,7 +73,8 @@ async function main(): Promise<void> {
           tryHandleHistoryCommand(runtime, initial) ||
           tryHandleMemoryCommand(runtime, initial) ||
           tryHandleKnowledgeCommand(runtime, initial) ||
-          tryHandleProfileCommand(runtime, initial)
+          tryHandleProfileCommand(runtime, initial) ||
+          tryHandleProjectCommand(runtime, initial)
         ) {
           // continue into REPL
         } else {
@@ -88,7 +90,8 @@ async function main(): Promise<void> {
       tryHandleHistoryCommand(runtime, rawInput) ||
       tryHandleMemoryCommand(runtime, rawInput) ||
       tryHandleKnowledgeCommand(runtime, rawInput) ||
-      tryHandleProfileCommand(runtime, rawInput)
+      tryHandleProfileCommand(runtime, rawInput) ||
+      tryHandleProjectCommand(runtime, rawInput)
     ) {
       return;
     }

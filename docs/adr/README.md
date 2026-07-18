@@ -74,6 +74,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0048](./0048-knowledge-graph-relationship-management.md) | Knowledge graph relationship management | Accepted |
 | [0049](./0049-knowledge-graph-context-retrieval.md)       | Knowledge graph context retrieval       | Accepted |
 | [0050](./0050-user-profile-management.md)                 | User profile management                 | Accepted |
+| [0051](./0051-workspace-awareness.md)                     | Workspace awareness                     | Accepted |
 
 ## Naming
 

@@ -300,6 +300,29 @@ describe("response generation", () => {
     expect(response.text).toContain("User preferences");
     expect(response.text).toContain("Cursor");
   });
+
+  it("appends active project when context has project path", () => {
+    const request = normalizeRequest({
+      source: "cli",
+      rawInput: "echo hello",
+    });
+    const response = generateResponse(
+      request,
+      echoIntent(),
+      baseExecution(),
+      undefined,
+      undefined,
+      {
+        project: {
+          name: "Atlas",
+          path: "/tmp/atlas-ai",
+        },
+      } as never,
+    );
+
+    expect(response.text).toContain("Active project");
+    expect(response.text).toContain("Atlas");
+  });
 });
 
 describe("explainFailures", () => {

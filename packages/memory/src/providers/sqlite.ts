@@ -37,6 +37,7 @@ export class SqliteMemoryProvider implements MemoryProvider {
       importance: input.importance,
       confidence: input.confidence,
       sessionId: input.sessionId,
+      projectId: input.projectId,
       metadata: input.metadata,
       tags: input.tags,
     });
@@ -61,6 +62,7 @@ export class SqliteMemoryProvider implements MemoryProvider {
       importance: patch.importance,
       confidence: patch.confidence,
       sessionId: patch.sessionId,
+      projectId: patch.projectId,
       metadata: patch.metadata,
       tags: patch.tags,
     });
@@ -85,6 +87,8 @@ export class SqliteMemoryProvider implements MemoryProvider {
     const rows = this.repo.list({
       type: this.type,
       sessionId: query.sessionId,
+      projectId: query.projectId,
+      projectIdOrUnscoped: query.projectIdOrUnscoped,
       tags: query.tags,
       text: query.text,
       limit: query.limit ?? 50,
@@ -118,6 +122,7 @@ function toMemoryRecord(row: {
   importance?: number;
   confidence?: number;
   sessionId?: string;
+  projectId?: string;
   metadata: Record<string, unknown>;
   tags: string[];
   createdAt: string;
@@ -132,6 +137,7 @@ function toMemoryRecord(row: {
     confidence: row.confidence,
     tags: row.tags.length > 0 ? [...row.tags] : undefined,
     sessionId: row.sessionId,
+    projectId: row.projectId,
     metadata: { ...row.metadata },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

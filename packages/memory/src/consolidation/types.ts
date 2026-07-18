@@ -73,6 +73,7 @@ export interface ConsolidateAgainstOptions {
   confidence?: number;
   tags?: string[];
   sessionId?: string;
+  projectId?: string;
   metadata?: Record<string, unknown>;
   thresholds?: Partial<ConsolidationThresholds>;
   now?: () => number;

@@ -30,6 +30,10 @@ import {
   type MemoryManager,
 } from "@atlas-ai/memory";
 import { createProfileManager, type ProfileManager } from "@atlas-ai/profile";
+import {
+  createWorkspaceManager,
+  type WorkspaceManager,
+} from "@atlas-ai/workspace";
 
 import {
   createDebugEventPrinter,
@@ -64,6 +68,7 @@ export interface CliRuntime {
   longTermMemory?: LongTermMemory;
   knowledgeGraph?: KnowledgeGraphManager;
   profile?: ProfileManager;
+  workspace?: WorkspaceManager;
 }
 
 /**
@@ -111,12 +116,24 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const profile = database
     ? createProfileManager(database.userPreferences)
     : undefined;
+  const workspace = database
+    ? createWorkspaceManager(database.projects, database.userPreferences)
+    : undefined;
+
+  if (workspace && config.workspace?.autoDetect) {
+    workspace.detectAndRegister({
+      cwd: process.cwd(),
+      remember: config.workspace.rememberOnDetect !== false,
+    });
+  }
 
   const shortTerm = createShortTermMemory({
     maxEntries: config.memory.shortTerm.maxEntries,
     ttlMs: config.memory.shortTerm.ttlMs,
     memoryManager,
   });
+
+  const activeProjectId = workspace?.getActive()?.id;
 
   const providers: import("@atlas-ai/core").ContextProvider[] = [];
   if (longTermMemory) {
@@ -126,6 +143,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
           limit: config.memory.retrieval.limit,
           minScore: config.memory.retrieval.minScore,
           recencyHalfLifeMs: config.memory.retrieval.recencyHalfLifeMs,
+          projectId: activeProjectId,
         }),
       ),
     );
@@ -146,6 +164,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const contextManager = new ContextManager({
     conversationStore: shortTerm.toConversationStore(),
     preferenceStore: profile?.asPreferenceStore(),
+    projectLoader: () => workspace?.getActiveContext(),
     providers: providers.length > 0 ? providers : undefined,
   });
 
@@ -174,6 +193,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     longTermMemory,
     knowledgeGraph,
     profile,
+    workspace,
   };
 }
 
