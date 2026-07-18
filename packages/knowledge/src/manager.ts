@@ -1,4 +1,12 @@
 import { KnowledgeError } from "./errors.js";
+import {
+  extractAndStoreEntities,
+  extractEntities,
+  type ExtractAndStoreResult,
+  type ExtractEntitiesOptions,
+  type ExtractEntitiesResult,
+  type IngestOptions,
+} from "./extraction/index.js";
 import { createInMemoryGraphStore } from "./providers/in-memory.js";
 import { toGraphSnapshot } from "./snapshot.js";
 import type { GraphStore } from "./store.js";
@@ -8,6 +16,7 @@ import type {
   CreateRelationshipInput,
   Entity,
   EntityQuery,
+  EntityType,
   ExportSnapshotOptions,
   GraphSnapshot,
   NeighborHit,
@@ -24,8 +33,12 @@ export interface KnowledgeGraphManagerOptions {
   store?: GraphStore;
 }
 
+export interface FindEntityByNameOptions {
+  userId?: string;
+}
+
 /**
- * Facade for entity/relationship CRUD, traversal, and viz export.
+ * Facade for entity/relationship CRUD, traversal, extraction, and viz export.
  */
 export class KnowledgeGraphManager {
   readonly store: GraphStore;
@@ -40,6 +53,21 @@ export class KnowledgeGraphManager {
 
   getEntity(id: string): Entity | undefined {
     return this.store.getEntity(id);
+  }
+
+  /**
+   * Case-insensitive lookup by type + name.
+   */
+  findEntityByName(
+    type: EntityType,
+    name: string,
+    options: FindEntityByNameOptions = {},
+  ): Entity | undefined {
+    const userId = options.userId ?? "local";
+    const lower = name.trim().toLowerCase();
+    return this.store
+      .listEntities({ userId, type, limit: 500 })
+      .find((e) => e.name.toLowerCase() === lower);
   }
 
   updateEntity(id: string, patch: UpdateEntityInput): Entity {
@@ -83,6 +111,20 @@ export class KnowledgeGraphManager {
 
   traverse(options: TraverseOptions): TraverseResult {
     return traverseGraph(this.store, options);
+  }
+
+  extractEntities(
+    text: string,
+    options?: ExtractEntitiesOptions,
+  ): ExtractEntitiesResult {
+    return extractEntities(text, options);
+  }
+
+  extractAndStore(
+    text: string,
+    options?: IngestOptions,
+  ): ExtractAndStoreResult {
+    return extractAndStoreEntities(this, text, options);
   }
 
   /**

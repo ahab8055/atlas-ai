@@ -84,6 +84,17 @@ describe("applyEnvOverrides", () => {
     expect(next.memory.consolidation.candidateLimit).toBe(5);
     expect(next.memory.consolidation.consolidateOnStore).toBe(false);
   });
+
+  it("overrides knowledge extraction settings from env", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_KNOWLEDGE_EXTRACTION_ENABLED: "false",
+      ATLAS_KNOWLEDGE_EXTRACTION_MIN_CONFIDENCE: "0.7",
+      ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST: "false",
+    });
+    expect(next.knowledge.extraction.enabled).toBe(false);
+    expect(next.knowledge.extraction.minConfidence).toBe(0.7);
+    expect(next.knowledge.extraction.extractOnRequest).toBe(false);
+  });
 });
 
 describe("loadConfig", () => {

@@ -48,6 +48,25 @@ export {
   type LexicalKnowledgeRetrieverOptions,
 } from "./context.js";
 
+export type {
+  ExtractAndStoreResult,
+  ExtractEntitiesOptions,
+  ExtractEntitiesResult,
+  ExtractedEntityCandidate,
+  ExtractionThresholds,
+  IngestOptions,
+  IngestedEntity,
+} from "./extraction/index.js";
+
+export {
+  DEFAULT_EXTRACTION_THRESHOLDS,
+  entityDedupeKey,
+  extractAndStoreEntities,
+  extractEntities,
+  ingestExtractedEntities,
+  normalizeEntityName,
+} from "./extraction/index.js";
+
 export {
   InMemoryGraphStore,
   createInMemoryGraphStore,

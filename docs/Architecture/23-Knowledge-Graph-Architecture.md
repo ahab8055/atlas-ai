@@ -26,6 +26,7 @@ Related: [Architecture/20-Database-Schema.md](./20-Database-Schema.md),
 [Architecture/24-Search-and-Retrieval-Architecture.md](./24-Search-and-Retrieval-Architecture.md),
 [guides/Knowledge-Graph.md](../guides/Knowledge-Graph.md),
 [ADR-0046](../adr/0046-knowledge-graph-data-model.md),
+[ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md),
 [`@atlas-ai/knowledge`](../../packages/knowledge/).
 
 ---
@@ -37,12 +38,15 @@ Related: [Architecture/20-Database-Schema.md](./20-Database-Schema.md),
 - Depth-limited graph traversal for queries and context loading.
 - Stable subgraph snapshot JSON for future visualization (no UI in this slice).
 - Pluggable store (in-memory for tests, SQLite for persistence).
+- Heuristic entity extraction from conversation text with case-insensitive dedupe.
 
 ---
 
-# Out of Scope (this foundation)
+# Out of Scope
 
-- Automatic NER / entity extraction from chat.
+- LLM / embedding-based NER.
+- Automatic relationship extraction.
+- File-index / codebase bulk mining.
 - Desktop or web graph visualization UI.
 - Hybrid search ranking that blends graph hops with vectors (Architecture/24
   may consume the graph later).
@@ -64,12 +68,13 @@ Related: [Architecture/20-Database-Schema.md](./20-Database-Schema.md),
 | `createdAt`  | ISO time |                                            |
 | `updatedAt`  | ISO time |                                            |
 
-**Consistency:** unique `(userId, type, name)`.
+**Consistency:** unique `(userId, type, name)` with **case-insensitive** name
+matching on upsert (first-seen display casing preserved).
 
 ### Known entity types
 
 `project` | `person` | `technology` | `file` | `concept` | `location` |
-`preference` | (open string for custom types)
+`preference` | `company` | `application` | (open string for custom types)
 
 ## Relationship (directed edge)
 
@@ -123,6 +128,27 @@ No declarative graph query language in MVP foundation.
 
 ---
 
+# Entity Extraction
+
+Heuristic, deterministic extraction from conversation text (no LLM):
+
+| API               | Behavior                                                 |
+| ----------------- | -------------------------------------------------------- |
+| `extractEntities` | Candidates with type, name, confidence, evidence         |
+| `extractAndStore` | Gate on `minConfidence`, upsert with extraction metadata |
+
+Targets: `person`, `project`, `company`, `location`, `file`, `technology`,
+`application`. Metadata stored on the entity: `source`, `confidence`,
+`evidence`, `extractedAt`.
+
+CLI adapters may call `extractAndStore` after successful pipeline turns when
+`knowledge.extraction.extractOnRequest` is enabled. Core does not depend on
+`@atlas-ai/knowledge`.
+
+See [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md).
+
+---
+
 # Visualization Contract
 
 `GraphSnapshot` is the stable export shape for future D3 / Cytoscape / etc.:
@@ -172,4 +198,5 @@ graph is structural. They may reference each other later but are not merged.
 - [Architecture/22-AI-Orchestration-Architecture.md](./22-AI-Orchestration-Architecture.md)
 - [guides/Knowledge-Graph.md](../guides/Knowledge-Graph.md)
 - [ADR-0046](../adr/0046-knowledge-graph-data-model.md)
+- [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md)
 - [ADR-0009](../adr/0009-context-management.md)

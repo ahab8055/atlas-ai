@@ -112,6 +112,19 @@ export interface AtlasMemoryConfig {
   consolidation: AtlasMemoryConsolidationConfig;
 }
 
+export interface AtlasKnowledgeExtractionConfig {
+  /** Master switch for extraction APIs (default true). */
+  enabled: boolean;
+  /** Minimum candidate confidence to store (default 0.55). */
+  minConfidence: number;
+  /** Auto-ingest entities after CLI pipeline turns (default true). */
+  extractOnRequest: boolean;
+}
+
+export interface AtlasKnowledgeConfig {
+  extraction: AtlasKnowledgeExtractionConfig;
+}
+
 /** Non-secret, serializable application settings. */
 export interface AtlasAppConfig {
   env: AtlasEnvironment;
@@ -121,6 +134,7 @@ export interface AtlasAppConfig {
   features: AtlasFeatureFlags;
   ai: AtlasAiConfig;
   memory: AtlasMemoryConfig;
+  knowledge: AtlasKnowledgeConfig;
 }
 
 /**

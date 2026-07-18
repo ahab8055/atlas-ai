@@ -92,6 +92,8 @@ pnpm atlas knowledge rel add --from <id> --to <id> --type uses
 pnpm atlas knowledge neighbors <entityId>
 pnpm atlas knowledge traverse <entityId> --depth 2
 pnpm atlas knowledge export --start <id>
+pnpm atlas knowledge extract "I talked to Alice about project Atlas"
+pnpm atlas knowledge extract --store "using TypeScript in VS Code"
 pnpm atlas --no-db status
 ```
 

@@ -37,8 +37,8 @@ export class InMemoryGraphStore implements GraphStore {
 
   upsertEntity(input: CreateEntityInput): Entity {
     const type = input.type?.trim();
-    const name = input.name?.trim();
-    if (!type || !name) {
+    const rawName = input.name?.trim();
+    if (!type || !rawName) {
       throw new KnowledgeError(
         "invalid_input",
         "Entity type and name are required",
@@ -51,18 +51,26 @@ export class InMemoryGraphStore implements GraphStore {
     if (input.id?.trim()) {
       existing = this.entities.get(input.id.trim());
     } else {
+      const lower = rawName.toLowerCase();
       existing = [...this.entities.values()].find(
-        (e) => e.userId === userId && e.type === type && e.name === name,
+        (e) =>
+          e.userId === userId &&
+          e.type === type &&
+          e.name.toLowerCase() === lower,
       );
     }
 
     const id = existing?.id ?? input.id?.trim() ?? randomUUID();
+    const name = existing?.name ?? rawName;
     const entity: Entity = {
       id,
       userId,
       type,
       name,
-      properties: { ...(input.properties ?? existing?.properties ?? {}) },
+      properties: {
+        ...(existing?.properties ?? {}),
+        ...(input.properties ?? {}),
+      },
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

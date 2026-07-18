@@ -431,7 +431,7 @@ UNIQUE (user_id, type, name)
 ```
 
 Known types: `project`, `person`, `technology`, `file`, `concept`, `location`,
-`preference` (custom strings allowed).
+`preference`, `company`, `application` (custom strings allowed).
 
 ---
 

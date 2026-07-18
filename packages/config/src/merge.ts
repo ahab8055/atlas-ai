@@ -6,6 +6,8 @@ import type {
   AtlasAppConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
+  AtlasKnowledgeConfig,
+  AtlasKnowledgeExtractionConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -305,6 +307,34 @@ function mergeMemory(
   };
 }
 
+function mergeKnowledgeExtraction(
+  base: AtlasKnowledgeExtractionConfig,
+  patch: unknown,
+): AtlasKnowledgeExtractionConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    enabled: asBoolean(patch.enabled, base.enabled),
+    minConfidence: asNumber(patch.minConfidence, base.minConfidence),
+    extractOnRequest: asBoolean(patch.extractOnRequest, base.extractOnRequest),
+  };
+}
+
+function mergeKnowledge(
+  base: AtlasKnowledgeConfig,
+  patch: unknown,
+): AtlasKnowledgeConfig {
+  if (!isRecord(patch)) {
+    return {
+      extraction: { ...base.extraction },
+    };
+  }
+  return {
+    extraction: mergeKnowledgeExtraction(base.extraction, patch.extraction),
+  };
+}
+
 /** Deep-merge a partial JSON object onto defaults (non-secret fields only). */
 export function mergeAppConfig(
   base: AtlasAppConfig,
@@ -318,6 +348,7 @@ export function mergeAppConfig(
       features: { ...base.features },
       ai: mergeAi(base.ai, undefined),
       memory: mergeMemory(base.memory, undefined),
+      knowledge: mergeKnowledge(base.knowledge, undefined),
     };
   }
 
@@ -329,6 +360,7 @@ export function mergeAppConfig(
     features: mergeFeatures(base.features, patch.features),
     ai: mergeAi(base.ai, patch.ai),
     memory: mergeMemory(base.memory, patch.memory),
+    knowledge: mergeKnowledge(base.knowledge, patch.knowledge),
   };
 }
 
@@ -472,6 +504,22 @@ export function applyEnvOverrides(
           envVars.ATLAS_MEMORY_CONSOLIDATE_ON_STORE !== undefined
             ? envVars.ATLAS_MEMORY_CONSOLIDATE_ON_STORE === "true"
             : config.memory.consolidation.consolidateOnStore,
+      },
+    },
+    knowledge: {
+      extraction: {
+        enabled:
+          envVars.ATLAS_KNOWLEDGE_EXTRACTION_ENABLED !== undefined
+            ? envVars.ATLAS_KNOWLEDGE_EXTRACTION_ENABLED === "true"
+            : config.knowledge.extraction.enabled,
+        minConfidence:
+          envVars.ATLAS_KNOWLEDGE_EXTRACTION_MIN_CONFIDENCE !== undefined
+            ? Number(envVars.ATLAS_KNOWLEDGE_EXTRACTION_MIN_CONFIDENCE)
+            : config.knowledge.extraction.minConfidence,
+        extractOnRequest:
+          envVars.ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST !== undefined
+            ? envVars.ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST === "true"
+            : config.knowledge.extraction.extractOnRequest,
       },
     },
   });

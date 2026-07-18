@@ -1,7 +1,10 @@
 /**
  * CLI: atlas knowledge — manage knowledge graph entities and relationships.
  */
-import type { KnowledgeGraphManager } from "@atlas-ai/knowledge";
+import {
+  extractEntities,
+  type KnowledgeGraphManager,
+} from "@atlas-ai/knowledge";
 
 import type { CliRuntime } from "./run.js";
 
@@ -19,6 +22,12 @@ export function tryHandleKnowledgeCommand(
     return false;
   }
 
+  const sub = tokens[1]?.toLowerCase();
+
+  if (sub === "extract") {
+    return handleExtract(runtime, tokens.slice(2));
+  }
+
   if (!runtime.database || !runtime.knowledgeGraph) {
     process.stderr.write(
       "Knowledge graph requires the database. Remove --no-db / ATLAS_DB_DISABLED.\n",
@@ -28,7 +37,6 @@ export function tryHandleKnowledgeCommand(
   }
 
   const graph = runtime.knowledgeGraph;
-  const sub = tokens[1]?.toLowerCase();
 
   try {
     if (!sub || sub === "help" || sub === "--help" || sub === "-h") {
@@ -102,6 +110,88 @@ export function tryHandleKnowledgeCommand(
     process.exitCode = 2;
     return true;
   }
+}
+
+function handleExtract(runtime: CliRuntime, tokens: string[]): boolean {
+  try {
+    const store = hasFlag(tokens, "--store");
+    const text =
+      readFlag(tokens, "--text") ??
+      positionalArgs(tokens, 0)
+        .filter((t) => t !== "--store")
+        .join(" ")
+        .trim();
+    if (!text) {
+      throw new Error('Usage: knowledge extract [--store] "conversation text"');
+    }
+
+    const extraction = runtime.config.knowledge?.extraction ?? {
+      enabled: true,
+      minConfidence: 0.55,
+      extractOnRequest: true,
+    };
+    if (!extraction.enabled) {
+      process.stderr.write("Knowledge extraction is disabled in config.\n");
+      process.exitCode = 1;
+      return true;
+    }
+
+    const thresholds = { minConfidence: extraction.minConfidence };
+
+    if (store) {
+      if (!runtime.knowledgeGraph) {
+        process.stderr.write(
+          "knowledge extract --store requires the database.\n",
+        );
+        process.exitCode = 1;
+        return true;
+      }
+      const result = runtime.knowledgeGraph.extractAndStore(text, {
+        thresholds,
+      });
+      process.stdout.write(
+        `candidates: ${result.candidates.length}\n` +
+          `stored: ${result.stored.length} ` +
+          `(new: ${result.stored.filter((s) => s.created).length})\n` +
+          `${formatCandidates(result.candidates)}\n`,
+      );
+    } else {
+      const { candidates } = extractEntities(text, { thresholds });
+      process.stdout.write(
+        candidates.length === 0
+          ? "(no entities)\n"
+          : `${formatCandidates(candidates)}\n`,
+      );
+    }
+    process.exitCode = 0;
+    return true;
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+    return true;
+  }
+}
+
+function formatCandidates(
+  candidates: Array<{
+    type: string;
+    name: string;
+    confidence: number;
+    evidence: string;
+  }>,
+): string {
+  return candidates
+    .map(
+      (c) =>
+        `${c.confidence.toFixed(2)}  [${c.type}]  ${c.name}  «${c.evidence}»`,
+    )
+    .join("\n");
+}
+
+function hasFlag(tokens: string[], name: string): boolean {
+  return tokens.includes(name);
 }
 
 function handleEntity(graph: KnowledgeGraphManager, tokens: string[]): boolean {
@@ -245,6 +335,8 @@ function knowledgeUsage(): string {
     "  atlas knowledge neighbors <entityId> [--direction out|in|both]",
     "  atlas knowledge traverse <entityId> [--depth 2]",
     "  atlas knowledge export [--start <id>] [--depth 2]",
+    '  atlas knowledge extract "I talked to Alice about project Atlas"',
+    '  atlas knowledge extract --store "using TypeScript in VS Code"',
   ].join("\n");
 }
 
@@ -339,6 +431,9 @@ function positionalArgs(tokens: string[], start: number): string[] {
   for (let i = start; i < tokens.length; i += 1) {
     const t = tokens[i];
     if (t.startsWith("--")) {
+      if (t === "--store") {
+        continue;
+      }
       i += 1;
       continue;
     }

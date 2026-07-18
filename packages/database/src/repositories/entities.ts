@@ -65,29 +65,33 @@ export class EntitiesRepository {
 
   upsert(input: EntityRecordInput): EntityRow {
     const type = input.type?.trim();
-    const name = input.name?.trim();
+    const rawName = input.name?.trim();
     if (!type) {
       throw new Error("Entity type is required");
     }
-    if (!name) {
+    if (!rawName) {
       throw new Error("Entity name is required");
     }
 
     const now = new Date().toISOString();
     const userId = input.userId?.trim() || "local";
 
-    // Prefer id if provided; otherwise upsert by (userId, type, name).
+    // Prefer id if provided; otherwise case-insensitive (userId, type, name).
     let existing: EntityRow | undefined;
     if (input.id?.trim()) {
       existing = this.get(input.id.trim());
     } else {
-      existing = this.findByKey(userId, type, name);
+      existing = this.findByKey(userId, type, rawName);
     }
 
     const id = existing?.id ?? input.id?.trim() ?? randomUUID();
     const createdAt = existing?.createdAt ?? now;
+    // Keep first-seen display casing to avoid duplicate case variants.
+    const name = existing?.name ?? rawName;
     const properties = JSON.stringify(
-      input.properties ?? existing?.properties ?? {},
+      input.properties !== undefined
+        ? { ...(existing?.properties ?? {}), ...input.properties }
+        : (existing?.properties ?? {}),
     );
 
     this.db
@@ -120,12 +124,19 @@ export class EntitiesRepository {
     return row ? this.toRow(row) : undefined;
   }
 
+  /**
+   * Lookup by (userId, type, name). Name match is case-insensitive.
+   */
   findByKey(userId: string, type: string, name: string): EntityRow | undefined {
     const row = this.db
       .prepare(
-        "SELECT * FROM entities WHERE user_id = ? AND type = ? AND name = ?",
+        `
+        SELECT * FROM entities
+        WHERE user_id = ? AND type = ? AND LOWER(name) = LOWER(?)
+        LIMIT 1
+      `,
       )
-      .get(userId, type, name) as EntitySqlRow | undefined;
+      .get(userId, type, name.trim()) as EntitySqlRow | undefined;
     return row ? this.toRow(row) : undefined;
   }
 

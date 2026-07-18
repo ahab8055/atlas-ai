@@ -10,6 +10,8 @@ export const KNOWN_ENTITY_TYPES = [
   "concept",
   "location",
   "preference",
+  "company",
+  "application",
 ] as const;
 
 export type KnownEntityType = (typeof KNOWN_ENTITY_TYPES)[number];

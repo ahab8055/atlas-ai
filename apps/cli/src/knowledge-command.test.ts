@@ -65,6 +65,13 @@ function stubRuntime(): CliRuntime {
           consolidateOnStore: true,
         },
       },
+      knowledge: {
+        extraction: {
+          enabled: true,
+          minConfidence: 0.55,
+          extractOnRequest: true,
+        },
+      },
     } as unknown as CliRuntime["config"],
     database,
     memoryManager,
@@ -126,6 +133,33 @@ describe("knowledge CLI + context wiring", () => {
       });
       expect(snap.nodes.length).toBeGreaterThanOrEqual(2);
       expect(snap.edges.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      runtime.database?.close();
+    }
+  });
+
+  it("extracts and stores entities via CLI", () => {
+    const runtime = stubRuntime();
+    try {
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          'knowledge extract --store "I talked to Alice about project Atlas using TypeScript"',
+        ),
+      ).toBe(true);
+      expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
+        true,
+      );
+      const people = runtime.knowledgeGraph!.listEntities({ type: "person" });
+      const projects = runtime.knowledgeGraph!.listEntities({
+        type: "project",
+      });
+      expect(people.some((p) => p.name === "Alice")).toBe(true);
+      expect(projects.some((p) => /Atlas/i.test(p.name))).toBe(true);
+      expect(
+        people[0]?.properties.source === "extraction" ||
+          projects[0]?.properties.source === "extraction",
+      ).toBe(true);
     } finally {
       runtime.database?.close();
     }

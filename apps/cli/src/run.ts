@@ -193,11 +193,48 @@ export function runCommand(
   if (runtime.database) {
     recordPipelineResult(runtime.database, result);
   }
+
+  maybeExtractKnowledge(runtime, rawInput, result);
+
   displayResponse(result);
   if (shouldPrintDebugMeta(options)) {
     displayDebugMeta(result);
   }
   return result;
+}
+
+function maybeExtractKnowledge(
+  runtime: CliRuntime,
+  rawInput: string,
+  result: PipelineResult,
+): void {
+  const extraction = runtime.config.knowledge?.extraction;
+  if (
+    !runtime.knowledgeGraph ||
+    !extraction?.enabled ||
+    !extraction.extractOnRequest
+  ) {
+    return;
+  }
+  // Only ingest after successful pipeline turns
+  if (
+    result.execution.status === "failed" ||
+    result.execution.status === "blocked" ||
+    result.response.status === "failed"
+  ) {
+    return;
+  }
+  const text = rawInput.trim();
+  if (!text || text.length < 8) {
+    return;
+  }
+  try {
+    runtime.knowledgeGraph.extractAndStore(text, {
+      thresholds: { minConfidence: extraction.minConfidence },
+    });
+  } catch {
+    // Extraction must not break the user-facing response path
+  }
 }
 
 export function closeCliRuntime(runtime: CliRuntime): void {

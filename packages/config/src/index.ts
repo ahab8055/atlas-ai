@@ -12,6 +12,8 @@ export type {
   AtlasMemoryConsolidationConfig,
   AtlasMemoryRetrievalConfig,
   AtlasMemoryShortTermConfig,
+  AtlasKnowledgeConfig,
+  AtlasKnowledgeExtractionConfig,
   AtlasPathsConfig,
   AtlasSecrets,
   AtlasServerConfig,

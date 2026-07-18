@@ -62,6 +62,13 @@ function stubRuntime(): CliRuntime {
           consolidateOnStore: true,
         },
       },
+      knowledge: {
+        extraction: {
+          enabled: true,
+          minConfidence: 0.55,
+          extractOnRequest: false,
+        },
+      },
     } as unknown as CliRuntime["config"],
     database,
     memoryManager,

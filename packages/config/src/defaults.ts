@@ -63,4 +63,11 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       consolidateOnStore: true,
     },
   },
+  knowledge: {
+    extraction: {
+      enabled: true,
+      minConfidence: 0.55,
+      extractOnRequest: true,
+    },
+  },
 };

@@ -45,7 +45,8 @@ auto-extraction exists.
 
 ### Follow-ups
 
-- Auto-extract entities from conversation / files.
+- Optional LLM / embedding NER behind a feature flag.
+- Auto relationship extraction between co-mentioned entities.
 - Rank hybrid search with graph hops (Architecture/24).
 - Desktop graph visualization consuming `GraphSnapshot`.
 - [Knowledge-Graph.md](../guides/Knowledge-Graph.md)
