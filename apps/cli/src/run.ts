@@ -183,6 +183,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     logger,
     eventBus,
     contextManager,
+    contextBuilder: config.context?.builder,
   });
 
   return {

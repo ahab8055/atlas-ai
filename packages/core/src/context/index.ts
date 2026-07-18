@@ -2,7 +2,11 @@ export type {
   ActiveTask,
   ContextContribution,
   ContextLoadInput,
+  ContextPackage,
+  ContextPackageStats,
   ContextProvider,
+  ContextSection,
+  ContextSectionKind,
   ContextSourceId,
   ConversationContext,
   ConversationRole,
@@ -36,6 +40,13 @@ export {
   type ContextManagerOptions,
 } from "./manager.js";
 
+export {
+  attachContextPackage,
+  buildContextPackage,
+  DEFAULT_CONTEXT_BUILDER_OPTIONS,
+  type ContextBuilderOptions,
+} from "./builder.js";
+
 export { createConversationProvider } from "./providers/conversation.js";
 export { createPreferencesProvider } from "./providers/preferences.js";
 export { createActiveTasksProvider } from "./providers/active-tasks.js";
@@ -50,6 +61,7 @@ export {
   type KnowledgeRetriever,
 } from "./providers/knowledge.js";
 
+import { attachContextPackage, type ContextBuilderOptions } from "./builder.js";
 import { getDefaultContextManager, type ContextManager } from "./manager.js";
 import type { DetectedIntent } from "../intent/types.js";
 import type { NormalizedRequest } from "../types.js";
@@ -57,14 +69,21 @@ import type { LoadedContext } from "./types.js";
 
 export interface LoadContextOptions {
   manager?: ContextManager;
+  /** Skip Context Builder attach (tests). */
+  skipPackage?: boolean;
+  builder?: ContextBuilderOptions;
 }
 
-/** Collect context before planning/execution. */
+/** Collect context before planning/execution; attach ContextPackage. */
 export function loadContext(
   request: NormalizedRequest,
   intent: DetectedIntent,
   options: LoadContextOptions = {},
 ): LoadedContext {
   const manager = options.manager ?? getDefaultContextManager();
-  return manager.load(request, intent);
+  const loaded = manager.load(request, intent);
+  if (options.skipPackage) {
+    return loaded;
+  }
+  return attachContextPackage(loaded, options.builder);
 }

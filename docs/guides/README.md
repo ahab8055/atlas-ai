@@ -38,7 +38,7 @@ Practical guides for contributing to Atlas AI.
 | [AI-Providers.md](./AI-Providers.md)                                               | InferenceProvider port + plug-in pattern                     |
 | [LlamaCpp-Integration.md](./LlamaCpp-Integration.md)                               | GGUF load, CPU/GPU, inference params                         |
 | [Intent-Detection.md](./Intent-Detection.md)                                       | Intent categories, params, registry                          |
-| [Context-Management.md](./Context-Management.md)                                   | Context sources before execution                             |
+| [Context-Management.md](./Context-Management.md)                                   | Context sources + Context Builder package                    |
 | [User-Profile.md](./User-Profile.md)                                               | Structured preferences, CLI                                  |
 | [Preference-Learning.md](./Preference-Learning.md)                                 | Observe → suggest → approve preference learning              |
 | [Workspace-Awareness.md](./Workspace-Awareness.md)                                 | Project detect, repo tracking, context load                  |

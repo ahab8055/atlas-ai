@@ -5,6 +5,7 @@ import {
 } from "@atlas-ai/logging";
 
 import type { ContextManager } from "./context/manager.js";
+import type { ContextBuilderOptions } from "./context/builder.js";
 import type { EventBus } from "./events/index.js";
 import type { ExecutionController } from "./execution/controller.js";
 import { runPipeline, type PipelineOptions } from "./pipeline.js";
@@ -16,6 +17,8 @@ export interface RequestHandlerOptions {
   contextManager?: ContextManager;
   executionController?: ExecutionController;
   eventBus?: EventBus;
+  /** Context Builder options (ADR-0053). */
+  contextBuilder?: ContextBuilderOptions;
 }
 
 /**
@@ -42,6 +45,7 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
         contextManager: options.contextManager,
         executionController: options.executionController,
         eventBus: options.eventBus,
+        contextBuilder: options.contextBuilder,
       } satisfies PipelineOptions);
     },
   };

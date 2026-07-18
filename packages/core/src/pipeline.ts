@@ -2,6 +2,7 @@ import type { Logger } from "@atlas-ai/logging";
 
 import type { ContextManager } from "./context/manager.js";
 import { getDefaultContextManager } from "./context/manager.js";
+import type { ContextBuilderOptions } from "./context/builder.js";
 import type { LoadedContext } from "./context/types.js";
 import {
   ErrorHandler,
@@ -46,6 +47,8 @@ export interface PipelineOptions {
   eventBus?: EventBus;
   /** Optional override; defaults to shared ErrorHandler. */
   errorHandler?: ErrorHandler;
+  /** Context Builder options (ADR-0053). */
+  contextBuilder?: ContextBuilderOptions;
 }
 
 function stageCategory(stage: PipelineStageName): "tool" | "ai" {
@@ -253,7 +256,10 @@ export function runPipeline(
       },
     );
 
-    context = loadContext(request, intent, { manager: contextManager });
+    context = loadContext(request, intent, {
+      manager: contextManager,
+      builder: options.contextBuilder,
+    });
     emitCoreEvent(
       eventBus,
       logger,
@@ -271,10 +277,14 @@ export function runPipeline(
         project: context.project?.name,
         runtime: context.systemState.runtime,
         conversationSummary: context.conversationSummary,
+        packageSections: context.contextPackage?.stats.sectionCount,
+        packageChars: context.contextPackage?.stats.usedChars,
       },
     );
 
-    plan = createPlan(request, intent, context);
+    plan = createPlan(request, intent, context, {
+      builder: options.contextBuilder,
+    });
     emitCoreEvent(
       eventBus,
       logger,
@@ -356,7 +366,7 @@ export function runPipeline(
       intent,
       execution,
       plan,
-      undefined,
+      options.contextBuilder ? { builder: options.contextBuilder } : undefined,
       context,
     );
     for (const structured of response.structuredErrors) {

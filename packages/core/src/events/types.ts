@@ -71,6 +71,8 @@ export interface CoreEventPayloadMap {
     project?: string;
     runtime?: string;
     conversationSummary?: string;
+    packageSections?: number;
+    packageChars?: number;
   };
   PlanCreated: {
     stage: "planning";

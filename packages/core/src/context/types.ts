@@ -105,6 +105,49 @@ export interface LoadedContext {
   project?: ProjectContext;
   /** Compact summary for logs and simple planners. */
   conversationSummary: string;
+  /** AI-ready package from Context Builder (ADR-0053). */
+  contextPackage?: ContextPackage;
+}
+
+/** Section kinds in ContextPackage (priority order defined by builder). */
+export type ContextSectionKind =
+  | "request"
+  | "conversation"
+  | "preferences"
+  | "project"
+  | "memories"
+  | "knowledge"
+  | "active_tasks"
+  | "system";
+
+export interface ContextSection {
+  kind: ContextSectionKind;
+  /** Lower number = higher priority. */
+  priority: number;
+  lines: string[];
+  estimatedChars: number;
+}
+
+export interface ContextPackageStats {
+  sectionCount: number;
+  usedChars: number;
+  maxChars: number;
+  truncated: boolean;
+}
+
+/**
+ * Ranked, deduped, budgeted context for planning / response / model input.
+ */
+export interface ContextPackage {
+  assembledAt: string;
+  sections: ContextSection[];
+  /** Budgeted concatenation for prompts / diagnostics. */
+  text: string;
+  /** Compact one-line notes for plan goals (pipe-joinable). */
+  planNotes: string[];
+  /** Multi-line blocks for response notes. */
+  responseNotes: string[];
+  stats: ContextPackageStats;
 }
 
 export interface ContextLoadInput {

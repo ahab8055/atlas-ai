@@ -3,6 +3,7 @@ import type { ExecutionPlan } from "../planning/types.js";
 import type { ExecutionResult } from "../execution/types.js";
 import type { NormalizedRequest } from "../types.js";
 import { createAtlasError } from "../errors/index.js";
+import { buildContextPackage } from "../context/builder.js";
 import {
   assembleResponse,
   assembleSpecialResponse,
@@ -34,23 +35,9 @@ export class ResponseGenerator {
     const { request, intent, execution, plan, context } = input;
     const modality = this.options.modality ?? modalityForSource(request.source);
     const withTrace = { traceId: request.traceId };
-    const memoryNote = formatRecalledMemoryNote(context);
-    const knowledgeNote = formatRelatedKnowledgeNote(context);
-    const preferenceNote = formatUserPreferencesNote(context);
-    const projectNote = formatActiveProjectNote(context);
-    const contextNotes: string[] = [];
-    if (memoryNote) {
-      contextNotes.push(memoryNote);
-    }
-    if (knowledgeNote) {
-      contextNotes.push(knowledgeNote);
-    }
-    if (preferenceNote) {
-      contextNotes.push(preferenceNote);
-    }
-    if (projectNote) {
-      contextNotes.push(projectNote);
-    }
+    const contextNotes = context
+      ? buildContextPackage(context, this.options.builder).responseNotes
+      : [];
 
     if (intent.name === "help") {
       const { text, spokenText } = buildHelpText();
@@ -196,78 +183,4 @@ export function generateResponse(
     ? new ResponseGenerator(options)
     : getDefaultResponseGenerator();
   return generator.generate({ request, intent, execution, plan, context });
-}
-
-function formatRecalledMemoryNote(
-  context: GenerateResponseInput["context"],
-): string | undefined {
-  if (!context?.memories || context.memories.length === 0) {
-    return undefined;
-  }
-  const lines = context.memories
-    .slice(0, 3)
-    .map((m) => `- ${m.content.trim()}`);
-  if (lines.length === 0) {
-    return undefined;
-  }
-  return `Recalled memories:\n${lines.join("\n")}`;
-}
-
-function formatRelatedKnowledgeNote(
-  context: GenerateResponseInput["context"],
-): string | undefined {
-  if (!context?.knowledge || context.knowledge.length === 0) {
-    return undefined;
-  }
-  const lines = context.knowledge
-    .slice(0, 3)
-    .map((k) => `- ${(k.content || k.label).trim()}`);
-  if (lines.length === 0) {
-    return undefined;
-  }
-  return `Related knowledge:\n${lines.join("\n")}`;
-}
-
-const PREFERENCE_NOTE_KEYS = [
-  "preferredEditor",
-  "preferredLanguage",
-  "codingStyle",
-  "codingLanguage",
-  "communicationStyle",
-  "responseLength",
-  "aiVerbosity",
-  "productivityHabits",
-] as const;
-
-function formatUserPreferencesNote(
-  context: GenerateResponseInput["context"],
-): string | undefined {
-  const prefs = context?.preferences;
-  if (!prefs) {
-    return undefined;
-  }
-  const lines: string[] = [];
-  for (const key of PREFERENCE_NOTE_KEYS) {
-    const value = prefs[key];
-    if (typeof value === "string" && value.trim()) {
-      lines.push(`- ${key}: ${value.trim()}`);
-    }
-  }
-  if (lines.length === 0) {
-    return undefined;
-  }
-  return `User preferences:\n${lines.slice(0, 5).join("\n")}`;
-}
-
-function formatActiveProjectNote(
-  context: GenerateResponseInput["context"],
-): string | undefined {
-  const project = context?.project;
-  if (!project?.path?.trim() && !project?.name?.trim()) {
-    return undefined;
-  }
-  const name = project.name?.trim() || "project";
-  const path = project.path?.trim();
-  const line = path ? `${name} (${path})` : name;
-  return `Active project:\n- ${line}`;
 }

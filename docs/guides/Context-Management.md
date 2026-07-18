@@ -1,8 +1,21 @@
 # Atlas AI — Context Management
 
-Collects relevant context **before** planning and execution so responses can be personalized and accurate.
+Collects relevant context **before** planning and execution, then builds a
+ranked, budgeted **ContextPackage** so plans and responses receive the right
+information.
 
-Related: [Request-Pipeline.md](./Request-Pipeline.md), [Intent-Detection.md](./Intent-Detection.md), [Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md) (Context Manager), [Architecture/04-Memory-Architecture.md](../Architecture/04-Memory-Architecture.md), [Memory-Architecture.md](./Memory-Architecture.md), [Short-Term-Memory.md](./Short-Term-Memory.md), [Long-Term-Memory.md](./Long-Term-Memory.md), [Memory-Retrieval.md](./Memory-Retrieval.md), [Knowledge-Graph.md](./Knowledge-Graph.md), [ADR-0009](../adr/0009-context-management.md), [ADR-0040](../adr/0040-memory-architecture-foundation.md), [ADR-0041](../adr/0041-short-term-memory.md), [ADR-0042](../adr/0042-long-term-memory.md), [ADR-0044](../adr/0044-memory-retrieval-engine.md), [ADR-0049](../adr/0049-knowledge-graph-context-retrieval.md), [`@atlas-ai/core`](../../packages/core/), [`@atlas-ai/memory`](../../packages/memory/).
+Related: [Request-Pipeline.md](./Request-Pipeline.md),
+[Intent-Detection.md](./Intent-Detection.md),
+[Architecture/22-AI-Orchestration-Architecture.md](../Architecture/22-AI-Orchestration-Architecture.md),
+[Architecture/24-Search-and-Retrieval-Architecture.md](../Architecture/24-Search-and-Retrieval-Architecture.md)
+(Context Builder),
+[Memory-Retrieval.md](./Memory-Retrieval.md),
+[Knowledge-Graph.md](./Knowledge-Graph.md),
+[User-Profile.md](./User-Profile.md),
+[Workspace-Awareness.md](./Workspace-Awareness.md),
+[ADR-0009](../adr/0009-context-management.md),
+[ADR-0053](../adr/0053-context-builder.md),
+[`@atlas-ai/core`](../../packages/core/).
 
 ---
 
@@ -11,9 +24,11 @@ Related: [Request-Pipeline.md](./Request-Pipeline.md), [Intent-Detection.md](./I
 ```
 Intent Detection
       ↓
-Context Loading   ← ContextManager.load(...)
+Context Loading   ← ContextManager.load(...) → LoadedContext
       ↓
-Planning → Execution → Response
+Context Builder   ← buildContextPackage(...) → ContextPackage
+      ↓
+Planning → Execution → Response  (consume package notes)
       ↓
 recordAssistant(...)  (conversation continuity)
 ```
@@ -33,6 +48,39 @@ recordAssistant(...)  (conversation continuity)
 | `knowledge`           | Personal knowledge graph              | Ranked neighbors (lexical + hop + weight + recency) when DB wired; see [Knowledge-Graph.md](./Knowledge-Graph.md) / ADR-0049; else empty |
 | `sources`             | Provider ids that ran                 | Always listed                                                                                                                            |
 | `conversationSummary` | Compact log/plan string               | Derived from turns                                                                                                                       |
+| `contextPackage`      | Context Builder output                | Ranked / deduped / budgeted sections + notes (ADR-0053)                                                                                  |
+
+---
+
+## Context Builder
+
+`buildContextPackage` turns `LoadedContext` into a `ContextPackage`:
+
+- **Priority:** request → active tasks → project → preferences → memories →
+  knowledge → conversation → system
+- **Budget:** `maxChars` (default 4000; ~1k tokens at 4 chars/token)
+- **Dedup:** skip lines already included from an earlier section
+- **Outputs:** `text`, `planNotes` (pipe-join into plan goals),
+  `responseNotes` (multi-line response blocks)
+
+### Config (`context.builder`)
+
+| Key                    | Default | Meaning                             |
+| ---------------------- | ------- | ----------------------------------- |
+| `maxChars`             | `4000`  | Package character budget            |
+| `maxMemorySnippets`    | `5`     | Memory line cap                     |
+| `maxKnowledgeSnippets` | `5`     | Knowledge line cap                  |
+| `maxConversationTurns` | `6`     | Prior turns (excludes live request) |
+
+Env: `ATLAS_CONTEXT_MAX_CHARS`, `ATLAS_CONTEXT_MAX_MEMORY_SNIPPETS`,
+`ATLAS_CONTEXT_MAX_KNOWLEDGE_SNIPPETS`, `ATLAS_CONTEXT_MAX_CONVERSATION_TURNS`.
+
+```ts
+import { buildContextPackage, loadContext } from "@atlas-ai/core";
+
+const context = loadContext(request, intent, { manager });
+const pkg = context.contextPackage ?? buildContextPackage(context);
+```
 
 ---
 

@@ -2,6 +2,10 @@ import { finalizePlan } from "./builders.js";
 import { BUILTIN_PLAN_TEMPLATES } from "./templates.js";
 import type { ExecutionPlan, PlanInput, PlanTemplate } from "./types.js";
 import { draftStep } from "./builders.js";
+import {
+  buildContextPackage,
+  type ContextBuilderOptions,
+} from "../context/builder.js";
 
 /**
  * Registry of plan templates keyed by intent name.
@@ -47,11 +51,13 @@ export function registerPlanTemplate(template: PlanTemplate): void {
 
 export interface CreatePlanOptions {
   registry?: PlanRegistry;
+  builder?: ContextBuilderOptions;
 }
 
 /**
  * Build a structured execution plan from intent + context.
  * Plans are ordered and tool-system ready (`tool` / `args` / `capability`).
+ * Goal notes come from Context Builder planNotes (ADR-0053).
  */
 export function createPlan(
   request: PlanInput["request"],
@@ -64,23 +70,8 @@ export function createPlan(
     registry.get(intent.name) ?? registry.get("unknown") ?? fallbackUnknown;
 
   const built = template.build({ request, intent, context });
-  const notes: string[] = [];
-  const recalled = formatRecalledMemories(context);
-  if (recalled) {
-    notes.push(recalled);
-  }
-  const knowledge = formatRelatedKnowledge(context);
-  if (knowledge) {
-    notes.push(knowledge);
-  }
-  const prefs = formatUserPreferences(context);
-  if (prefs) {
-    notes.push(prefs);
-  }
-  const project = formatActiveProject(context);
-  if (project) {
-    notes.push(project);
-  }
+  // Always rebuild so late mutations to LoadedContext are reflected.
+  const notes = buildContextPackage(context, options.builder).planNotes;
   const goal =
     notes.length > 0 ? `${built.goal} | ${notes.join(" | ")}` : built.goal;
   return finalizePlan({
@@ -89,83 +80,6 @@ export function createPlan(
     steps: built.steps,
     requiresApproval: built.requiresApproval,
   });
-}
-
-function formatRecalledMemories(
-  context: PlanInput["context"],
-): string | undefined {
-  if (!context.memories || context.memories.length === 0) {
-    return undefined;
-  }
-  const snippets = context.memories
-    .slice(0, 3)
-    .map((m) => m.content.trim())
-    .filter(Boolean);
-  if (snippets.length === 0) {
-    return undefined;
-  }
-  return `Recalled memories: ${snippets.join("; ")}`;
-}
-
-function formatRelatedKnowledge(
-  context: PlanInput["context"],
-): string | undefined {
-  if (!context.knowledge || context.knowledge.length === 0) {
-    return undefined;
-  }
-  const snippets = context.knowledge
-    .slice(0, 3)
-    .map((k) => (k.content || k.label).trim())
-    .filter(Boolean);
-  if (snippets.length === 0) {
-    return undefined;
-  }
-  return `Related knowledge: ${snippets.join("; ")}`;
-}
-
-const PREFERENCE_DISPLAY_KEYS = [
-  "preferredEditor",
-  "preferredLanguage",
-  "codingStyle",
-  "codingLanguage",
-  "communicationStyle",
-  "responseLength",
-  "aiVerbosity",
-  "productivityHabits",
-] as const;
-
-function formatUserPreferences(
-  context: PlanInput["context"],
-): string | undefined {
-  const prefs = context.preferences;
-  if (!prefs) {
-    return undefined;
-  }
-  const parts: string[] = [];
-  for (const key of PREFERENCE_DISPLAY_KEYS) {
-    const value = prefs[key];
-    if (typeof value === "string" && value.trim()) {
-      parts.push(`${key}=${value.trim()}`);
-    }
-  }
-  if (parts.length === 0) {
-    return undefined;
-  }
-  return `User preferences: ${parts.slice(0, 4).join("; ")}`;
-}
-
-function formatActiveProject(
-  context: PlanInput["context"],
-): string | undefined {
-  const project = context.project;
-  if (!project?.name && !project?.path) {
-    return undefined;
-  }
-  const name = project.name?.trim() || "project";
-  if (project.path?.trim()) {
-    return `Active project: ${name} (${project.path.trim()})`;
-  }
-  return `Active project: ${name}`;
 }
 
 const fallbackUnknown: PlanTemplate = {

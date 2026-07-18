@@ -68,6 +68,8 @@ export {
 
 export {
   ContextManager,
+  attachContextPackage,
+  buildContextPackage,
   createActiveTasksProvider,
   createConversationProvider,
   createKnowledgeProvider,
@@ -75,6 +77,7 @@ export {
   createPreferencesProvider,
   createProjectProvider,
   createSystemStateProvider,
+  DEFAULT_CONTEXT_BUILDER_OPTIONS,
   getDefaultContextManager,
   InMemoryActiveTaskStore,
   InMemoryConversationStore,
@@ -83,8 +86,11 @@ export {
   setDefaultContextManager,
   summarizeConversation,
   type ActiveTaskStore,
+  type ContextBuilderOptions,
   type ContextManagerOptions,
+  type ContextPackage,
   type ContextProvider,
+  type ContextSection,
   type ConversationStore,
   type KnowledgeRetriever,
   type LoadContextOptions,

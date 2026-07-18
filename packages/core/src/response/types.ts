@@ -52,4 +52,6 @@ export interface GenerateResponseInput {
 export interface ResponseGeneratorOptions {
   /** Override modality (defaults from request.source). */
   modality?: ResponseModality;
+  /** Context Builder budget / caps (ADR-0053). */
+  builder?: import("../context/builder.js").ContextBuilderOptions;
 }

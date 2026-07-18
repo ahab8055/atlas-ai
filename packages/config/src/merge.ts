@@ -13,6 +13,8 @@ import type {
   AtlasProfileConfig,
   AtlasProfileLearningConfig,
   AtlasWorkspaceConfig,
+  AtlasContextConfig,
+  AtlasContextBuilderConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -427,6 +429,49 @@ function mergeWorkspace(
   };
 }
 
+function mergeContextBuilder(
+  base: AtlasContextBuilderConfig,
+  patch: unknown,
+): AtlasContextBuilderConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    maxChars: Math.max(
+      256,
+      Math.floor(asNumber(patch.maxChars, base.maxChars)),
+    ),
+    maxMemorySnippets: Math.max(
+      1,
+      Math.floor(asNumber(patch.maxMemorySnippets, base.maxMemorySnippets)),
+    ),
+    maxKnowledgeSnippets: Math.max(
+      1,
+      Math.floor(
+        asNumber(patch.maxKnowledgeSnippets, base.maxKnowledgeSnippets),
+      ),
+    ),
+    maxConversationTurns: Math.max(
+      1,
+      Math.floor(
+        asNumber(patch.maxConversationTurns, base.maxConversationTurns),
+      ),
+    ),
+  };
+}
+
+function mergeContext(
+  base: AtlasContextConfig,
+  patch: unknown,
+): AtlasContextConfig {
+  if (!isRecord(patch)) {
+    return { builder: { ...base.builder } };
+  }
+  return {
+    builder: mergeContextBuilder(base.builder, patch.builder),
+  };
+}
+
 /** Deep-merge a partial JSON object onto defaults (non-secret fields only). */
 export function mergeAppConfig(
   base: AtlasAppConfig,
@@ -443,6 +488,7 @@ export function mergeAppConfig(
       knowledge: mergeKnowledge(base.knowledge, undefined),
       profile: mergeProfile(base.profile, undefined),
       workspace: mergeWorkspace(base.workspace, undefined),
+      context: mergeContext(base.context, undefined),
     };
   }
 
@@ -457,6 +503,7 @@ export function mergeAppConfig(
     knowledge: mergeKnowledge(base.knowledge, patch.knowledge),
     profile: mergeProfile(base.profile, patch.profile),
     workspace: mergeWorkspace(base.workspace, patch.workspace),
+    context: mergeContext(base.context, patch.context),
   };
 }
 
@@ -687,6 +734,26 @@ export function applyEnvOverrides(
         envVars.ATLAS_WORKSPACE_REMEMBER_ON_DETECT !== undefined
           ? envVars.ATLAS_WORKSPACE_REMEMBER_ON_DETECT === "true"
           : config.workspace.rememberOnDetect,
+    },
+    context: {
+      builder: {
+        maxChars:
+          envVars.ATLAS_CONTEXT_MAX_CHARS !== undefined
+            ? Number(envVars.ATLAS_CONTEXT_MAX_CHARS)
+            : config.context.builder.maxChars,
+        maxMemorySnippets:
+          envVars.ATLAS_CONTEXT_MAX_MEMORY_SNIPPETS !== undefined
+            ? Number(envVars.ATLAS_CONTEXT_MAX_MEMORY_SNIPPETS)
+            : config.context.builder.maxMemorySnippets,
+        maxKnowledgeSnippets:
+          envVars.ATLAS_CONTEXT_MAX_KNOWLEDGE_SNIPPETS !== undefined
+            ? Number(envVars.ATLAS_CONTEXT_MAX_KNOWLEDGE_SNIPPETS)
+            : config.context.builder.maxKnowledgeSnippets,
+        maxConversationTurns:
+          envVars.ATLAS_CONTEXT_MAX_CONVERSATION_TURNS !== undefined
+            ? Number(envVars.ATLAS_CONTEXT_MAX_CONVERSATION_TURNS)
+            : config.context.builder.maxConversationTurns,
+      },
     },
   });
 

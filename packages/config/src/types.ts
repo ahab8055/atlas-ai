@@ -173,6 +173,21 @@ export interface AtlasWorkspaceConfig {
   rememberOnDetect: boolean;
 }
 
+export interface AtlasContextBuilderConfig {
+  /** Max characters in the packaged context text (default 4000). */
+  maxChars: number;
+  /** Cap on memory snippets (default 5). */
+  maxMemorySnippets: number;
+  /** Cap on knowledge snippets (default 5). */
+  maxKnowledgeSnippets: number;
+  /** Cap on prior conversation turns (default 6). */
+  maxConversationTurns: number;
+}
+
+export interface AtlasContextConfig {
+  builder: AtlasContextBuilderConfig;
+}
+
 /** Non-secret, serializable application settings. */
 export interface AtlasAppConfig {
   env: AtlasEnvironment;
@@ -185,6 +200,7 @@ export interface AtlasAppConfig {
   knowledge: AtlasKnowledgeConfig;
   profile: AtlasProfileConfig;
   workspace: AtlasWorkspaceConfig;
+  context: AtlasContextConfig;
 }
 
 /**

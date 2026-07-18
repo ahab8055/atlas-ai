@@ -95,4 +95,12 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
     autoDetect: true,
     rememberOnDetect: true,
   },
+  context: {
+    builder: {
+      maxChars: 4000,
+      maxMemorySnippets: 5,
+      maxKnowledgeSnippets: 5,
+      maxConversationTurns: 6,
+    },
+  },
 };
