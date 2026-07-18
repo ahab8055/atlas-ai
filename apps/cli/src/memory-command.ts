@@ -4,11 +4,17 @@
 import type { LongTermMemoryType } from "@atlas-ai/database";
 import {
   classifyMemory,
+  decryptBackup,
+  encryptBackup,
+  isBackupEnvelope,
+  parseBackupJson,
   type MemoryClassificationResult,
   type MemoryRecord,
   type MemorySearchMode,
   type RetrievedMemory,
 } from "@atlas-ai/memory";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 import type { CliRuntime } from "./run.js";
 
@@ -351,6 +357,99 @@ export function tryHandleMemoryCommand(
       return true;
     }
 
+    if (sub === "export") {
+      const type = readFlag(tokens, "--type") as LongTermMemoryType | undefined;
+      if (type && !LONG_TERM_TYPES.has(type)) {
+        throw new Error(`Invalid --type (use episodic|semantic|procedural)`);
+      }
+      const outPath = readFlag(tokens, "--out");
+      const encrypt = hasFlag(tokens, "--encrypt");
+      const snapshot = ltm.exportBackup({ type });
+      if (encrypt) {
+        const passphrase = readBackupPassphrase(tokens);
+        const envelope = encryptBackup(snapshot, passphrase);
+        const body = `${JSON.stringify(envelope, null, 2)}\n`;
+        if (outPath) {
+          writeBackupFile(outPath, body);
+          process.stdout.write(
+            `Exported ${snapshot.count} encrypted memor${snapshot.count === 1 ? "y" : "ies"} to ${outPath}\n`,
+          );
+        } else {
+          process.stdout.write(body);
+        }
+      } else {
+        const body = `${JSON.stringify(snapshot, null, 2)}\n`;
+        if (outPath) {
+          writeBackupFile(outPath, body);
+          process.stdout.write(
+            `Exported ${snapshot.count} memor${snapshot.count === 1 ? "y" : "ies"} to ${outPath}\n`,
+          );
+        } else {
+          process.stdout.write(body);
+        }
+      }
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "import") {
+      const pathArg = tokens[2];
+      if (!pathArg || pathArg.startsWith("--")) {
+        throw new Error(
+          "Usage: memory import <path> [--validate-only] [--replace --confirm] [--encrypt]",
+        );
+      }
+      const raw = readFileSync(pathArg, "utf8");
+      const parsed = parseBackupJson(raw);
+      let snapshot;
+      if (isBackupEnvelope(parsed) || hasFlag(tokens, "--encrypt")) {
+        const passphrase = readBackupPassphrase(tokens);
+        if (!isBackupEnvelope(parsed)) {
+          throw new Error("File is not an encrypted memory backup envelope");
+        }
+        snapshot = decryptBackup(parsed, passphrase);
+      } else {
+        snapshot = parsed;
+      }
+      const validated = ltm.validateBackup(snapshot);
+      if (!validated.ok || !validated.snapshot) {
+        process.stderr.write(
+          `Backup validation failed:\n${validated.errors.map((e) => `  - ${e}`).join("\n")}\n`,
+        );
+        process.exitCode = 2;
+        return true;
+      }
+      if (hasFlag(tokens, "--validate-only")) {
+        process.stdout.write(
+          `Backup OK: ${validated.snapshot.count} memor${validated.snapshot.count === 1 ? "y" : "ies"}` +
+            ` (checksum ${validated.snapshot.checksum.slice(0, 12)}…)\n`,
+        );
+        process.exitCode = 0;
+        return true;
+      }
+      const replace = hasFlag(tokens, "--replace");
+      if (replace) {
+        ensureDeleteAllowed(runtime, tokens);
+      }
+      const result = ltm.importBackup(validated.snapshot, {
+        mode: replace ? "replace" : "merge",
+      });
+      process.stdout.write(
+        `Imported ${result.imported}, skipped ${result.skipped}` +
+          (replace ? " (replace)" : " (merge)") +
+          `\n`,
+      );
+      if (result.errors.length > 0) {
+        process.stderr.write(
+          result.errors.map((e) => `  - ${e}`).join("\n") + "\n",
+        );
+        process.exitCode = 2;
+        return true;
+      }
+      process.exitCode = 0;
+      return true;
+    }
+
     throw new Error(`Unknown memory subcommand: ${sub}\n${memoryUsage()}`);
   } catch (error) {
     process.stderr.write(
@@ -380,7 +479,26 @@ function memoryUsage(): string {
     "  atlas memory consolidate [--dry-run] [--type …] [--limit N]",
     "  atlas memory conflicts",
     "  atlas memory purge-expired --confirm",
+    "  atlas memory export [--out path] [--type …] [--encrypt]",
+    "  atlas memory import <path> [--validate-only] [--replace --confirm] [--encrypt]",
   ].join("\n");
+}
+
+function readBackupPassphrase(tokens: string[]): string {
+  const envName =
+    readFlag(tokens, "--passphrase-env") ?? "ATLAS_BACKUP_PASSPHRASE";
+  const value = process.env[envName];
+  if (!value) {
+    throw new Error(
+      `Encrypted backup requires passphrase in env ${envName} (or --passphrase-env NAME)`,
+    );
+  }
+  return value;
+}
+
+function writeBackupFile(path: string, body: string): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, body, { mode: 0o600 });
 }
 
 function ensureDeleteAllowed(runtime: CliRuntime, tokens: string[]): void {
@@ -517,7 +635,10 @@ function positionalArgs(tokens: string[], start: number): string[] {
         t === "--dry-run" ||
         t === "--sensitive" ||
         t === "--confirm" ||
-        t === "--yes"
+        t === "--yes" ||
+        t === "--encrypt" ||
+        t === "--validate-only" ||
+        t === "--replace"
       ) {
         continue;
       }

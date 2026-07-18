@@ -50,8 +50,11 @@ export { registerPersistentMemoryProviders } from "./providers/persistent.js";
 export {
   LongTermMemory,
   createLongTermMemory,
+  DEFAULT_BACKUP_EXPORT_LIMIT,
   type EvaluateAndStoreExtras,
   type EvaluateAndStoreResult,
+  type ExportBackupOptions,
+  type ImportBackupOptions,
   type LongTermListOptions,
   type LongTermMemoryOptions,
   type LongTermSearchOptions,
@@ -168,3 +171,25 @@ export {
   looksLikeSecretContent,
   requireMemoryPermission,
 } from "./security/index.js";
+
+export type {
+  BackupValidationResult,
+  ImportBackupMode,
+  ImportBackupResult,
+  MemoryBackupEnvelope,
+  MemoryBackupRecord,
+  MemoryBackupSnapshot,
+} from "./backup/index.js";
+
+export {
+  MEMORY_BACKUP_ENCRYPTED_FORMAT,
+  MEMORY_BACKUP_FORMAT,
+  MEMORY_BACKUP_VERSION,
+  buildSnapshot,
+  computeChecksum,
+  decryptBackup,
+  encryptBackup,
+  isBackupEnvelope,
+  parseBackupJson,
+  validateSnapshot,
+} from "./backup/index.js";

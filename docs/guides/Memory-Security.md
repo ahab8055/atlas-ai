@@ -33,6 +33,9 @@ DEK id: `atlas.memory.dek` (`SecretKind: "encryption_key"`). CLI loads/creates a
 sync DEK beside the DB file (`.data/memory.dek`, mode `0600`) until OS keychain
 adapters land.
 
+Passphrase-encrypted **backup files** (portable across devices) are separate from
+this DEK — see [Memory-Backup.md](./Memory-Backup.md) / ADR-0057.
+
 Secret-shaped plaintext (e.g. `api_key: …`) must use `--sensitive` /
 `sensitivity: "sensitive"` — credentials still belong in `SecureStorageProvider`.
 
@@ -102,3 +105,4 @@ pnpm atlas memory purge-expired --confirm
 - OS Keychain platform adapters (DEK file is interim)
 - Durable SQLite audit table (in-process `MemoryAccessLog` + security logs)
 - HTTP Memory API / Desktop Memory UI
+- Full multi-domain `.atlasbackup` (use Memory-Backup for memories only)

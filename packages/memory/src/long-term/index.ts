@@ -10,6 +10,14 @@ import type { Logger } from "@atlas-ai/logging";
 import type { PermissionManager } from "@atlas-ai/security";
 
 import {
+  buildSnapshot,
+  validateSnapshot,
+  type BackupValidationResult,
+  type ImportBackupMode,
+  type ImportBackupResult,
+  type MemoryBackupSnapshot,
+} from "../backup/index.js";
+import {
   classifyMemory,
   purgeExpiredMemories,
   type ClassificationThresholds,
@@ -95,6 +103,24 @@ export interface LongTermListOptions {
   projectId?: string;
   projectIdOrUnscoped?: string;
 }
+
+export interface ExportBackupOptions {
+  type?: LongTermMemoryType;
+  tags?: string[];
+  projectId?: string;
+  userId?: string;
+  /** Default 50_000 so full exports are not truncated at list default 50. */
+  limit?: number;
+}
+
+export interface ImportBackupOptions {
+  mode?: ImportBackupMode;
+  type?: LongTermMemoryType;
+  userId?: string;
+}
+
+/** Default export pool size (ADR-0057). */
+export const DEFAULT_BACKUP_EXPORT_LIMIT = 50_000;
 
 export interface LongTermMemoryOptions {
   embeddingLookup?: MemoryEmbeddingLookup;
@@ -368,6 +394,104 @@ export class LongTermMemory {
   /** Expose Search API for modules that prefer the facade directly. */
   asSearchApi(): MemorySearchApi {
     return this.searchApi;
+  }
+
+  /**
+   * Export decrypted long-term memories as a versioned backup snapshot (ADR-0057).
+   */
+  exportBackup(options: ExportBackupOptions = {}): MemoryBackupSnapshot {
+    requireMemoryPermission(
+      this.permissions,
+      "memory.read",
+      "export memory backup",
+    );
+    const limit = options.limit ?? DEFAULT_BACKUP_EXPORT_LIMIT;
+    const records = this.list({
+      type: options.type,
+      tags: options.tags,
+      projectId: options.projectId,
+      userId: options.userId,
+      limit,
+    });
+    const snapshot = buildSnapshot(records);
+    this.audit("read", {
+      capability: "memory.read",
+      granted: true,
+      reason: `export:${snapshot.count}`,
+    });
+    return snapshot;
+  }
+
+  /** Validate a plaintext backup snapshot (checksum + schema). */
+  validateBackup(input: unknown): BackupValidationResult {
+    return validateSnapshot(input);
+  }
+
+  /**
+   * Import a validated snapshot. merge upserts by id; replace clears then imports.
+   */
+  importBackup(
+    snapshot: MemoryBackupSnapshot,
+    options: ImportBackupOptions = {},
+  ): ImportBackupResult {
+    requireMemoryPermission(
+      this.permissions,
+      "memory.write",
+      "import memory backup",
+    );
+    const validated = validateSnapshot(snapshot);
+    if (!validated.ok || !validated.snapshot) {
+      return {
+        imported: 0,
+        skipped: 0,
+        errors: validated.errors,
+      };
+    }
+    const mode = options.mode ?? "merge";
+    if (mode === "replace") {
+      requireMemoryPermission(
+        this.permissions,
+        "memory.delete",
+        "replace memory backup",
+      );
+      this.clear({ type: options.type, userId: options.userId });
+    }
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+    for (const row of validated.snapshot.memories) {
+      if (options.type && row.type !== options.type) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        this.store({
+          id: row.id,
+          type: row.type,
+          content: row.content,
+          importance: row.importance,
+          confidence: row.confidence,
+          tags: row.tags,
+          sessionId: row.sessionId,
+          projectId: row.projectId,
+          sensitivity: row.sensitivity ?? "normal",
+          metadata: row.metadata,
+        });
+        imported += 1;
+      } catch (error) {
+        skipped += 1;
+        errors.push(
+          `${row.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    this.audit("create", {
+      capability: "memory.write",
+      granted: true,
+      reason: `import:${imported}`,
+    });
+    return { imported, skipped, errors };
   }
 
   /**

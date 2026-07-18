@@ -85,6 +85,8 @@ pnpm atlas memory retrieve "change theme to dark"
 pnpm atlas memory retrieve "dark mode" --mode semantic --limit 5
 pnpm atlas memory delete <id> --confirm
 pnpm atlas memory clear --confirm
+pnpm atlas memory export --out ~/atlas-memory.json
+pnpm atlas memory import ~/atlas-memory.json
 pnpm atlas memory consolidate --dry-run
 pnpm atlas memory conflicts
 pnpm atlas memory list

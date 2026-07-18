@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { openAtlasDatabase } from "@atlas-ai/database";
 import {
@@ -354,6 +357,58 @@ describe("memory CLI + context wiring", () => {
       expect(runtime.longTermMemory!.get(row!.id)).toBeUndefined();
     } finally {
       runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
+  it("exports and imports memory backup via CLI", () => {
+    const runtime = stubRuntime();
+    const dir = mkdtempSync(join(tmpdir(), "atlas-mem-bak-"));
+    try {
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory add --type semantic "Prefers TypeScript backup"',
+        ),
+      ).toBe(true);
+      const outJson = join(dir, "backup.json");
+      expect(
+        tryHandleMemoryCommand(runtime, `memory export --out ${outJson}`),
+      ).toBe(true);
+      expect(existsSync(outJson)).toBe(true);
+
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          `memory import ${outJson} --validate-only`,
+        ),
+      ).toBe(true);
+
+      process.env.ATLAS_BACKUP_PASSPHRASE = "cli-test-passphrase";
+      const outEnc = join(dir, "backup.atlasmem");
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          `memory export --out ${outEnc} --encrypt`,
+        ),
+      ).toBe(true);
+
+      runtime.permissions.grant("memory.delete");
+      runtime.longTermMemory!.clear();
+      expect(runtime.longTermMemory!.list()).toHaveLength(0);
+
+      expect(tryHandleMemoryCommand(runtime, `memory import ${outEnc}`)).toBe(
+        true,
+      );
+      expect(
+        runtime
+          .longTermMemory!.list()
+          .some((m) => m.content.includes("TypeScript backup")),
+      ).toBe(true);
+    } finally {
+      delete process.env.ATLAS_BACKUP_PASSPHRASE;
+      runtime.database?.close();
+      rmSync(dir, { recursive: true, force: true });
       process.exitCode = undefined;
     }
   });

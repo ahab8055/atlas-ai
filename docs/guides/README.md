@@ -50,6 +50,7 @@ Practical guides for contributing to Atlas AI.
 | [Memory-Retrieval.md](./Memory-Retrieval.md)                                       | Hybrid rank + inject into context                            |
 | [Memory-Search.md](./Memory-Search.md)                                             | Unified keyword/semantic/hybrid search API                   |
 | [Memory-Security.md](./Memory-Security.md)                                         | Encrypt sensitive memories, permissions, secure delete       |
+| [Memory-Backup.md](./Memory-Backup.md)                                             | Export/import memories, checksum, encrypted backups          |
 | [Memory-Consolidation.md](./Memory-Consolidation.md)                               | Dedupe, history, conflict flags                              |
 | [Knowledge-Graph.md](./Knowledge-Graph.md)                                         | Entities, relationships, linking, extraction, ranked context |
 | [Task-Planning.md](./Task-Planning.md)                                             | Single- and multi-step execution plans                       |

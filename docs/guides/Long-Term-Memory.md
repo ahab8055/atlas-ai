@@ -9,6 +9,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [Memory-Retrieval.md](./Memory-Retrieval.md),
 [Memory-Search.md](./Memory-Search.md),
 [Memory-Security.md](./Memory-Security.md),
+[Memory-Backup.md](./Memory-Backup.md),
 [Memory-Consolidation.md](./Memory-Consolidation.md),
 [Context-Management.md](./Context-Management.md),
 [Database.md](./Database.md),
@@ -20,6 +21,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [ADR-0045](../adr/0045-memory-consolidation-service.md),
 [ADR-0055](../adr/0055-memory-search-api.md),
 [ADR-0056](../adr/0056-memory-security.md),
+[ADR-0057](../adr/0057-memory-backup-recovery.md),
 [`@atlas-ai/memory`](../../packages/memory/), [`@atlas-ai/database`](../../packages/database/).
 
 ---
@@ -83,11 +85,14 @@ pnpm atlas memory update <id> --content "Prefers TypeScript strictly"
 pnpm atlas memory delete <id> --confirm
 pnpm atlas memory clear --confirm
 pnpm atlas memory purge-expired --confirm
+pnpm atlas memory export --out ~/atlas-memory.json
+pnpm atlas memory import ~/atlas-memory.json --validate-only
 ```
 
 Search/retrieve also accept `--mode keyword|semantic|hybrid`, `--tags a,b`,
 and `--session <id>` — see [Memory-Search.md](./Memory-Search.md). Sensitive
-memories and secure delete: [Memory-Security.md](./Memory-Security.md).
+memories and secure delete: [Memory-Security.md](./Memory-Security.md). Backup
+export/import: [Memory-Backup.md](./Memory-Backup.md).
 
 Use `--classify` to run the importance gate before store; see
 [Memory-Classification.md](./Memory-Classification.md). Ranking/retrieval:
