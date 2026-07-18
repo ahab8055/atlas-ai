@@ -256,6 +256,43 @@ describe("memory CLI + context wiring", () => {
     }
   });
 
+  it("memory stats exits 0 and includes total count", () => {
+    const runtime = stubRuntime();
+    const chunks: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((
+      chunk: string | Uint8Array,
+      encoding?: BufferEncoding | ((err?: Error | null) => void),
+      cb?: (err?: Error | null) => void,
+    ) => {
+      chunks.push(
+        typeof chunk === "string" ? chunk : Buffer.from(chunk).toString(),
+      );
+      if (typeof encoding === "function") {
+        return originalWrite(chunk, encoding);
+      }
+      return originalWrite(chunk, encoding as BufferEncoding, cb);
+    }) as typeof process.stdout.write;
+    try {
+      runtime.longTermMemory!.store({
+        type: "semantic",
+        content: "Stats probe memory",
+        importance: 0.8,
+      });
+      expect(tryHandleMemoryCommand(runtime, "memory stats")).toBe(true);
+      expect(process.exitCode === 0 || process.exitCode === undefined).toBe(
+        true,
+      );
+      const out = chunks.join("");
+      expect(out).toContain("total=1");
+      expect(out).toContain("Memory stats");
+    } finally {
+      process.stdout.write = originalWrite;
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
   it("search accepts --mode --tags --session filters", () => {
     const runtime = stubRuntime();
     try {

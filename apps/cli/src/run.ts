@@ -24,6 +24,7 @@ import {
 } from "@atlas-ai/logging";
 import {
   createLongTermMemory,
+  createMemoryAnalyticsMonitor,
   createMemoryManager,
   createPersistentMemoryManager,
   createShortTermMemory,
@@ -118,11 +119,13 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     grantedCapabilities: ["memory.read", "memory.write"],
   });
   const memoryAccessLog = new MemoryAccessLog();
+  const memoryAnalytics = createMemoryAnalyticsMonitor();
   const longTermMemory = database
     ? createLongTermMemory(database.memories, {
         permissions,
         dek: createCliMemoryDek(database.path),
         accessLog: memoryAccessLog,
+        analytics: memoryAnalytics,
         logger: logger.child("memory"),
       })
     : undefined;

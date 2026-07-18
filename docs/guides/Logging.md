@@ -115,6 +115,11 @@ The JSON record + category/level fields are the ingest contract for:
 - Health / monitoring service (Architecture/15)
 - Optional later Sentry (Technology Stack — post-MVP free tier)
 
+Related local diagnostics today:
+
+- AI runtime: [Runtime-Monitoring.md](./Runtime-Monitoring.md)
+- Long-term memory store/process stats: [Memory-Analytics.md](./Memory-Analytics.md)
+
 ---
 
 ## Commands

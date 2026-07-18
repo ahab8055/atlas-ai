@@ -83,6 +83,7 @@ pnpm atlas memory search "TypeScript"
 pnpm atlas memory search "TypeScript" --mode keyword --tags lang --session sess-a
 pnpm atlas memory retrieve "change theme to dark"
 pnpm atlas memory retrieve "dark mode" --mode semantic --limit 5
+pnpm atlas memory stats
 pnpm atlas memory delete <id> --confirm
 pnpm atlas memory clear --confirm
 pnpm atlas memory export --out ~/atlas-memory.json

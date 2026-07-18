@@ -75,6 +75,16 @@ export interface MemoryUpdateInput {
   tags?: string[];
 }
 
+/** Durable store aggregates for diagnostics (ADR-0058). */
+export interface MemoryStoreStats {
+  total: number;
+  byType: Record<LongTermMemoryType, number>;
+  sensitive: number;
+  encrypted: number;
+  /** Approx content storage: SUM(LENGTH(content)). */
+  contentBytes: number;
+}
+
 interface MemorySqlRow {
   id: string;
   user_id: string;
@@ -291,6 +301,62 @@ export class MemoriesRepository {
       .prepare("DELETE FROM memories WHERE type = ? AND user_id = ?")
       .run(type, userId);
     return Number(result.changes);
+  }
+
+  /** Aggregate counts and approximate content bytes for diagnostics. */
+  stats(userId = "local"): MemoryStoreStats {
+    const totals = this.db
+      .prepare(
+        `
+        SELECT
+          COUNT(*) AS total,
+          COALESCE(SUM(LENGTH(content)), 0) AS content_bytes,
+          COALESCE(SUM(CASE WHEN sensitivity = 'sensitive' THEN 1 ELSE 0 END), 0) AS sensitive,
+          COALESCE(SUM(CASE WHEN encrypted = 1 THEN 1 ELSE 0 END), 0) AS encrypted
+        FROM memories
+        WHERE user_id = ?
+      `,
+      )
+      .get(userId) as {
+      total: number;
+      content_bytes: number;
+      sensitive: number;
+      encrypted: number;
+    };
+
+    const byTypeRows = this.db
+      .prepare(
+        `
+        SELECT type, COUNT(*) AS count
+        FROM memories
+        WHERE user_id = ?
+        GROUP BY type
+      `,
+      )
+      .all(userId) as Array<{ type: string; count: number }>;
+
+    const byType: Record<LongTermMemoryType, number> = {
+      episodic: 0,
+      semantic: 0,
+      procedural: 0,
+    };
+    for (const row of byTypeRows) {
+      if (
+        row.type === "episodic" ||
+        row.type === "semantic" ||
+        row.type === "procedural"
+      ) {
+        byType[row.type] = Number(row.count);
+      }
+    }
+
+    return {
+      total: Number(totals.total),
+      byType,
+      sensitive: Number(totals.sensitive),
+      encrypted: Number(totals.encrypted),
+      contentBytes: Number(totals.content_bytes),
+    };
   }
 
   setTags(memoryId: string, tags: string[]): void {

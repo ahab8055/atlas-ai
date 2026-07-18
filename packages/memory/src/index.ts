@@ -193,3 +193,19 @@ export {
   parseBackupJson,
   validateSnapshot,
 } from "./backup/index.js";
+
+export type {
+  ConsolidationSnapshot,
+  MemoryAnalyticsMonitorOptions,
+  MemoryProcessMetrics,
+  MemoryRetrievalSample,
+  MemoryStatsReport,
+  TimingStats,
+} from "./analytics/index.js";
+
+export {
+  DEFAULT_SLOW_RETRIEVAL_MS,
+  MemoryAnalyticsMonitor,
+  createMemoryAnalyticsMonitor,
+  formatMemoryStats,
+} from "./analytics/index.js";

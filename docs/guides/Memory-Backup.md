@@ -4,7 +4,9 @@ Portable export/import of long-term memories with integrity checks and optional
 passphrase encryption (ADR-0057).
 
 Related: [Long-Term-Memory.md](./Long-Term-Memory.md),
-[Memory-Security.md](./Memory-Security.md), [CLI.md](./CLI.md),
+[Memory-Security.md](./Memory-Security.md),
+[Memory-Analytics.md](./Memory-Analytics.md),
+[CLI.md](./CLI.md),
 [ADR-0057](../adr/0057-memory-backup-recovery.md),
 [ADR-0056](../adr/0056-memory-security.md),
 [`@atlas-ai/memory`](../../packages/memory/).

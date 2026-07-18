@@ -214,6 +214,38 @@ describe("AtlasDatabase", () => {
     }
   });
 
+  it("aggregates memory store stats for diagnostics", () => {
+    const atlas = openAtlasDatabase({ path: ":memory:", skipSeed: true });
+    try {
+      atlas.memories.upsert({
+        type: "semantic",
+        content: "aaa",
+        sensitivity: "normal",
+      });
+      atlas.memories.upsert({
+        type: "episodic",
+        content: "bbbb",
+        sensitivity: "sensitive",
+        encrypted: true,
+        contentNonce: "nonce",
+      });
+      atlas.memories.upsert({
+        type: "semantic",
+        content: "cc",
+      });
+      const stats = atlas.memories.stats();
+      expect(stats.total).toBe(3);
+      expect(stats.byType.semantic).toBe(2);
+      expect(stats.byType.episodic).toBe(1);
+      expect(stats.byType.procedural).toBe(0);
+      expect(stats.sensitive).toBe(1);
+      expect(stats.encrypted).toBe(1);
+      expect(stats.contentBytes).toBe(3 + 4 + 2);
+    } finally {
+      atlas.close();
+    }
+  });
+
   it("persists knowledge graph entities and relationships", () => {
     const path = join(tmpdir(), `atlas-kg-${Date.now()}.sqlite`);
     try {

@@ -10,6 +10,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [Memory-Search.md](./Memory-Search.md),
 [Memory-Security.md](./Memory-Security.md),
 [Memory-Backup.md](./Memory-Backup.md),
+[Memory-Analytics.md](./Memory-Analytics.md),
 [Memory-Consolidation.md](./Memory-Consolidation.md),
 [Context-Management.md](./Context-Management.md),
 [Database.md](./Database.md),
@@ -22,6 +23,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [ADR-0055](../adr/0055-memory-search-api.md),
 [ADR-0056](../adr/0056-memory-security.md),
 [ADR-0057](../adr/0057-memory-backup-recovery.md),
+[ADR-0058](../adr/0058-memory-analytics.md),
 [`@atlas-ai/memory`](../../packages/memory/), [`@atlas-ai/database`](../../packages/database/).
 
 ---
@@ -78,6 +80,7 @@ pnpm atlas memory add --classify "I prefer TypeScript"
 pnpm atlas memory list --type semantic
 pnpm atlas memory search "TypeScript"
 pnpm atlas memory retrieve "change theme to dark"
+pnpm atlas memory stats
 pnpm atlas memory consolidate --type semantic
 pnpm atlas memory conflicts
 pnpm atlas memory get <id>
@@ -92,7 +95,8 @@ pnpm atlas memory import ~/atlas-memory.json --validate-only
 Search/retrieve also accept `--mode keyword|semantic|hybrid`, `--tags a,b`,
 and `--session <id>` — see [Memory-Search.md](./Memory-Search.md). Sensitive
 memories and secure delete: [Memory-Security.md](./Memory-Security.md). Backup
-export/import: [Memory-Backup.md](./Memory-Backup.md).
+export/import: [Memory-Backup.md](./Memory-Backup.md). Store and process
+diagnostics: [Memory-Analytics.md](./Memory-Analytics.md).
 
 Use `--classify` to run the importance gate before store; see
 [Memory-Classification.md](./Memory-Classification.md). Ranking/retrieval:

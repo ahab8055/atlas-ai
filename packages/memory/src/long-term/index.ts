@@ -10,6 +10,12 @@ import type { Logger } from "@atlas-ai/logging";
 import type { PermissionManager } from "@atlas-ai/security";
 
 import {
+  createMemoryAnalyticsMonitor,
+  type MemoryAnalyticsMonitor,
+  type MemoryProcessMetrics,
+  type MemoryStatsReport,
+} from "../analytics/index.js";
+import {
   buildSnapshot,
   validateSnapshot,
   type BackupValidationResult,
@@ -130,6 +136,7 @@ export interface LongTermMemoryOptions {
   dek?: MemoryDekProvider;
   accessLog?: MemoryAccessLog;
   logger?: Logger;
+  analytics?: MemoryAnalyticsMonitor;
 }
 
 export class LongTermMemory {
@@ -139,6 +146,7 @@ export class LongTermMemory {
   private readonly crypto?: MemoryCrypto;
   private readonly accessLog?: MemoryAccessLog;
   private readonly logger?: Logger;
+  private readonly analytics: MemoryAnalyticsMonitor;
 
   constructor(
     private readonly repo: MemoriesRepository,
@@ -147,6 +155,7 @@ export class LongTermMemory {
     this.permissions = options.permissions;
     this.accessLog = options.accessLog;
     this.logger = options.logger;
+    this.analytics = options.analytics ?? createMemoryAnalyticsMonitor();
     this.crypto = options.dek ? createMemoryCrypto(options.dek) : undefined;
     this.searchApi = createMemorySearchApi(repo, {
       embeddingLookup: options.embeddingLookup,
@@ -345,15 +354,9 @@ export class LongTermMemory {
     text: string,
     options: LongTermSearchOptions = {},
   ): RetrievedMemory[] {
-    requireMemoryPermission(
-      this.permissions,
-      "memory.read",
-      "retrieve long-term memories",
-    );
-    const mode = options.mode ?? "hybrid";
-    const result = this.searchApi.search({
+    const result = this.searchMemories({
       query: text,
-      mode,
+      mode: options.mode ?? "hybrid",
       type: options.type,
       tags: options.tags,
       userId: options.userId,
@@ -362,11 +365,6 @@ export class LongTermMemory {
       limit: options.limit,
       minScore: options.minScore,
       recencyHalfLifeMs: options.recencyHalfLifeMs,
-    });
-    this.audit("search", {
-      capability: "memory.read",
-      granted: true,
-      reason: `hits:${result.hits.length}`,
     });
     return result.hits.map((h) => ({
       record: h.record,
@@ -383,6 +381,11 @@ export class LongTermMemory {
       "search long-term memories",
     );
     const result = this.searchApi.search(input);
+    this.analytics.recordRetrieval({
+      tookMs: result.tookMs,
+      hits: result.hits.length,
+      mode: result.mode,
+    });
     this.audit("search", {
       capability: "memory.read",
       granted: true,
@@ -574,7 +577,36 @@ export class LongTermMemory {
 
   /** Batch near-duplicate merge + conflict flagging. */
   consolidate(options: ConsolidateOptions = {}): ConsolidationResult {
-    return consolidateMemories(this.asStore(), options);
+    const result = consolidateMemories(this.asStore(), options);
+    this.analytics.recordConsolidation(result);
+    return result;
+  }
+
+  /**
+   * Durable store snapshot + process metrics for diagnostics (ADR-0058).
+   */
+  getStats(userId = "local"): MemoryStatsReport {
+    requireMemoryPermission(
+      this.permissions,
+      "memory.read",
+      "read memory stats",
+    );
+    const store = this.repo.stats(userId);
+    const openConflicts = this.listConflicts({
+      userId,
+      limit: 10_000,
+    }).length;
+    return {
+      updatedAt: new Date().toISOString(),
+      store,
+      openConflicts,
+      process: this.analytics.getMetrics(),
+    };
+  }
+
+  /** Process-scoped retrieval/consolidation metrics only. */
+  getMetrics(): MemoryProcessMetrics {
+    return this.analytics.getMetrics();
   }
 
   /** List memories with an open conflict flag. */

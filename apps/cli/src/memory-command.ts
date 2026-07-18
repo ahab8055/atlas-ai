@@ -6,6 +6,7 @@ import {
   classifyMemory,
   decryptBackup,
   encryptBackup,
+  formatMemoryStats,
   isBackupEnvelope,
   parseBackupJson,
   type MemoryClassificationResult,
@@ -273,9 +274,10 @@ export function tryHandleMemoryCommand(
           String(runtime.config.memory.retrieval.limit),
       );
       const activeProjectId = runtime.workspace?.getActive()?.id;
-      const hits = ltm.retrieve(query, {
+      const result = ltm.searchMemories({
+        query,
         type,
-        mode,
+        mode: mode ?? "hybrid",
         tags,
         sessionId,
         limit: Number.isFinite(limit)
@@ -285,7 +287,20 @@ export function tryHandleMemoryCommand(
         recencyHalfLifeMs: runtime.config.memory.retrieval.recencyHalfLifeMs,
         projectId: activeProjectId,
       });
+      const hits: RetrievedMemory[] = result.hits.map((h) => ({
+        record: h.record,
+        score: h.score,
+        breakdown: h.breakdown!,
+      }));
       process.stdout.write(`${formatRetrievedList(hits)}\n`);
+      process.stdout.write(`tookMs=${Math.round(result.tookMs)}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "stats") {
+      const report = ltm.getStats();
+      process.stdout.write(`${formatMemoryStats(report)}\n`);
       process.exitCode = 0;
       return true;
     }
@@ -476,6 +491,7 @@ function memoryUsage(): string {
     "    [--type …] [--tags a,b] [--session id] [--limit N]",
     '  atlas memory retrieve "query" [--mode …] [--type …]',
     "    [--tags a,b] [--session id] [--limit N]",
+    "  atlas memory stats",
     "  atlas memory consolidate [--dry-run] [--type …] [--limit N]",
     "  atlas memory conflicts",
     "  atlas memory purge-expired --confirm",

@@ -47,6 +47,7 @@ export {
   type MemoryRecordInput,
   type MemoryRow,
   type MemorySensitivity,
+  type MemoryStoreStats,
   type MemoryUpdateInput,
 } from "./repositories/memories.js";
 export {
