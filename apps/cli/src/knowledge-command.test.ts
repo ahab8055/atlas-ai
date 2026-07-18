@@ -71,6 +71,11 @@ function stubRuntime(): CliRuntime {
           minConfidence: 0.55,
           extractOnRequest: true,
         },
+        relationships: {
+          autoLinkOnExtract: true,
+          reinforceOnLink: true,
+          reinforceStep: 0.05,
+        },
       },
     } as unknown as CliRuntime["config"],
     database,
@@ -159,6 +164,58 @@ describe("knowledge CLI + context wiring", () => {
       expect(
         people[0]?.properties.source === "extraction" ||
           projects[0]?.properties.source === "extraction",
+      ).toBe(true);
+      // Co-mention should link project → technology
+      const rels = runtime.knowledgeGraph!.listRelationships({ type: "uses" });
+      expect(rels.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      runtime.database?.close();
+    }
+  });
+
+  it("links and updates relationships via CLI", () => {
+    const runtime = stubRuntime();
+    try {
+      tryHandleKnowledgeCommand(
+        runtime,
+        "knowledge entity add --type project --name Atlas",
+      );
+      tryHandleKnowledgeCommand(
+        runtime,
+        "knowledge entity add --type technology --name React",
+      );
+      const project = runtime.knowledgeGraph!.listEntities({
+        type: "project",
+      })[0]!;
+      const tech = runtime.knowledgeGraph!.listEntities({
+        type: "technology",
+      })[0]!;
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          `knowledge link --from ${project.id} --to ${tech.id} --type uses`,
+        ),
+      ).toBe(true);
+      const rel = runtime.knowledgeGraph!.listRelationships({
+        fromEntityId: project.id,
+        type: "uses",
+      })[0]!;
+      expect(rel).toBeTruthy();
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          `knowledge rel update ${rel.id} --weight 0.9`,
+        ),
+      ).toBe(true);
+      expect(runtime.knowledgeGraph!.getRelationship(rel.id)?.weight).toBe(0.9);
+
+      expect(
+        tryHandleKnowledgeCommand(
+          runtime,
+          `knowledge traverse ${project.id} --depth 1 --direction out --types uses`,
+        ),
       ).toBe(true);
     } finally {
       runtime.database?.close();

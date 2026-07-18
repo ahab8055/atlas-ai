@@ -1,13 +1,14 @@
 # Atlas AI — Knowledge Graph
 
 Property-graph foundation for entities, relationships, traversal,
-heuristic extraction, and viz-ready export.
+heuristic extraction, co-mention linking, and viz-ready export.
 
 Related: [Architecture/23-Knowledge-Graph-Architecture.md](../Architecture/23-Knowledge-Graph-Architecture.md),
 [Architecture/20-Database-Schema.md](../Architecture/20-Database-Schema.md),
 [Context-Management.md](./Context-Management.md),
 [ADR-0046](../adr/0046-knowledge-graph-data-model.md),
 [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md),
+[ADR-0048](../adr/0048-knowledge-graph-relationship-management.md),
 [`@atlas-ai/knowledge`](../../packages/knowledge/).
 
 ---
@@ -15,12 +16,11 @@ Related: [Architecture/23-Knowledge-Graph-Architecture.md](../Architecture/23-Kn
 ## Goals
 
 - Store entities and directed relationships consistently in SQLite
-- Query neighbors and traverse with depth limits
-- Extract people, projects, companies, locations, files, technologies, and
-  applications from conversation text
+- Create / update / reinforce typed relationships over time
+- Query neighbors and traverse with depth and type filters
+- Extract entities and auto-link co-mentions from conversation text
 - Deduplicate entities case-insensitively
 - Export `GraphSnapshot` JSON for future visualization
-- Feed optional context snippets via `createKnowledgeProvider`
 
 ---
 
@@ -28,13 +28,14 @@ Related: [Architecture/23-Knowledge-Graph-Architecture.md](../Architecture/23-Kn
 
 ```
 packages/knowledge/src/
-├── types.ts              # Entity, Relationship, known types
-├── store.ts              # GraphStore port
-├── manager.ts            # KnowledgeGraphManager facade
-├── traverse.ts           # Neighbors + BFS
-├── snapshot.ts           # toGraphSnapshot
-├── context.ts            # KnowledgeSnippet mapping + lexical retriever
+├── types.ts
+├── store.ts
+├── manager.ts
+├── traverse.ts
+├── snapshot.ts
+├── context.ts
 ├── extraction/           # Heuristic extract + ingest
+├── relationships/        # linkEntities, reinforce, co-mention
 ├── errors.ts
 └── providers/
     ├── in-memory.ts
@@ -55,73 +56,75 @@ import { openAtlasDatabase } from "@atlas-ai/database";
 const db = openAtlasDatabase(":memory:");
 const graph = createKnowledgeGraph(createSqliteGraphStore(db));
 
-const project = graph.upsertEntity({
-  type: "project",
-  name: "Atlas",
+const project = graph.upsertEntity({ type: "project", name: "Atlas" });
+const tech = graph.upsertEntity({ type: "technology", name: "TypeScript" });
+
+graph.linkEntities({
+  from: { id: project.id },
+  to: { id: tech.id },
+  type: "uses",
+  source: "manual",
 });
-const tech = graph.upsertEntity({
-  type: "technology",
-  name: "TypeScript",
-});
-graph.upsertRelationship({
-  fromEntityId: project.id,
-  toEntityId: tech.id,
+
+// Re-link reinforces weight + seenCount
+graph.linkEntities({
+  from: { type: "project", name: "Atlas" },
+  to: { type: "technology", name: "typescript" },
   type: "uses",
 });
 
-const hops = graph.traverse({ startId: project.id, maxDepth: 2 });
-const viz = graph.exportSnapshot({ startId: project.id, maxDepth: 2 });
+const hops = graph.traverse({
+  startId: project.id,
+  maxDepth: 2,
+  relationTypes: ["uses"],
+});
 
 const extracted = graph.extractAndStore(
   "I talked to Alice about project Atlas using React",
 );
+// extracted.linked includes co-mention edges
 ```
+
+---
+
+## Relationship management
+
+| API                         | Behavior                                                               |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `linkEntities`              | Create or reinforce edge; metadata `source`, `seenCount`, `lastSeenAt` |
+| `updateRelationship`        | Patch type / weight / properties by id                                 |
+| `getNeighbors` / `traverse` | Optional `direction` + `relationTypes`                                 |
+
+### Config (`knowledge.relationships`)
+
+| Key                 | Default | Meaning                        |
+| ------------------- | ------- | ------------------------------ |
+| `autoLinkOnExtract` | `true`  | Co-mention edges after extract |
+| `reinforceOnLink`   | `true`  | Bump weight on re-link         |
+| `reinforceStep`     | `0.05`  | Weight increment (cap 1)       |
+
+Env: `ATLAS_KNOWLEDGE_AUTO_LINK_ON_EXTRACT`,
+`ATLAS_KNOWLEDGE_REINFORCE_ON_LINK`, `ATLAS_KNOWLEDGE_REINFORCE_STEP`.
 
 ---
 
 ## Entity extraction
 
 Deterministic heuristics (no LLM). Default `minConfidence` is **0.55**.
-
-Stored metadata on upsert:
-
-```json
-{
-  "source": "extraction",
-  "confidence": 0.82,
-  "evidence": "project Atlas",
-  "extractedAt": "2026-07-18T..."
-}
-```
-
-Duplicate detection: case-insensitive match on `(userId, type, name)`; first-seen
-display casing is kept.
-
-### Config (`knowledge.extraction`)
-
-| Key                | Default | Meaning                                         |
-| ------------------ | ------- | ----------------------------------------------- |
-| `enabled`          | `true`  | Master switch                                   |
-| `minConfidence`    | `0.55`  | Gate for candidates                             |
-| `extractOnRequest` | `true`  | CLI auto-ingest after successful pipeline turns |
-
-Env: `ATLAS_KNOWLEDGE_EXTRACTION_ENABLED`,
-`ATLAS_KNOWLEDGE_EXTRACTION_MIN_CONFIDENCE`,
-`ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST`.
+See ADR-0047. Co-mention linking after store is ADR-0048.
 
 ---
 
 ## CLI
 
 ```bash
-atlas knowledge entity add --type project --name Atlas
-atlas knowledge entity list
-atlas knowledge rel add --from <id> --to <id> --type uses
-atlas knowledge neighbors <entityId>
-atlas knowledge traverse <entityId> --depth 2
-atlas knowledge export [--start <id>] [--depth 2]
-atlas knowledge extract "I talked to Alice about project Atlas"
-atlas knowledge extract --store "using TypeScript in VS Code"
+atlas knowledge rel add --from <id> --to <id> --type uses [--weight 0.9]
+atlas knowledge rel get <id>
+atlas knowledge rel update <id> --weight 0.9
+atlas knowledge link --from <id> --to <id> --type uses
+atlas knowledge neighbors <id> --direction out --types uses
+atlas knowledge traverse <id> --depth 2 --types uses,depends_on
+atlas knowledge extract --store "project Atlas using TypeScript"
 ```
 
 ---
@@ -129,35 +132,15 @@ atlas knowledge extract --store "using TypeScript in VS Code"
 ## Entity and relationship types
 
 **Entities (known):** `project`, `person`, `technology`, `file`, `concept`,
-`location`, `preference`, `company`, `application` (custom strings allowed).
+`location`, `preference`, `company`, `application`.
 
 **Relationships (known):** `part_of`, `depends_on`, `uses`, `related_to`,
-`located_at`, `prefers` (custom strings allowed).
-
----
-
-## Visualization export
-
-`exportSnapshot` returns:
-
-```json
-{
-  "nodes": [
-    { "id": "...", "label": "Atlas", "type": "project", "properties": {} }
-  ],
-  "edges": [{ "id": "...", "source": "...", "target": "...", "type": "uses" }]
-}
-```
-
-No UI ships in this foundation; consumers can plug the JSON into a graph library
-later.
+`located_at`, `prefers`.
 
 ---
 
 ## Out of scope
 
-- LLM / embedding NER
-- Auto relationship extraction
-- File corpus bulk mining
-- Graph UI
-- Cypher / SPARQL
+- LLM NER / relationship inference
+- Relationship history table
+- Graph UI / Cypher

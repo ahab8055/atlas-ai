@@ -69,5 +69,10 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
       minConfidence: 0.55,
       extractOnRequest: true,
     },
+    relationships: {
+      autoLinkOnExtract: true,
+      reinforceOnLink: true,
+      reinforceStep: 0.05,
+    },
   },
 };

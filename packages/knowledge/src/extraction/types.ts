@@ -34,6 +34,10 @@ export interface IngestOptions {
   userId?: string;
   applicationHint?: string;
   now?: () => string;
+  /** Auto-link co-mentioned entities (default true). */
+  autoLinkOnExtract?: boolean;
+  reinforceOnLink?: boolean;
+  reinforceStep?: number;
 }
 
 export interface IngestedEntity {
@@ -46,4 +50,5 @@ export interface ExtractAndStoreResult {
   candidates: ExtractedEntityCandidate[];
   stored: IngestedEntity[];
   skipped: ExtractedEntityCandidate[];
+  linked: import("../relationships/types.js").LinkResult[];
 }

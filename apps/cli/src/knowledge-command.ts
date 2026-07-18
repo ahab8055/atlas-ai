@@ -53,16 +53,27 @@ export function tryHandleKnowledgeCommand(
       return handleRelationship(graph, tokens.slice(2));
     }
 
+    if (sub === "link") {
+      return handleLink(graph, tokens.slice(2));
+    }
+
     if (sub === "neighbors") {
       const id = tokens[2];
       if (!id) {
         throw new Error(
-          "Usage: knowledge neighbors <entityId> [--direction out|in|both]",
+          "Usage: knowledge neighbors <entityId> [--direction out|in|both] [--types uses,related_to]",
         );
       }
       const direction = (readFlag(tokens, "--direction") ?? "both") as
         "out" | "in" | "both";
-      const hits = graph.getNeighbors(id, { direction });
+      const typesRaw = readFlag(tokens, "--types");
+      const types = typesRaw
+        ? typesRaw
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined;
+      const hits = graph.getNeighbors(id, { direction, types });
       process.stdout.write(`${formatNeighbors(hits)}\n`);
       process.exitCode = 0;
       return true;
@@ -71,12 +82,25 @@ export function tryHandleKnowledgeCommand(
     if (sub === "traverse") {
       const id = tokens[2];
       if (!id) {
-        throw new Error("Usage: knowledge traverse <entityId> [--depth N]");
+        throw new Error(
+          "Usage: knowledge traverse <entityId> [--depth N] [--direction out|in|both] [--types uses,depends_on]",
+        );
       }
       const depth = Number(readFlag(tokens, "--depth") ?? "2");
+      const direction = (readFlag(tokens, "--direction") ?? "both") as
+        "out" | "in" | "both";
+      const typesRaw = readFlag(tokens, "--types");
+      const relationTypes = typesRaw
+        ? typesRaw
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined;
       const result = graph.traverse({
         startId: id,
         maxDepth: Number.isFinite(depth) ? depth : 2,
+        direction,
+        relationTypes,
       });
       process.stdout.write(
         `entities (${result.entities.length}):\n` +
@@ -130,6 +154,11 @@ function handleExtract(runtime: CliRuntime, tokens: string[]): boolean {
       minConfidence: 0.55,
       extractOnRequest: true,
     };
+    const relationships = runtime.config.knowledge?.relationships ?? {
+      autoLinkOnExtract: true,
+      reinforceOnLink: true,
+      reinforceStep: 0.05,
+    };
     if (!extraction.enabled) {
       process.stderr.write("Knowledge extraction is disabled in config.\n");
       process.exitCode = 1;
@@ -148,11 +177,15 @@ function handleExtract(runtime: CliRuntime, tokens: string[]): boolean {
       }
       const result = runtime.knowledgeGraph.extractAndStore(text, {
         thresholds,
+        autoLinkOnExtract: relationships.autoLinkOnExtract,
+        reinforceOnLink: relationships.reinforceOnLink,
+        reinforceStep: relationships.reinforceStep,
       });
       process.stdout.write(
         `candidates: ${result.candidates.length}\n` +
           `stored: ${result.stored.length} ` +
           `(new: ${result.stored.filter((s) => s.created).length})\n` +
+          `linked: ${result.linked.length}\n` +
           `${formatCandidates(result.candidates)}\n`,
       );
     } else {
@@ -259,6 +292,39 @@ function handleEntity(graph: KnowledgeGraphManager, tokens: string[]): boolean {
   throw new Error(`Unknown entity action: ${action}`);
 }
 
+function handleLink(graph: KnowledgeGraphManager, tokens: string[]): boolean {
+  const from = readFlag(tokens, "--from");
+  const to = readFlag(tokens, "--to");
+  const type = readFlag(tokens, "--type");
+  if (!from || !to || !type) {
+    throw new Error(
+      "Usage: knowledge link --from <id> --to <id> --type <type> [--weight 0.9]",
+    );
+  }
+  const weightRaw = readFlag(tokens, "--weight");
+  const weight = weightRaw !== undefined ? Number(weightRaw) : undefined;
+  const propsRaw = readFlag(tokens, "--properties");
+  const properties = propsRaw
+    ? (JSON.parse(propsRaw) as Record<string, unknown>)
+    : undefined;
+  const result = graph.linkEntities({
+    from: { id: from },
+    to: { id: to },
+    type,
+    weight:
+      weight !== undefined && Number.isFinite(weight) ? weight : undefined,
+    properties,
+    source: "manual",
+  });
+  process.stdout.write(
+    `${result.created ? "Linked" : "Reinforced"} ${result.relationship.id} ` +
+      `(${result.relationship.type}: ${result.from.name} → ${result.to.name}` +
+      `, w=${result.relationship.weight ?? ""})\n`,
+  );
+  process.exitCode = 0;
+  return true;
+}
+
 function handleRelationship(
   graph: KnowledgeGraphManager,
   tokens: string[],
@@ -280,27 +346,93 @@ function handleRelationship(
     return true;
   }
 
+  if (action === "get") {
+    const id = tokens[1];
+    if (!id) {
+      throw new Error("Usage: knowledge rel get <id>");
+    }
+    const row = graph.getRelationship(id);
+    if (!row) {
+      throw new Error(`Relationship not found: ${id}`);
+    }
+    process.stdout.write(`${formatRelDetail(row)}\n`);
+    process.exitCode = 0;
+    return true;
+  }
+
   if (action === "add") {
     const from = readFlag(tokens, "--from");
     const to = readFlag(tokens, "--to");
     const type = readFlag(tokens, "--type");
     if (!from || !to || !type) {
       throw new Error(
-        "Usage: knowledge rel add --from <id> --to <id> --type <type>",
+        "Usage: knowledge rel add --from <id> --to <id> --type <type> [--weight 0.9] [--properties JSON]",
       );
     }
     const weightRaw = readFlag(tokens, "--weight");
     const weight = weightRaw !== undefined ? Number(weightRaw) : undefined;
-    const row = graph.upsertRelationship({
-      fromEntityId: from,
-      toEntityId: to,
+    const propsRaw = readFlag(tokens, "--properties");
+    const properties = propsRaw
+      ? (JSON.parse(propsRaw) as Record<string, unknown>)
+      : undefined;
+    const result = graph.linkEntities({
+      from: { id: from },
+      to: { id: to },
       type,
       weight:
         weight !== undefined && Number.isFinite(weight) ? weight : undefined,
+      properties,
+      source: "manual",
     });
     process.stdout.write(
-      `Relationship ${row.id} (${row.type}: ${row.fromEntityId} → ${row.toEntityId})\n`,
+      `Relationship ${result.relationship.id} (${result.relationship.type}: ` +
+        `${result.relationship.fromEntityId} → ${result.relationship.toEntityId})\n`,
     );
+    process.exitCode = 0;
+    return true;
+  }
+
+  if (action === "update") {
+    const id = tokens[1];
+    if (!id) {
+      throw new Error(
+        "Usage: knowledge rel update <id> [--type …] [--weight …] [--properties JSON]",
+      );
+    }
+    const type = readFlag(tokens, "--type");
+    const weightRaw = readFlag(tokens, "--weight");
+    const propsRaw = readFlag(tokens, "--properties");
+    const patch: {
+      type?: string;
+      weight?: number | null;
+      properties?: Record<string, unknown>;
+    } = {};
+    if (type) {
+      patch.type = type;
+    }
+    if (weightRaw !== undefined) {
+      if (weightRaw === "null" || weightRaw === "") {
+        patch.weight = null;
+      } else {
+        const weight = Number(weightRaw);
+        if (!Number.isFinite(weight)) {
+          throw new Error("Invalid --weight");
+        }
+        patch.weight = weight;
+      }
+    }
+    if (propsRaw) {
+      patch.properties = JSON.parse(propsRaw) as Record<string, unknown>;
+    }
+    if (
+      patch.type === undefined &&
+      patch.weight === undefined &&
+      patch.properties === undefined
+    ) {
+      throw new Error("Provide at least one of --type, --weight, --properties");
+    }
+    const row = graph.updateRelationship(id, patch);
+    process.stdout.write(`${formatRelDetail(row)}\n`);
     process.exitCode = 0;
     return true;
   }
@@ -329,11 +461,14 @@ function knowledgeUsage(): string {
     "  atlas knowledge entity list [--type …] [--name …] [--limit N]",
     "  atlas knowledge entity get <id>",
     "  atlas knowledge entity delete <id>",
-    "  atlas knowledge rel add --from <id> --to <id> --type uses [--weight 0.9]",
+    "  atlas knowledge rel add --from <id> --to <id> --type uses [--weight 0.9] [--properties JSON]",
+    "  atlas knowledge rel get <id>",
+    "  atlas knowledge rel update <id> [--type …] [--weight …] [--properties JSON]",
     "  atlas knowledge rel list [--from …] [--to …] [--type …]",
     "  atlas knowledge rel delete <id>",
-    "  atlas knowledge neighbors <entityId> [--direction out|in|both]",
-    "  atlas knowledge traverse <entityId> [--depth 2]",
+    "  atlas knowledge link --from <id> --to <id> --type uses",
+    "  atlas knowledge neighbors <entityId> [--direction out|in|both] [--types uses,related_to]",
+    "  atlas knowledge traverse <entityId> [--depth 2] [--direction …] [--types …]",
     "  atlas knowledge export [--start <id>] [--depth 2]",
     '  atlas knowledge extract "I talked to Alice about project Atlas"',
     '  atlas knowledge extract --store "using TypeScript in VS Code"',
@@ -361,6 +496,28 @@ function formatEntityDetail(row: {
     `id: ${row.id}`,
     `type: ${row.type}`,
     `name: ${row.name}`,
+    `properties: ${JSON.stringify(row.properties)}`,
+    `created: ${row.createdAt}`,
+    `updated: ${row.updatedAt}`,
+  ].join("\n");
+}
+
+function formatRelDetail(row: {
+  id: string;
+  type: string;
+  fromEntityId: string;
+  toEntityId: string;
+  weight?: number;
+  properties: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}): string {
+  return [
+    `id: ${row.id}`,
+    `type: ${row.type}`,
+    `from: ${row.fromEntityId}`,
+    `to: ${row.toEntityId}`,
+    `weight: ${row.weight ?? ""}`,
     `properties: ${JSON.stringify(row.properties)}`,
     `created: ${row.createdAt}`,
     `updated: ${row.updatedAt}`,

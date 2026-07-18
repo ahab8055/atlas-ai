@@ -8,6 +8,11 @@ import {
   type IngestOptions,
 } from "./extraction/index.js";
 import { createInMemoryGraphStore } from "./providers/in-memory.js";
+import {
+  linkEntities,
+  type LinkEntitiesInput,
+  type LinkResult,
+} from "./relationships/index.js";
 import { toGraphSnapshot } from "./snapshot.js";
 import type { GraphStore } from "./store.js";
 import { getNeighbors, traverseGraph } from "./traverse.js";
@@ -100,6 +105,13 @@ export class KnowledgeGraphManager {
 
   listRelationships(query?: RelationshipQuery): Relationship[] {
     return this.store.listRelationships(query);
+  }
+
+  /**
+   * Create or reinforce a typed edge between entities (by id or type+name).
+   */
+  linkEntities(input: LinkEntitiesInput): LinkResult {
+    return linkEntities(this, input);
   }
 
   getNeighbors(entityId: string, options?: NeighborOptions): NeighborHit[] {

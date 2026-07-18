@@ -1,4 +1,5 @@
 import type { KnowledgeGraphManager } from "../manager.js";
+import { linkCoMentions } from "../relationships/co-mention.js";
 import type { Entity } from "../types.js";
 import { extractEntities } from "./extract.js";
 import { entityDedupeKey } from "./normalize.js";
@@ -50,6 +51,7 @@ export function ingestExtractedEntities(
 
 /**
  * Extract then store entities that pass the confidence gate.
+ * Optionally auto-links co-mentioned entities.
  */
 export function extractAndStoreEntities(
   graph: KnowledgeGraphManager,
@@ -81,7 +83,22 @@ export function extractAndStoreEntities(
   }
 
   const stored = ingestExtractedEntities(graph, kept, options);
-  return { candidates, stored, skipped };
+  const autoLink = options.autoLinkOnExtract !== false;
+  const linked = autoLink
+    ? linkCoMentions(
+        graph,
+        stored.map((s) => s.entity),
+        {
+          userId: options.userId,
+          reinforce: options.reinforceOnLink,
+          reinforceStep: options.reinforceStep,
+          now: options.now,
+          enabled: true,
+        },
+      )
+    : [];
+
+  return { candidates, stored, skipped, linked };
 }
 
 export type { Entity };

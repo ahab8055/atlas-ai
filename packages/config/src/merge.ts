@@ -8,6 +8,7 @@ import type {
   AtlasFeatureFlags,
   AtlasKnowledgeConfig,
   AtlasKnowledgeExtractionConfig,
+  AtlasKnowledgeRelationshipsConfig,
   AtlasMemoryClassificationConfig,
   AtlasMemoryConfig,
   AtlasMemoryConsolidationConfig,
@@ -321,6 +322,23 @@ function mergeKnowledgeExtraction(
   };
 }
 
+function mergeKnowledgeRelationships(
+  base: AtlasKnowledgeRelationshipsConfig,
+  patch: unknown,
+): AtlasKnowledgeRelationshipsConfig {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    autoLinkOnExtract: asBoolean(
+      patch.autoLinkOnExtract,
+      base.autoLinkOnExtract,
+    ),
+    reinforceOnLink: asBoolean(patch.reinforceOnLink, base.reinforceOnLink),
+    reinforceStep: asNumber(patch.reinforceStep, base.reinforceStep),
+  };
+}
+
 function mergeKnowledge(
   base: AtlasKnowledgeConfig,
   patch: unknown,
@@ -328,10 +346,15 @@ function mergeKnowledge(
   if (!isRecord(patch)) {
     return {
       extraction: { ...base.extraction },
+      relationships: { ...base.relationships },
     };
   }
   return {
     extraction: mergeKnowledgeExtraction(base.extraction, patch.extraction),
+    relationships: mergeKnowledgeRelationships(
+      base.relationships,
+      patch.relationships,
+    ),
   };
 }
 
@@ -520,6 +543,20 @@ export function applyEnvOverrides(
           envVars.ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST !== undefined
             ? envVars.ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST === "true"
             : config.knowledge.extraction.extractOnRequest,
+      },
+      relationships: {
+        autoLinkOnExtract:
+          envVars.ATLAS_KNOWLEDGE_AUTO_LINK_ON_EXTRACT !== undefined
+            ? envVars.ATLAS_KNOWLEDGE_AUTO_LINK_ON_EXTRACT === "true"
+            : config.knowledge.relationships.autoLinkOnExtract,
+        reinforceOnLink:
+          envVars.ATLAS_KNOWLEDGE_REINFORCE_ON_LINK !== undefined
+            ? envVars.ATLAS_KNOWLEDGE_REINFORCE_ON_LINK === "true"
+            : config.knowledge.relationships.reinforceOnLink,
+        reinforceStep:
+          envVars.ATLAS_KNOWLEDGE_REINFORCE_STEP !== undefined
+            ? Number(envVars.ATLAS_KNOWLEDGE_REINFORCE_STEP)
+            : config.knowledge.relationships.reinforceStep,
       },
     },
   });

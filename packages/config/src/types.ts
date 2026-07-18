@@ -121,8 +121,18 @@ export interface AtlasKnowledgeExtractionConfig {
   extractOnRequest: boolean;
 }
 
+export interface AtlasKnowledgeRelationshipsConfig {
+  /** Auto-link co-mentioned entities after extract (default true). */
+  autoLinkOnExtract: boolean;
+  /** Bump weight/seenCount on re-link (default true). */
+  reinforceOnLink: boolean;
+  /** Weight increment per reinforce (default 0.05). */
+  reinforceStep: number;
+}
+
 export interface AtlasKnowledgeConfig {
   extraction: AtlasKnowledgeExtractionConfig;
+  relationships: AtlasKnowledgeRelationshipsConfig;
 }
 
 /** Non-secret, serializable application settings. */

@@ -90,10 +90,16 @@ describe("applyEnvOverrides", () => {
       ATLAS_KNOWLEDGE_EXTRACTION_ENABLED: "false",
       ATLAS_KNOWLEDGE_EXTRACTION_MIN_CONFIDENCE: "0.7",
       ATLAS_KNOWLEDGE_EXTRACT_ON_REQUEST: "false",
+      ATLAS_KNOWLEDGE_AUTO_LINK_ON_EXTRACT: "false",
+      ATLAS_KNOWLEDGE_REINFORCE_ON_LINK: "false",
+      ATLAS_KNOWLEDGE_REINFORCE_STEP: "0.1",
     });
     expect(next.knowledge.extraction.enabled).toBe(false);
     expect(next.knowledge.extraction.minConfidence).toBe(0.7);
     expect(next.knowledge.extraction.extractOnRequest).toBe(false);
+    expect(next.knowledge.relationships.autoLinkOnExtract).toBe(false);
+    expect(next.knowledge.relationships.reinforceOnLink).toBe(false);
+    expect(next.knowledge.relationships.reinforceStep).toBe(0.1);
   });
 });
 

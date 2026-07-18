@@ -42,6 +42,7 @@ name)` matching; keep first-seen display casing; merge extraction metadata
 ### Follow-ups
 
 - Optional LLM / embedding NER behind a feature flag.
-- Auto relationship extraction between co-mentioned entities.
+- ~~Auto relationship extraction between co-mentioned entities.~~ Done
+  (heuristic co-mention linking, ADR-0048).
 - Fuzzy alias merge beyond case-insensitive exact names.
 - [Knowledge-Graph.md](../guides/Knowledge-Graph.md)

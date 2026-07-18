@@ -229,8 +229,12 @@ function maybeExtractKnowledge(
     return;
   }
   try {
+    const relationships = runtime.config.knowledge?.relationships;
     runtime.knowledgeGraph.extractAndStore(text, {
       thresholds: { minConfidence: extraction.minConfidence },
+      autoLinkOnExtract: relationships?.autoLinkOnExtract,
+      reinforceOnLink: relationships?.reinforceOnLink,
+      reinforceStep: relationships?.reinforceStep,
     });
   } catch {
     // Extraction must not break the user-facing response path

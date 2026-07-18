@@ -27,6 +27,7 @@ Related: [Architecture/20-Database-Schema.md](./20-Database-Schema.md),
 [guides/Knowledge-Graph.md](../guides/Knowledge-Graph.md),
 [ADR-0046](../adr/0046-knowledge-graph-data-model.md),
 [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md),
+[ADR-0048](../adr/0048-knowledge-graph-relationship-management.md),
 [`@atlas-ai/knowledge`](../../packages/knowledge/).
 
 ---
@@ -39,14 +40,16 @@ Related: [Architecture/20-Database-Schema.md](./20-Database-Schema.md),
 - Stable subgraph snapshot JSON for future visualization (no UI in this slice).
 - Pluggable store (in-memory for tests, SQLite for persistence).
 - Heuristic entity extraction from conversation text with case-insensitive dedupe.
+- Typed relationship linking with weight reinforce and co-mention auto-link.
 
 ---
 
 # Out of Scope
 
 - LLM / embedding-based NER.
-- Automatic relationship extraction.
+- LLM relationship inference (heuristic co-mention linking is in scope; see ADR-0048).
 - File-index / codebase bulk mining.
+- Dedicated relationship history / audit table.
 - Desktop or web graph visualization UI.
 - Hybrid search ranking that blends graph hops with vectors (Architecture/24
   may consume the graph later).
@@ -116,15 +119,36 @@ Domain logic lives in `@atlas-ai/knowledge` (`KnowledgeGraphManager` +
 
 Supported operations:
 
-| API              | Behavior                                                |
-| ---------------- | ------------------------------------------------------- |
-| `getEntity`      | By id                                                   |
-| `listEntities`   | Filter by type / name substring / limit                 |
-| `getNeighbors`   | 1-hop in / out / both, optional relation type filter    |
-| `traverse`       | BFS from a start id, `maxDepth` (default 2), cycle-safe |
-| `exportSnapshot` | Full graph or ego subgraph as viz-ready JSON            |
+| API              | Behavior                                                   |
+| ---------------- | ---------------------------------------------------------- |
+| `getEntity`      | By id                                                      |
+| `listEntities`   | Filter by type / name substring / limit                    |
+| `getNeighbors`   | 1-hop in / out / both, optional relation type filter       |
+| `traverse`       | BFS from a start id, `maxDepth` (default 2), cycle-safe    |
+| `linkEntities`   | Create or reinforce a typed edge; updates weight/seenCount |
+| `exportSnapshot` | Full graph or ego subgraph as viz-ready JSON               |
 
 No declarative graph query language in MVP foundation.
+
+Traversal stays efficient at personal scale via indexed endpoint queries and
+bounded BFS (`maxDepth` default 2, visit limit 200, optional `relationTypes`).
+
+---
+
+# Relationship Management
+
+Typed edges are first-class. Known types: `part_of`, `depends_on`, `uses`,
+`related_to`, `located_at`, `prefers` (custom strings allowed).
+
+**Update over time:** re-linking the same `(from, to, type)` reinforces
+`weight` (default +0.05, capped at 1), increments `seenCount`, and sets
+`lastSeenAt` in edge properties.
+
+**Co-mention auto-link:** after `extractAndStore`, optional heuristic pairs
+(e.g. project→technology `uses`, person→company `related_to`, entity→location
+`located_at`) when `knowledge.relationships.autoLinkOnExtract` is enabled.
+
+See [ADR-0048](../adr/0048-knowledge-graph-relationship-management.md).
 
 ---
 
@@ -199,4 +223,5 @@ graph is structural. They may reference each other later but are not merged.
 - [guides/Knowledge-Graph.md](../guides/Knowledge-Graph.md)
 - [ADR-0046](../adr/0046-knowledge-graph-data-model.md)
 - [ADR-0047](../adr/0047-knowledge-graph-entity-extraction.md)
+- [ADR-0048](../adr/0048-knowledge-graph-relationship-management.md)
 - [ADR-0009](../adr/0009-context-management.md)

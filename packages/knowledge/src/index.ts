@@ -67,6 +67,22 @@ export {
   normalizeEntityName,
 } from "./extraction/index.js";
 
+export type {
+  CoMentionOptions,
+  LinkEntitiesInput,
+  LinkEndpoint,
+  LinkResult,
+  LinkSource,
+  ReinforceOptions,
+} from "./relationships/index.js";
+
+export {
+  DEFAULT_REINFORCE_STEP,
+  computeReinforce,
+  linkCoMentions,
+  linkEntities,
+} from "./relationships/index.js";
+
 export {
   InMemoryGraphStore,
   createInMemoryGraphStore,

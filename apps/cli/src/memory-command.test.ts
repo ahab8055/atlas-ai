@@ -68,6 +68,11 @@ function stubRuntime(): CliRuntime {
           minConfidence: 0.55,
           extractOnRequest: false,
         },
+        relationships: {
+          autoLinkOnExtract: false,
+          reinforceOnLink: true,
+          reinforceStep: 0.05,
+        },
       },
     } as unknown as CliRuntime["config"],
     database,

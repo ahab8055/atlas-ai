@@ -66,6 +66,7 @@ describe("entity extraction", () => {
       "Working on project Atlas with React and TypeScript",
     );
     expect(first.stored.length).toBeGreaterThanOrEqual(2);
+    expect(first.linked.length).toBeGreaterThanOrEqual(1);
     expect(first.stored[0]?.entity.properties.source).toBe("extraction");
     expect(first.stored[0]?.entity.properties.confidence).toBeTypeOf("number");
 
