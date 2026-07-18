@@ -21,6 +21,7 @@ describe("createSystemStateProvider", () => {
       platformId: "win32",
       arch: "x64",
       nodeVersion: "22.0.0-test",
+      kernelVersion: "10.0.22631",
     }).getServices().info;
 
     const provider = createSystemStateProvider(info);
@@ -36,5 +37,6 @@ describe("createSystemStateProvider", () => {
     expect(contribution.systemState?.platform).toBe("win32");
     expect(contribution.systemState?.arch).toBe("x64");
     expect(contribution.systemState?.nodeVersion).toBe("22.0.0-test");
+    expect(contribution.systemState?.kernelVersion).toBe("10.0.22631");
   });
 });

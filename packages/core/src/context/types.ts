@@ -58,6 +58,8 @@ export interface SystemStateInfo {
   platform: string;
   arch: string;
   nodeVersion: string;
+  /** Kernel / OS release from PlatformDetector when available. */
+  kernelVersion?: string;
   collectedAt: string;
 }
 

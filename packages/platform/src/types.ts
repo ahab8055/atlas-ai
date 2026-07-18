@@ -1,14 +1,31 @@
 /**
- * Host OS platform service interfaces (ADR-0060).
+ * Host OS platform service interfaces (ADR-0060 / ADR-0061).
  */
 
 export type PlatformId = "darwin" | "linux" | "win32";
 
+/** Friendly OS family (darwin → macos, win32 → windows). */
+export type PlatformOs = "macos" | "windows" | "linux";
+
+/** Runtime kind; Node today, Tauri later. */
+export type RuntimeKind = "node";
+
+export interface PlatformRuntime {
+  kind: RuntimeKind;
+  version: string;
+}
+
 export interface PlatformInfo {
   id: PlatformId;
+  os: PlatformOs;
   arch: string;
-  runtime: "node";
-  versions: { node?: string };
+  /** Kernel / OS release string from os.release(). */
+  kernelVersion: string;
+  /** os.type() — e.g. Darwin, Linux, Windows_NT. */
+  osType: string;
+  /** os.version() when available. */
+  osVersion?: string;
+  runtime: PlatformRuntime;
 }
 
 export interface PathService {
@@ -55,3 +72,15 @@ export interface ResolvePlatformPathsOverrides {
 }
 
 export const DEFAULT_APP_NAME = "Atlas";
+
+/** Map PlatformId to friendly PlatformOs. */
+export function platformIdToOs(id: PlatformId): PlatformOs {
+  switch (id) {
+    case "darwin":
+      return "macos";
+    case "win32":
+      return "windows";
+    case "linux":
+      return "linux";
+  }
+}

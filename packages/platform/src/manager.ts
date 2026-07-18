@@ -1,12 +1,14 @@
 /**
- * PlatformManager — loads the correct Node OS adapter at runtime (ADR-0060).
+ * PlatformManager — loads the correct Node OS adapter at runtime (ADR-0060 / 0061).
  */
+import { createPlatformDetector } from "./detector.js";
 import { detectPlatformId } from "./detect.js";
 import { createDarwinPlatformServices } from "./node/darwin.js";
 import { createLinuxPlatformServices } from "./node/linux.js";
 import { createWin32PlatformServices } from "./node/win32.js";
-import type { PlatformId, PlatformServices } from "./types.js";
 import type { CreateNodeServicesOptions } from "./node/services.js";
+import type { OsProbe } from "./probe.js";
+import type { PlatformId, PlatformInfo, PlatformServices } from "./types.js";
 
 function loadNodeAdapter(
   platformId: PlatformId,
@@ -23,13 +25,16 @@ function loadNodeAdapter(
 }
 
 export interface PlatformManagerOptions {
-  /** Force a platform (tests). Default: detect from process.platform. */
+  /** Force a platform (tests). Default: detect via PlatformDetector. */
   platformId?: PlatformId;
+  /** Injectable OS probe for detection. */
+  probe?: OsProbe;
   /** Dependency-injection overrides merged over the Node adapter. */
   services?: Partial<PlatformServices>;
   /** Passed through to Node adapter construction (tests). */
   arch?: string;
   nodeVersion?: string;
+  kernelVersion?: string;
   homeDir?: string;
   tempDir?: string;
   cwd?: string;
@@ -47,18 +52,59 @@ export class PlatformManager {
   }
 
   static create(options: PlatformManagerOptions = {}): PlatformManager {
-    const platformId = options.platformId ?? detectPlatformId();
+    const detector = createPlatformDetector({ probe: options.probe });
+    let info: PlatformInfo | undefined = options.services?.info;
+    let platformId = options.platformId;
+
+    if (!info) {
+      const detected = detector.detect();
+      platformId = platformId ?? detected.id;
+      info =
+        platformId === detected.id
+          ? detected
+          : {
+              ...detected,
+              id: platformId,
+              os:
+                platformId === "darwin"
+                  ? "macos"
+                  : platformId === "win32"
+                    ? "windows"
+                    : "linux",
+            };
+      if (options.arch !== undefined) {
+        info = { ...info, arch: options.arch };
+      }
+      if (options.nodeVersion !== undefined) {
+        info = {
+          ...info,
+          runtime: { kind: "node", version: options.nodeVersion },
+        };
+      }
+      if (options.kernelVersion !== undefined) {
+        info = { ...info, kernelVersion: options.kernelVersion };
+      }
+    } else {
+      platformId = platformId ?? info.id;
+    }
+
+    platformId = platformId ?? detectPlatformId();
+
     const base = loadNodeAdapter(platformId, {
       env: options.env,
       fs: options.fs,
+      info,
+      probe: options.probe,
       arch: options.arch,
       nodeVersion: options.nodeVersion,
+      kernelVersion: options.kernelVersion,
       pathOptions: {
         homeDir: options.homeDir,
         tempDir: options.tempDir,
         cwd: options.cwd,
       },
     });
+
     const services: PlatformServices = {
       info: options.services?.info ?? base.info,
       paths: options.services?.paths ?? base.paths,

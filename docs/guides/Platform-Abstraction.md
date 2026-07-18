@@ -9,6 +9,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [Architecture/11](../Architecture/11-Desktop-Application-Architecture.md),
 [Architecture/26](../Architecture/26-Computer-Interaction-Architecture.md),
 [ADR-0060](../adr/0060-platform-abstraction.md),
+[ADR-0061](../adr/0061-platform-detection.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -16,6 +17,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 ## Goals
 
 - Define common interfaces for host OS services (identity, paths, env, fs)
+- Detect OS, architecture, kernel, and runtime via `PlatformDetector`
 - Isolate platform-specific implementations (darwin / linux / win32)
 - Load the correct adapter at runtime via `PlatformManager`
 - Keep `@atlas-ai/core` free of direct `process` / `os` / `fs` calls
@@ -29,8 +31,10 @@ Atlas packages (core, config, CLI, …)
               │
        PlatformManager
               │
+       PlatformDetector ──► OsProbe (Node)
+              │
        PlatformServices
-       ├── PlatformInfo
+       ├── PlatformInfo   (id, os, arch, kernel, runtime)
        ├── PathService
        ├── EnvService
        └── FsService
@@ -45,6 +49,37 @@ top of this layer. OS keychain adapters use existing
 
 ---
 
+## Platform detection
+
+```ts
+import {
+  createPlatformDetector,
+  createPlatformManager,
+} from "@atlas-ai/platform";
+
+const info = createPlatformDetector().detect();
+// info.id: "darwin" | "linux" | "win32"
+// info.os: "macos" | "windows" | "linux"
+// info.arch, info.kernelVersion, info.osType, info.runtime.version
+
+const manager = createPlatformManager(); // detector → adapter
+manager.getServices().info.kernelVersion;
+```
+
+| Field           | Source                                             |
+| --------------- | -------------------------------------------------- |
+| `id`            | `process.platform` → darwin / linux / win32        |
+| `os`            | Friendly map (darwin→macos, win32→windows)         |
+| `arch`          | `os.arch()`                                        |
+| `kernelVersion` | `os.release()`                                     |
+| `osType`        | `os.type()`                                        |
+| `osVersion`     | `os.version()` when available                      |
+| `runtime`       | `{ kind: "node", version: process.versions.node }` |
+
+Inject `OsProbe` in tests to force platform without changing the host.
+
+---
+
 ## Usage
 
 ```ts
@@ -54,7 +89,7 @@ import {
   resolvePlatformPaths,
 } from "@atlas-ai/platform";
 
-const manager = createPlatformManager(); // detects process.platform
+const manager = createPlatformManager(); // detects host OS
 const { info, paths, env, fs } = manager.getServices();
 
 info.id; // "darwin" | "linux" | "win32"
@@ -71,7 +106,8 @@ const layout = resolvePlatformPaths(manager.getServices());
 ```
 
 `ContextManager` accepts optional `platform: PlatformInfo`. When omitted, core
-uses `getDefaultPlatformManager()`.
+uses `getDefaultPlatformManager()`. System state includes `kernelVersion` when
+present.
 
 ---
 

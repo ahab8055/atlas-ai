@@ -25,7 +25,8 @@ export function createSystemStateProvider(
           source: request.source,
           platform: info.id,
           arch: info.arch,
-          nodeVersion: info.versions.node ?? "unknown",
+          nodeVersion: info.runtime.version || "unknown",
+          kernelVersion: info.kernelVersion,
           collectedAt: new Date().toISOString(),
         },
       } satisfies ContextContribution;

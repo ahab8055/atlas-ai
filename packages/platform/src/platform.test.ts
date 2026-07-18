@@ -97,7 +97,27 @@ describe("PlatformManager", () => {
     const b = getDefaultPlatformManager();
     expect(a).toBe(b);
     expect(["darwin", "linux", "win32"]).toContain(a.platformId);
+    expect(a.getServices().info.kernelVersion).toBeTruthy();
+    expect(a.getServices().info.runtime.kind).toBe("node");
     __resetDefaultPlatformManagerForTests();
+  });
+
+  it("uses PlatformDetector probe for enriched info", () => {
+    const manager = createPlatformManager({
+      probe: {
+        platform: () => "linux",
+        arch: () => "x64",
+        release: () => "6.1.0-test",
+        type: () => "Linux",
+        version: () => "Linux test",
+        nodeVersion: () => "22.1.0",
+      },
+    });
+    const info = manager.getServices().info;
+    expect(manager.platformId).toBe("linux");
+    expect(info.os).toBe("linux");
+    expect(info.kernelVersion).toBe("6.1.0-test");
+    expect(info.runtime.version).toBe("22.1.0");
   });
 });
 
