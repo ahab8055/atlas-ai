@@ -39,6 +39,9 @@ export function pairSimilarity(a: string, b: string): number {
     type: "semantic" as const,
     source: undefined,
     sessionId: undefined,
+    projectId: undefined,
+    sensitivity: "normal" as const,
+    encrypted: false,
     metadata: {},
     createdAt: new Date().toISOString(),
   };

@@ -5,6 +5,8 @@ import {
   createLongTermMemory,
   createPersistentMemoryManager,
   createShortTermMemory,
+  createStaticDekProvider,
+  MemoryAccessLog,
 } from "@atlas-ai/memory";
 import {
   ContextManager,
@@ -13,6 +15,7 @@ import {
   loadContext,
   normalizeRequest,
 } from "@atlas-ai/core";
+import { generateAesGcmKey, PermissionManager } from "@atlas-ai/security";
 
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import type { CliRuntime } from "./run.js";
@@ -20,7 +23,15 @@ import type { CliRuntime } from "./run.js";
 function stubRuntime(): CliRuntime {
   const database = openAtlasDatabase({ path: ":memory:" });
   const memoryManager = createPersistentMemoryManager(database.memories);
-  const longTermMemory = createLongTermMemory(database.memories);
+  const permissions = new PermissionManager({
+    grantedCapabilities: ["memory.read", "memory.write"],
+  });
+  const memoryAccessLog = new MemoryAccessLog();
+  const longTermMemory = createLongTermMemory(database.memories, {
+    permissions,
+    dek: createStaticDekProvider(generateAesGcmKey()),
+    accessLog: memoryAccessLog,
+  });
   const shortTerm = createShortTermMemory({
     maxEntries: 10,
     ttlMs: 0,
@@ -98,6 +109,8 @@ function stubRuntime(): CliRuntime {
     database,
     memoryManager,
     longTermMemory,
+    permissions,
+    memoryAccessLog,
   };
 }
 
@@ -206,9 +219,9 @@ describe("memory CLI + context wiring", () => {
         content: "temporary note",
         metadata: { expiresAt: past },
       });
-      expect(tryHandleMemoryCommand(runtime, "memory purge-expired")).toBe(
-        true,
-      );
+      expect(
+        tryHandleMemoryCommand(runtime, "memory purge-expired --confirm"),
+      ).toBe(true);
       expect(runtime.longTermMemory!.list()).toHaveLength(0);
     } finally {
       runtime.database?.close();
@@ -308,6 +321,37 @@ describe("memory CLI + context wiring", () => {
       });
       expect(tryHandleMemoryCommand(runtime, "memory consolidate")).toBe(true);
       expect(tryHandleMemoryCommand(runtime, "memory conflicts")).toBe(true);
+    } finally {
+      runtime.database?.close();
+      process.exitCode = undefined;
+    }
+  });
+
+  it("stores sensitive encrypted memories and requires --confirm to delete", () => {
+    const runtime = stubRuntime();
+    try {
+      expect(
+        tryHandleMemoryCommand(
+          runtime,
+          'memory add --type semantic --sensitive "private medical note"',
+        ),
+      ).toBe(true);
+      const listed = runtime.longTermMemory!.list();
+      const row = listed.find((m) => m.content.includes("private medical"));
+      expect(row?.encrypted).toBe(true);
+      const raw = runtime.database!.memories.get(row!.id)!;
+      expect(raw.content).not.toContain("private medical");
+
+      expect(tryHandleMemoryCommand(runtime, `memory delete ${row!.id}`)).toBe(
+        true,
+      );
+      expect(process.exitCode).toBe(2);
+
+      process.exitCode = undefined;
+      expect(
+        tryHandleMemoryCommand(runtime, `memory delete ${row!.id} --confirm`),
+      ).toBe(true);
+      expect(runtime.longTermMemory!.get(row!.id)).toBeUndefined();
     } finally {
       runtime.database?.close();
       process.exitCode = undefined;

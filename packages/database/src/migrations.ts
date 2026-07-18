@@ -237,6 +237,26 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     `);
   }
 
+  if (version < 10) {
+    const memCols = tableColumns(db, "memories");
+    if (!memCols.has("sensitivity")) {
+      db.exec(
+        "ALTER TABLE memories ADD COLUMN sensitivity TEXT NOT NULL DEFAULT 'normal'",
+      );
+    }
+    if (!memCols.has("encrypted")) {
+      db.exec(
+        "ALTER TABLE memories ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0",
+      );
+    }
+    if (!memCols.has("content_nonce")) {
+      db.exec("ALTER TABLE memories ADD COLUMN content_nonce TEXT");
+    }
+    db.exec(
+      "CREATE INDEX IF NOT EXISTS idx_memories_sensitivity ON memories(sensitivity)",
+    );
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

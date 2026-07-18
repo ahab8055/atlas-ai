@@ -38,6 +38,8 @@ export interface MemoryRecord {
   tags?: string[];
   sessionId?: string;
   projectId?: string;
+  sensitivity?: "normal" | "sensitive";
+  encrypted?: boolean;
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -52,6 +54,7 @@ export interface CreateMemoryInput {
   tags?: string[];
   sessionId?: string;
   projectId?: string;
+  sensitivity?: "normal" | "sensitive";
   metadata?: Record<string, unknown>;
 }
 
@@ -62,6 +65,7 @@ export interface UpdateMemoryInput {
   tags?: string[];
   sessionId?: string;
   projectId?: string | null;
+  sensitivity?: "normal" | "sensitive";
   metadata?: Record<string, unknown>;
 }
 

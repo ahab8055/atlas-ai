@@ -77,11 +77,14 @@ pnpm atlas history --status blocked --limit 5
 # Long-term memory (requires DB; classify does not)
 pnpm atlas memory classify "I like dark mode interfaces."
 pnpm atlas memory add --type semantic "Prefers TypeScript"
+pnpm atlas memory add --type semantic --sensitive "private note"
 pnpm atlas memory add --classify "I prefer TypeScript"
 pnpm atlas memory search "TypeScript"
 pnpm atlas memory search "TypeScript" --mode keyword --tags lang --session sess-a
 pnpm atlas memory retrieve "change theme to dark"
 pnpm atlas memory retrieve "dark mode" --mode semantic --limit 5
+pnpm atlas memory delete <id> --confirm
+pnpm atlas memory clear --confirm
 pnpm atlas memory consolidate --dry-run
 pnpm atlas memory conflicts
 pnpm atlas memory list

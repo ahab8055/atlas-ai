@@ -19,7 +19,10 @@ export type PermissionCapability =
   | "application.control"
   | "network.access"
   | "settings.change"
-  | "software.install";
+  | "software.install"
+  | "memory.read"
+  | "memory.write"
+  | "memory.delete";
 
 export type ApprovalDecision =
   | "allow"

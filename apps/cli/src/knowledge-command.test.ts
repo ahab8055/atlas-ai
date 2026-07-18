@@ -12,7 +12,12 @@ import {
   createKnowledgeGraph,
   createSqliteGraphStore,
 } from "@atlas-ai/knowledge";
-import { createMemoryManager, createShortTermMemory } from "@atlas-ai/memory";
+import {
+  createMemoryManager,
+  createShortTermMemory,
+  MemoryAccessLog,
+} from "@atlas-ai/memory";
+import { PermissionManager } from "@atlas-ai/security";
 
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import type { CliRuntime } from "./run.js";
@@ -106,6 +111,10 @@ function stubRuntime(): CliRuntime {
     database,
     memoryManager,
     knowledgeGraph,
+    permissions: new PermissionManager({
+      grantedCapabilities: ["memory.read", "memory.write"],
+    }),
+    memoryAccessLog: new MemoryAccessLog(),
   };
 }
 

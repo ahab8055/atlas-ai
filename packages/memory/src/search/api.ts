@@ -4,6 +4,7 @@
 import type {
   LongTermMemoryType,
   MemoriesRepository,
+  MemoryRow,
 } from "@atlas-ai/database";
 
 import {
@@ -77,6 +78,7 @@ export function weightsForMode(mode: MemorySearchMode): RetrievalScoreWeights {
 
 export interface MemorySearchApiOptions {
   embeddingLookup?: MemoryEmbeddingLookup;
+  transformRow?: (row: MemoryRow) => MemoryRow | undefined;
 }
 
 /**
@@ -88,6 +90,7 @@ export class MemorySearchApi {
   constructor(repo: MemoriesRepository, options: MemorySearchApiOptions = {}) {
     this.engine = createMemoryRetrievalEngine(repo, {
       embeddingLookup: options.embeddingLookup,
+      transformRow: options.transformRow,
     });
   }
 

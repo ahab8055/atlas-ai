@@ -7,8 +7,13 @@ import {
   normalizeRequest,
 } from "@atlas-ai/core";
 import { openAtlasDatabase } from "@atlas-ai/database";
-import { createMemoryManager, createShortTermMemory } from "@atlas-ai/memory";
+import {
+  createMemoryManager,
+  createShortTermMemory,
+  MemoryAccessLog,
+} from "@atlas-ai/memory";
 import { createProfileManager } from "@atlas-ai/profile";
+import { PermissionManager } from "@atlas-ai/security";
 
 import { tryHandleProfileCommand } from "./profile-command.js";
 import type { CliRuntime } from "./run.js";
@@ -60,6 +65,10 @@ function stubRuntime(): CliRuntime {
     database,
     memoryManager,
     profile,
+    permissions: new PermissionManager({
+      grantedCapabilities: ["memory.read", "memory.write"],
+    }),
+    memoryAccessLog: new MemoryAccessLog(),
   };
 }
 

@@ -8,6 +8,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [Memory-Classification.md](./Memory-Classification.md),
 [Memory-Retrieval.md](./Memory-Retrieval.md),
 [Memory-Search.md](./Memory-Search.md),
+[Memory-Security.md](./Memory-Security.md),
 [Memory-Consolidation.md](./Memory-Consolidation.md),
 [Context-Management.md](./Context-Management.md),
 [Database.md](./Database.md),
@@ -18,6 +19,7 @@ Related: [Memory-Architecture.md](./Memory-Architecture.md),
 [ADR-0044](../adr/0044-memory-retrieval-engine.md),
 [ADR-0045](../adr/0045-memory-consolidation-service.md),
 [ADR-0055](../adr/0055-memory-search-api.md),
+[ADR-0056](../adr/0056-memory-security.md),
 [`@atlas-ai/memory`](../../packages/memory/), [`@atlas-ai/database`](../../packages/database/).
 
 ---
@@ -69,6 +71,7 @@ Requires the database (not `--no-db`), except `classify`:
 ```bash
 pnpm atlas memory classify "I like dark mode interfaces."
 pnpm atlas memory add --type semantic "Prefers TypeScript" --importance 0.9
+pnpm atlas memory add --type semantic --sensitive "private medical note"
 pnpm atlas memory add --classify "I prefer TypeScript"
 pnpm atlas memory list --type semantic
 pnpm atlas memory search "TypeScript"
@@ -77,12 +80,14 @@ pnpm atlas memory consolidate --type semantic
 pnpm atlas memory conflicts
 pnpm atlas memory get <id>
 pnpm atlas memory update <id> --content "Prefers TypeScript strictly"
-pnpm atlas memory delete <id>
-pnpm atlas memory purge-expired
+pnpm atlas memory delete <id> --confirm
+pnpm atlas memory clear --confirm
+pnpm atlas memory purge-expired --confirm
 ```
 
 Search/retrieve also accept `--mode keyword|semantic|hybrid`, `--tags a,b`,
-and `--session <id>` — see [Memory-Search.md](./Memory-Search.md).
+and `--session <id>` — see [Memory-Search.md](./Memory-Search.md). Sensitive
+memories and secure delete: [Memory-Security.md](./Memory-Security.md).
 
 Use `--classify` to run the importance gate before store; see
 [Memory-Classification.md](./Memory-Classification.md). Ranking/retrieval:

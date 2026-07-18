@@ -24,6 +24,7 @@
     "@atlas-ai/logging": "workspace:*",
     "@atlas-ai/memory": "workspace:*",
     "@atlas-ai/profile": "workspace:*",
+    "@atlas-ai/security": "workspace:*",
     "@atlas-ai/workspace": "workspace:*"
   },
   "devDependencies": {

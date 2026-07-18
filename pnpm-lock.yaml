@@ -92,6 +92,9 @@ importers:
       '@atlas-ai/profile':
         specifier: workspace:*
         version: link:../../packages/profile
+      '@atlas-ai/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       '@atlas-ai/workspace':
         specifier: workspace:*
         version: link:../../packages/workspace
@@ -223,6 +226,12 @@ importers:
       '@atlas-ai/database':
         specifier: workspace:*
         version: link:../database
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../logging
+      '@atlas-ai/security':
+        specifier: workspace:*
+        version: link:../security
     devDependencies:
       typescript:
         specifier: ~5.8.3

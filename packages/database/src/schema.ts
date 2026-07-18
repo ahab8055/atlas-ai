@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -142,6 +142,10 @@ CREATE TABLE IF NOT EXISTS memories (
   source TEXT,
   session_id TEXT,
   project_id TEXT,
+  sensitivity TEXT NOT NULL DEFAULT 'normal'
+    CHECK (sensitivity IN ('normal', 'sensitive')),
+  encrypted INTEGER NOT NULL DEFAULT 0,
+  content_nonce TEXT,
   metadata TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

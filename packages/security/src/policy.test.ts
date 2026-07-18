@@ -64,6 +64,27 @@ describe("evaluatePermission", () => {
     expect(install.decision).toBe("require_explicit_approval");
   });
 
+  it("maps memory capabilities to levels 1–3", () => {
+    expect(
+      evaluatePermission({
+        capability: "memory.read",
+        reason: "retrieve",
+      }).level,
+    ).toBe(1);
+    expect(
+      evaluatePermission({
+        capability: "memory.write",
+        reason: "store",
+      }).level,
+    ).toBe(2);
+    expect(
+      evaluatePermission({
+        capability: "memory.delete",
+        reason: "secure delete",
+      }).decision,
+    ).toBe("require_explicit_approval");
+  });
+
   it("allows critical ops under Trusted Execution after grant", () => {
     const del = evaluatePermission(
       { capability: "filesystem.delete", reason: "cleanup" },

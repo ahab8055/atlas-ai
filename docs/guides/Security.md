@@ -137,6 +137,13 @@ Platform adapters (Keychain / Credential Manager / Secret Service) come next; un
 | **Personal**  | Documents, memory notes     | High; Level 1+; prefer redact in logs                                  |
 | **Sensitive** | Passwords, API keys, tokens | Critical; keychain only; always redact; do not persist in DB plaintext |
 
+**Memory notes:** personal/high. Mark private notes `sensitivity: "sensitive"` for
+field-level AES-GCM at rest — see [Memory-Security.md](./Memory-Security.md) /
+ADR-0056. Capabilities: `memory.read` / `memory.write` / `memory.delete`.
+
+Capabilities also include tool/system actions (`filesystem.*`, `terminal.execute`, …)
+and memory access (`memory.*`).
+
 Helpers: `classifyData()`, `isSensitiveFieldName()`, `SENSITIVE_DATA_RULES`.
 
 Logging already redacts secret-shaped keys (`@atlas-ai/logging` redact).

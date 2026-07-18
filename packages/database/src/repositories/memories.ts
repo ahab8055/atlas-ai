@@ -7,6 +7,8 @@ import type { SqliteDatabase } from "../client.js";
 
 export type LongTermMemoryType = "episodic" | "semantic" | "procedural";
 
+export type MemorySensitivity = "normal" | "sensitive";
+
 export interface MemoryRecordInput {
   id?: string;
   userId?: string;
@@ -17,6 +19,9 @@ export interface MemoryRecordInput {
   source?: string;
   sessionId?: string;
   projectId?: string;
+  sensitivity?: MemorySensitivity;
+  encrypted?: boolean;
+  contentNonce?: string | null;
   metadata?: Record<string, unknown>;
   tags?: string[];
 }
@@ -31,6 +36,9 @@ export interface MemoryRow {
   source?: string;
   sessionId?: string;
   projectId?: string;
+  sensitivity: MemorySensitivity;
+  encrypted: boolean;
+  contentNonce?: string;
   metadata: Record<string, unknown>;
   tags: string[];
   createdAt: string;
@@ -60,6 +68,9 @@ export interface MemoryUpdateInput {
   source?: string;
   sessionId?: string;
   projectId?: string | null;
+  sensitivity?: MemorySensitivity;
+  encrypted?: boolean;
+  contentNonce?: string | null;
   metadata?: Record<string, unknown>;
   tags?: string[];
 }
@@ -74,6 +85,9 @@ interface MemorySqlRow {
   source: string | null;
   session_id: string | null;
   project_id: string | null;
+  sensitivity: string | null;
+  encrypted: number | null;
+  content_nonce: string | null;
   metadata: string | null;
   created_at: string;
   updated_at: string;
@@ -115,14 +129,26 @@ export class MemoriesRepository {
     const createdAt = existing?.createdAt ?? now;
     const userId = input.userId ?? existing?.userId ?? "local";
     const metadata = JSON.stringify(input.metadata ?? existing?.metadata ?? {});
+    const sensitivity = assertSensitivity(
+      input.sensitivity ?? existing?.sensitivity ?? "normal",
+    );
+    const encrypted =
+      input.encrypted !== undefined
+        ? input.encrypted
+        : (existing?.encrypted ?? false);
+    const contentNonce =
+      input.contentNonce !== undefined
+        ? input.contentNonce
+        : (existing?.contentNonce ?? null);
 
     this.db
       .prepare(
         `
         INSERT INTO memories (
           id, user_id, type, content, importance, confidence,
-          source, session_id, project_id, metadata, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          source, session_id, project_id, sensitivity, encrypted, content_nonce,
+          metadata, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           user_id = excluded.user_id,
           type = excluded.type,
@@ -132,6 +158,9 @@ export class MemoriesRepository {
           source = excluded.source,
           session_id = excluded.session_id,
           project_id = excluded.project_id,
+          sensitivity = excluded.sensitivity,
+          encrypted = excluded.encrypted,
+          content_nonce = excluded.content_nonce,
           metadata = excluded.metadata,
           updated_at = excluded.updated_at
       `,
@@ -146,6 +175,9 @@ export class MemoriesRepository {
         input.source ?? existing?.source ?? null,
         input.sessionId ?? existing?.sessionId ?? null,
         input.projectId ?? existing?.projectId ?? null,
+        sensitivity,
+        encrypted ? 1 : 0,
+        contentNonce,
         metadata,
         createdAt,
         now,
@@ -197,6 +229,9 @@ export class MemoriesRepository {
           source = ?,
           session_id = ?,
           project_id = ?,
+          sensitivity = ?,
+          encrypted = ?,
+          content_nonce = ?,
           metadata = ?,
           updated_at = ?
         WHERE id = ?
@@ -217,6 +252,19 @@ export class MemoriesRepository {
         patch.projectId !== undefined
           ? patch.projectId
           : (existing.projectId ?? null),
+        patch.sensitivity !== undefined
+          ? assertSensitivity(patch.sensitivity)
+          : existing.sensitivity,
+        patch.encrypted !== undefined
+          ? patch.encrypted
+            ? 1
+            : 0
+          : existing.encrypted
+            ? 1
+            : 0,
+        patch.contentNonce !== undefined
+          ? patch.contentNonce
+          : (existing.contentNonce ?? null),
         metadata,
         now,
         id,
@@ -339,12 +387,22 @@ export class MemoriesRepository {
       source: row.source ?? undefined,
       sessionId: row.session_id ?? undefined,
       projectId: row.project_id ?? undefined,
+      sensitivity: assertSensitivity(row.sensitivity ?? "normal"),
+      encrypted: Number(row.encrypted ?? 0) === 1,
+      contentNonce: row.content_nonce ?? undefined,
       metadata: parseMetadata(row.metadata),
       tags: tags.map((t) => t.tag),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
   }
+}
+
+function assertSensitivity(value: string): MemorySensitivity {
+  if (value === "normal" || value === "sensitive") {
+    return value;
+  }
+  throw new Error(`Invalid memory sensitivity: ${value}`);
 }
 
 function tokenize(text: string): string[] {

@@ -19,6 +19,9 @@ export const CAPABILITY_LEVELS: Record<PermissionCapability, PermissionLevel> =
     "network.access": 2,
     "settings.change": 3,
     "software.install": 3,
+    "memory.read": 1,
+    "memory.write": 2,
+    "memory.delete": 3,
   };
 
 const LEVEL_RISK: Record<PermissionLevel, RiskLevel> = {

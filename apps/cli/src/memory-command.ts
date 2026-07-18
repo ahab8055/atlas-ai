@@ -103,11 +103,13 @@ export function tryHandleMemoryCommand(
       if (useClassify) {
         const thresholds = runtime.config.memory.classification;
         const consolidation = runtime.config.memory.consolidation;
+        const sensitive = hasFlag(tokens, "--sensitive");
         const result = ltm.evaluateAndStore(finalContent, {
           thresholds,
           consolidation,
           consolidateOnStore: consolidation.consolidateOnStore,
           projectId: activeProjectId,
+          sensitivity: sensitive ? "sensitive" : undefined,
         });
         if (result.stored && result.record) {
           const via =
@@ -137,13 +139,19 @@ export function tryHandleMemoryCommand(
       const importanceRaw = readFlag(tokens, "--importance");
       const importance =
         importanceRaw !== undefined ? Number(importanceRaw) : undefined;
+      const sensitive = hasFlag(tokens, "--sensitive");
       const stored = ltm.store({
         type,
         content: finalContent,
         importance: Number.isFinite(importance) ? importance : undefined,
         projectId: activeProjectId,
+        sensitivity: sensitive ? "sensitive" : "normal",
       });
-      process.stdout.write(`Stored ${stored.type} memory ${stored.id}\n`);
+      process.stdout.write(
+        `Stored ${stored.type} memory ${stored.id}` +
+          (sensitive ? " (encrypted)" : "") +
+          `\n`,
+      );
       process.exitCode = 0;
       return true;
     }
@@ -186,16 +194,31 @@ export function tryHandleMemoryCommand(
 
     if (sub === "delete") {
       const id = tokens[2];
-      if (!id) {
-        throw new Error("Usage: memory delete <id>");
+      if (!id || id.startsWith("--")) {
+        throw new Error("Usage: memory delete <id> --confirm");
       }
-      const ok = ltm.delete(id);
+      ensureDeleteAllowed(runtime, tokens);
+      const ok = ltm.secureDelete(id);
       if (!ok) {
         process.stderr.write(`Memory not found: ${id}\n`);
         process.exitCode = 1;
         return true;
       }
-      process.stdout.write(`Deleted memory ${id}\n`);
+      process.stdout.write(`Securely deleted memory ${id}\n`);
+      process.exitCode = 0;
+      return true;
+    }
+
+    if (sub === "clear") {
+      ensureDeleteAllowed(runtime, tokens);
+      const type = readFlag(tokens, "--type") as LongTermMemoryType | undefined;
+      if (type && !LONG_TERM_TYPES.has(type)) {
+        throw new Error(`Invalid --type (use episodic|semantic|procedural)`);
+      }
+      const deleted = ltm.clear({ type });
+      process.stdout.write(
+        `Securely cleared ${deleted} memor${deleted === 1 ? "y" : "ies"}\n`,
+      );
       process.exitCode = 0;
       return true;
     }
@@ -262,6 +285,7 @@ export function tryHandleMemoryCommand(
     }
 
     if (sub === "purge-expired") {
+      ensureDeleteAllowed(runtime, tokens);
       const result = ltm.purgeExpired();
       process.stdout.write(
         `Purged ${result.deleted} expired memor${result.deleted === 1 ? "y" : "ies"}` +
@@ -343,19 +367,29 @@ function memoryUsage(): string {
     "",
     '  atlas memory classify "text"',
     "  atlas memory list [--type episodic|semantic|procedural] [--limit N]",
-    '  atlas memory add --type semantic "content" [--importance 0.9]',
-    '  atlas memory add --classify "content"',
+    '  atlas memory add --type semantic "content" [--importance 0.9] [--sensitive]',
+    '  atlas memory add --classify "content" [--sensitive]',
     "  atlas memory get <id>",
     '  atlas memory update <id> --content "..." [--importance 0.8]',
-    "  atlas memory delete <id>",
+    "  atlas memory delete <id> --confirm",
+    "  atlas memory clear --confirm [--type …]",
     '  atlas memory search "query" [--mode keyword|semantic|hybrid]',
     "    [--type …] [--tags a,b] [--session id] [--limit N]",
     '  atlas memory retrieve "query" [--mode …] [--type …]',
     "    [--tags a,b] [--session id] [--limit N]",
     "  atlas memory consolidate [--dry-run] [--type …] [--limit N]",
     "  atlas memory conflicts",
-    "  atlas memory purge-expired",
+    "  atlas memory purge-expired --confirm",
   ].join("\n");
+}
+
+function ensureDeleteAllowed(runtime: CliRuntime, tokens: string[]): void {
+  if (!hasFlag(tokens, "--confirm") && !hasFlag(tokens, "--yes")) {
+    throw new Error(
+      "Destructive memory ops require --confirm (grants memory.delete for this session)",
+    );
+  }
+  runtime.permissions.grant("memory.delete");
 }
 
 function formatClassification(result: MemoryClassificationResult): string {
@@ -404,6 +438,8 @@ function formatMemoryDetail(row: MemoryRecord): string {
     `type: ${row.type}`,
     `scope: ${row.scope}`,
     `content: ${row.content}`,
+    `sensitivity: ${row.sensitivity ?? "normal"}`,
+    `encrypted: ${row.encrypted ? "yes" : "no"}`,
     `importance: ${row.importance ?? ""}`,
     `confidence: ${row.confidence ?? ""}`,
     `tags: ${(row.tags ?? []).join(", ")}`,
@@ -476,7 +512,13 @@ function positionalArgs(tokens: string[], start: number): string[] {
     const t = tokens[i];
     if (t.startsWith("--")) {
       // boolean flags without values (e.g. --classify)
-      if (t === "--classify" || t === "--dry-run") {
+      if (
+        t === "--classify" ||
+        t === "--dry-run" ||
+        t === "--sensitive" ||
+        t === "--confirm" ||
+        t === "--yes"
+      ) {
         continue;
       }
       i += 1; // skip flag value

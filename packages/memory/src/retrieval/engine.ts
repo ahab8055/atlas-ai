@@ -22,6 +22,11 @@ import {
 
 export interface MemoryRetrievalEngineOptions {
   embeddingLookup?: MemoryEmbeddingLookup;
+  /**
+   * Decrypt / normalize rows after list (ADR-0056).
+   * Return undefined to skip undecryptable candidates.
+   */
+  transformRow?: (row: MemoryRow) => MemoryRow | undefined;
 }
 
 export class MemoryRetrievalEngine {
@@ -43,7 +48,7 @@ export class MemoryRetrievalEngine {
     const nowMs = (options.now ?? Date.now)();
 
     const poolSize = Math.max(limit * 10, 50);
-    const candidates = this.repo.list({
+    const rawCandidates = this.repo.list({
       type: options.type,
       tags: options.tags,
       userId: options.userId,
@@ -51,6 +56,17 @@ export class MemoryRetrievalEngine {
       projectIdOrUnscoped: options.projectId,
       limit: poolSize,
     });
+    const candidates: MemoryRow[] = [];
+    for (const row of rawCandidates) {
+      if (this.options.transformRow) {
+        const transformed = this.options.transformRow(row);
+        if (transformed) {
+          candidates.push(transformed);
+        }
+      } else {
+        candidates.push(row);
+      }
+    }
 
     const queryTokens = tokenizeQuery(query);
     const queryVector = buildQueryVector(query);
@@ -115,6 +131,8 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     tags: row.tags.length > 0 ? [...row.tags] : undefined,
     sessionId: row.sessionId,
     projectId: row.projectId,
+    sensitivity: row.sensitivity,
+    encrypted: row.encrypted,
     metadata: { ...row.metadata },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

@@ -5,7 +5,10 @@ export type MemoryErrorCode =
   | "provider_exists"
   | "provider_not_found"
   | "memory_not_found"
-  | "invalid_input";
+  | "invalid_input"
+  | "permission_denied"
+  | "encryption_required"
+  | "decrypt_failed";
 
 export class MemoryError extends Error {
   readonly code: MemoryErrorCode;
@@ -36,6 +39,12 @@ export class MemoryError extends Error {
   static notFound(id: string): MemoryError {
     return new MemoryError(`Memory not found: ${id}`, {
       code: "memory_not_found",
+    });
+  }
+
+  static permissionDenied(capability: string, detail?: string): MemoryError {
+    return new MemoryError(detail ?? `Permission denied for ${capability}`, {
+      code: "permission_denied",
     });
   }
 }

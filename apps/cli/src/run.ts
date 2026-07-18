@@ -27,10 +27,12 @@ import {
   createMemoryManager,
   createPersistentMemoryManager,
   createShortTermMemory,
+  MemoryAccessLog,
   type LongTermMemory,
   type MemoryManager,
 } from "@atlas-ai/memory";
 import { createProfileManager, type ProfileManager } from "@atlas-ai/profile";
+import { PermissionManager } from "@atlas-ai/security";
 import {
   createWorkspaceManager,
   type WorkspaceManager,
@@ -42,6 +44,7 @@ import {
   displayResponse,
   shouldPrintDebugMeta,
 } from "./display.js";
+import { createCliMemoryDek } from "./memory-dek.js";
 import type { CliOptions } from "./options.js";
 import {
   recordPipelineResult,
@@ -70,6 +73,8 @@ export interface CliRuntime {
   knowledgeGraph?: KnowledgeGraphManager;
   profile?: ProfileManager;
   workspace?: WorkspaceManager;
+  permissions: PermissionManager;
+  memoryAccessLog: MemoryAccessLog;
 }
 
 /**
@@ -108,8 +113,18 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const memoryManager = database
     ? createPersistentMemoryManager(database.memories)
     : createMemoryManager();
+
+  const permissions = new PermissionManager({
+    grantedCapabilities: ["memory.read", "memory.write"],
+  });
+  const memoryAccessLog = new MemoryAccessLog();
   const longTermMemory = database
-    ? createLongTermMemory(database.memories)
+    ? createLongTermMemory(database.memories, {
+        permissions,
+        dek: createCliMemoryDek(database.path),
+        accessLog: memoryAccessLog,
+        logger: logger.child("memory"),
+      })
     : undefined;
   const knowledgeGraph = database
     ? createKnowledgeGraph(createSqliteGraphStore(database))
@@ -199,6 +214,8 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     knowledgeGraph,
     profile,
     workspace,
+    permissions,
+    memoryAccessLog,
   };
 }
 

@@ -151,3 +151,20 @@ export {
 } from "./short-term/types.js";
 
 export { ShortTermMemory, createShortTermMemory } from "./short-term/index.js";
+
+export type {
+  MemoryAccessAction,
+  MemoryAccessEvent,
+  MemoryCrypto,
+  MemoryDekProvider,
+  MemorySensitivity,
+} from "./security/index.js";
+
+export {
+  MemoryAccessLog,
+  auditMemoryAccess,
+  createMemoryCrypto,
+  createStaticDekProvider,
+  looksLikeSecretContent,
+  requireMemoryPermission,
+} from "./security/index.js";

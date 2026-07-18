@@ -61,3 +61,15 @@ export type {
   SecureStorageProvider,
 } from "./storage.js";
 export { MemorySecureStorage, UnconfiguredSecureStorage } from "./storage.js";
+
+export type { AesGcmPayload } from "./crypto.js";
+export {
+  AES_GCM_IV_BYTES,
+  AES_GCM_KEY_BYTES,
+  MEMORY_DEK_SECRET_ID,
+  decryptAesGcm,
+  encryptAesGcm,
+  generateAesGcmKey,
+  keyFromBase64,
+  keyToBase64,
+} from "./crypto.js";
