@@ -11,6 +11,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0060](../adr/0060-platform-abstraction.md),
 [ADR-0061](../adr/0061-platform-detection.md),
 [ADR-0062](../adr/0062-operating-system-interface.md),
+[ADR-0063](../adr/0063-windows-platform-provider.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -85,17 +86,53 @@ createPlatformManager({
 });
 ```
 
-| Capability    | Interface                    | Node today                                                                |
-| ------------- | ---------------------------- | ------------------------------------------------------------------------- |
-| Applications  | `ApplicationService`         | stub `not_implemented`                                                    |
-| Files         | `FileSystemService`          | real (`exists`/`readText`/`writeText`/`mkdirp`/`remove`/`listDir`/`stat`) |
-| Terminal      | `TerminalService`            | stub                                                                      |
-| Notifications | `NotificationService`        | stub                                                                      |
-| Clipboard     | `ClipboardService`           | stub                                                                      |
-| System info   | `SystemInformationService`   | real (`getPlatform` / hostname / uptime)                                  |
-| Paths / env   | `PathService` / `EnvService` | real                                                                      |
+| Capability    | Interface                    | Node today                                                    |
+| ------------- | ---------------------------- | ------------------------------------------------------------- |
+| Applications  | `ApplicationService`         | **Windows:** `cmd start` / PowerShell; darwin/linux: stub     |
+| Files         | `FileSystemService`          | real                                                          |
+| Terminal      | `TerminalService`            | **Windows:** process spawn via runner; darwin/linux: stub     |
+| Notifications | `NotificationService`        | **Windows:** PowerShell balloon; darwin/linux: stub           |
+| Clipboard     | `ClipboardService`           | **Windows:** `Get-Clipboard` / `clip.exe`; darwin/linux: stub |
+| System info   | `SystemInformationService`   | real                                                          |
+| Paths / env   | `PathService` / `EnvService` | real                                                          |
 
 Prefer `os.files` over the thin legacy `FsService` for new code.
+
+---
+
+## Windows provider
+
+When `PlatformManager` detects (or forces) `win32`, it auto-loads
+`createWindowsOperatingSystem` — no separate registration step.
+
+| Capability                   | Mechanism                                                 |
+| ---------------------------- | --------------------------------------------------------- |
+| `applications.open`          | `cmd.exe /c start "" <target>`                            |
+| `listRunning` / focus / quit | PowerShell `Get-Process` / `AppActivate` / `Stop-Process` |
+| `terminal.execute`           | Direct spawn via `WindowsCommandRunner`                   |
+| `clipboard`                  | `Get-Clipboard` / `clip.exe` (Set-Clipboard fallback)     |
+| `notifications.show`         | PowerShell `NotifyIcon` balloon                           |
+
+```ts
+import { createPlatformManager } from "@atlas-ai/platform";
+
+// On Windows hosts (or platformId: "win32") — Windows provider is automatic
+const { os } = createPlatformManager({ platformId: "win32" }).getServices();
+await os.applications.open("notepad");
+
+// Tests: inject a mock runner (no real Windows binaries required)
+createPlatformManager({
+  platformId: "win32",
+  windowsRunner: {
+    async run(command, args) {
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+  },
+});
+```
+
+Darwin/Linux computer-control providers are follow-ups; until then those hosts
+use `not_implemented` stubs for apps/terminal/clipboard/notifications.
 
 ---
 

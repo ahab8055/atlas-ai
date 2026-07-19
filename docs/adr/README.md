@@ -86,6 +86,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0060](./0060-platform-abstraction.md)                    | Host OS platform abstraction            | Accepted |
 | [0061](./0061-platform-detection.md)                      | Platform detection service              | Accepted |
 | [0062](./0062-operating-system-interface.md)              | Common operating system interface       | Accepted |
+| [0063](./0063-windows-platform-provider.md)               | Windows platform provider               | Accepted |
 
 ## Naming
 

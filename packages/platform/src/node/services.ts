@@ -3,6 +3,8 @@
  */
 import { createPlatformDetector } from "../detector.js";
 import { createNodeOperatingSystem } from "../os/create.js";
+import { createWindowsOperatingSystem } from "../os/windows/create.js";
+import type { WindowsCommandRunner } from "../os/windows/runner.js";
 import type { OperatingSystem } from "../os/types.js";
 import type { OsProbe } from "../probe.js";
 import type {
@@ -24,6 +26,13 @@ export interface CreateNodeServicesOptions {
   probe?: OsProbe;
   /** Partial OperatingSystem capability overrides. */
   osOverrides?: Partial<OperatingSystem>;
+  /** Injectable Windows command runner (tests). */
+  windowsRunner?: WindowsCommandRunner;
+  /**
+   * When true (default for win32 adapter), use Windows OperatingSystem provider.
+   * Forced false for generic createNodePlatformServices on non-win32.
+   */
+  useWindowsOs?: boolean;
   /** Force platform id when detecting (tests). */
   platformId?: PlatformId;
   arch?: string;
@@ -88,12 +97,25 @@ export function createNodePlatformServices(
     ...options.pathOptions,
   });
   const info = createNodePlatformInfo(id, options);
-  const os = createNodeOperatingSystem({
-    info,
-    paths,
-    env,
-    overrides: options.osOverrides,
-  });
+  const useWindows =
+    options.useWindowsOs === true ||
+    (options.useWindowsOs !== false && id === "win32");
+
+  const os = useWindows
+    ? createWindowsOperatingSystem({
+        info,
+        paths,
+        env,
+        runner: options.windowsRunner,
+        overrides: options.osOverrides,
+      })
+    : createNodeOperatingSystem({
+        info,
+        paths,
+        env,
+        overrides: options.osOverrides,
+      });
+
   return {
     info,
     paths,

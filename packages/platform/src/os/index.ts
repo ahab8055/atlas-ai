@@ -26,3 +26,20 @@ export {
   createStubNotificationService,
   createStubTerminalService,
 } from "./node-stubs.js";
+
+export {
+  createWindowsOperatingSystem,
+  createNodeWindowsCommandRunner,
+  createWindowsApplicationService,
+  createWindowsTerminalService,
+  createWindowsClipboardService,
+  createWindowsNotificationService,
+  parseProcessList,
+} from "./windows/index.js";
+
+export type {
+  WindowsCommandResult,
+  WindowsCommandRunOptions,
+  WindowsCommandRunner,
+  CreateWindowsOperatingSystemOptions,
+} from "./windows/index.js";

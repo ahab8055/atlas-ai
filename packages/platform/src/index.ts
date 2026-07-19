@@ -75,3 +75,20 @@ export {
   createStubNotificationService,
   createStubTerminalService,
 } from "./os/index.js";
+
+export type {
+  WindowsCommandResult,
+  WindowsCommandRunOptions,
+  WindowsCommandRunner,
+  CreateWindowsOperatingSystemOptions,
+} from "./os/windows/index.js";
+
+export {
+  createWindowsOperatingSystem,
+  createNodeWindowsCommandRunner,
+  createWindowsApplicationService,
+  createWindowsTerminalService,
+  createWindowsClipboardService,
+  createWindowsNotificationService,
+  parseProcessList,
+} from "./os/windows/index.js";
