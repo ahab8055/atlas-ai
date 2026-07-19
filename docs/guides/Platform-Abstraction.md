@@ -12,6 +12,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0061](../adr/0061-platform-detection.md),
 [ADR-0062](../adr/0062-operating-system-interface.md),
 [ADR-0063](../adr/0063-windows-platform-provider.md),
+[ADR-0064](../adr/0064-macos-platform-provider.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -86,15 +87,15 @@ createPlatformManager({
 });
 ```
 
-| Capability    | Interface                    | Node today                                                    |
-| ------------- | ---------------------------- | ------------------------------------------------------------- |
-| Applications  | `ApplicationService`         | **Windows:** `cmd start` / PowerShell; darwin/linux: stub     |
-| Files         | `FileSystemService`          | real                                                          |
-| Terminal      | `TerminalService`            | **Windows:** process spawn via runner; darwin/linux: stub     |
-| Notifications | `NotificationService`        | **Windows:** PowerShell balloon; darwin/linux: stub           |
-| Clipboard     | `ClipboardService`           | **Windows:** `Get-Clipboard` / `clip.exe`; darwin/linux: stub |
-| System info   | `SystemInformationService`   | real                                                          |
-| Paths / env   | `PathService` / `EnvService` | real                                                          |
+| Capability    | Interface                    | Node today                                                |
+| ------------- | ---------------------------- | --------------------------------------------------------- |
+| Applications  | `ApplicationService`         | **Windows** + **macOS**; linux: stub                      |
+| Files         | `FileSystemService`          | real                                                      |
+| Terminal      | `TerminalService`            | **Windows** + **macOS** (runner spawn); linux: stub       |
+| Notifications | `NotificationService`        | **Windows** + **macOS** (`osascript`); linux: stub        |
+| Clipboard     | `ClipboardService`           | **Windows** + **macOS** (`pbcopy`/`pbpaste`); linux: stub |
+| System info   | `SystemInformationService`   | real                                                      |
+| Paths / env   | `PathService` / `EnvService` | real                                                      |
 
 Prefer `os.files` over the thin legacy `FsService` for new code.
 
@@ -131,8 +132,41 @@ createPlatformManager({
 });
 ```
 
-Darwin/Linux computer-control providers are follow-ups; until then those hosts
-use `not_implemented` stubs for apps/terminal/clipboard/notifications.
+---
+
+## macOS provider
+
+When `PlatformManager` detects (or forces) `darwin`, it auto-loads
+`createDarwinOperatingSystem` — no separate registration step.
+
+| Capability                   | Mechanism                                                |
+| ---------------------------- | -------------------------------------------------------- |
+| `applications.open`          | `open <path>` or `open -a <AppName>`                     |
+| `listRunning` / focus / quit | `osascript` System Events / `activate` / `quit` / `kill` |
+| `terminal.execute`           | Direct spawn via `DarwinCommandRunner`                   |
+| `clipboard`                  | `pbpaste` / `pbcopy` (stdin)                             |
+| `notifications.show`         | `osascript` `display notification`                       |
+
+```ts
+import { createPlatformManager } from "@atlas-ai/platform";
+
+// On macOS hosts (or platformId: "darwin") — Darwin provider is automatic
+const { os } = createPlatformManager({ platformId: "darwin" }).getServices();
+await os.applications.open("TextEdit");
+
+// Tests: inject a mock runner (no real macOS binaries required)
+createPlatformManager({
+  platformId: "darwin",
+  darwinRunner: {
+    async run(command, args) {
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+  },
+});
+```
+
+Linux computer-control remains stubs (`not_implemented`) until a Linux
+provider lands.
 
 ---
 

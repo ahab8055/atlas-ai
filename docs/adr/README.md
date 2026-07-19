@@ -87,6 +87,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0061](./0061-platform-detection.md)                      | Platform detection service              | Accepted |
 | [0062](./0062-operating-system-interface.md)              | Common operating system interface       | Accepted |
 | [0063](./0063-windows-platform-provider.md)               | Windows platform provider               | Accepted |
+| [0064](./0064-macos-platform-provider.md)                 | macOS platform provider                 | Accepted |
 
 ## Naming
 

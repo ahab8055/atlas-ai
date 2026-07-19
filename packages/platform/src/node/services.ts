@@ -3,6 +3,8 @@
  */
 import { createPlatformDetector } from "../detector.js";
 import { createNodeOperatingSystem } from "../os/create.js";
+import { createDarwinOperatingSystem } from "../os/darwin/create.js";
+import type { DarwinCommandRunner } from "../os/darwin/runner.js";
 import { createWindowsOperatingSystem } from "../os/windows/create.js";
 import type { WindowsCommandRunner } from "../os/windows/runner.js";
 import type { OperatingSystem } from "../os/types.js";
@@ -28,11 +30,17 @@ export interface CreateNodeServicesOptions {
   osOverrides?: Partial<OperatingSystem>;
   /** Injectable Windows command runner (tests). */
   windowsRunner?: WindowsCommandRunner;
+  /** Injectable Darwin command runner (tests). */
+  darwinRunner?: DarwinCommandRunner;
   /**
    * When true (default for win32 adapter), use Windows OperatingSystem provider.
    * Forced false for generic createNodePlatformServices on non-win32.
    */
   useWindowsOs?: boolean;
+  /**
+   * When true (default for darwin adapter), use Darwin OperatingSystem provider.
+   */
+  useDarwinOs?: boolean;
   /** Force platform id when detecting (tests). */
   platformId?: PlatformId;
   arch?: string;
@@ -100,21 +108,35 @@ export function createNodePlatformServices(
   const useWindows =
     options.useWindowsOs === true ||
     (options.useWindowsOs !== false && id === "win32");
+  const useDarwin =
+    options.useDarwinOs === true ||
+    (options.useDarwinOs !== false && id === "darwin");
 
-  const os = useWindows
-    ? createWindowsOperatingSystem({
-        info,
-        paths,
-        env,
-        runner: options.windowsRunner,
-        overrides: options.osOverrides,
-      })
-    : createNodeOperatingSystem({
-        info,
-        paths,
-        env,
-        overrides: options.osOverrides,
-      });
+  let os: OperatingSystem;
+  if (useWindows) {
+    os = createWindowsOperatingSystem({
+      info,
+      paths,
+      env,
+      runner: options.windowsRunner,
+      overrides: options.osOverrides,
+    });
+  } else if (useDarwin) {
+    os = createDarwinOperatingSystem({
+      info,
+      paths,
+      env,
+      runner: options.darwinRunner,
+      overrides: options.osOverrides,
+    });
+  } else {
+    os = createNodeOperatingSystem({
+      info,
+      paths,
+      env,
+      overrides: options.osOverrides,
+    });
+  }
 
   return {
     info,

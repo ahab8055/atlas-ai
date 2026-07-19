@@ -11,7 +11,8 @@ import type { ClipboardService } from "./types.js";
 
 describe("OperatingSystem stubs", () => {
   it("throws not_implemented for computer-control capabilities", async () => {
-    const os = createPlatformManager().getServices().os;
+    // Linux still uses stubs; Windows/darwin providers are real (ADR-0063/0064).
+    const os = createPlatformManager({ platformId: "linux" }).getServices().os;
     await expect(os.applications.open("TextEdit")).rejects.toMatchObject({
       code: "not_implemented",
     });

@@ -92,3 +92,20 @@ export {
   createWindowsNotificationService,
   parseProcessList,
 } from "./os/windows/index.js";
+
+export type {
+  DarwinCommandResult,
+  DarwinCommandRunOptions,
+  DarwinCommandRunner,
+  CreateDarwinOperatingSystemOptions,
+} from "./os/darwin/index.js";
+
+export {
+  createDarwinOperatingSystem,
+  createNodeDarwinCommandRunner,
+  createDarwinApplicationService,
+  createDarwinTerminalService,
+  createDarwinClipboardService,
+  createDarwinNotificationService,
+  parseDarwinProcessList,
+} from "./os/darwin/index.js";

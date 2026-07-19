@@ -43,3 +43,20 @@ export type {
   WindowsCommandRunner,
   CreateWindowsOperatingSystemOptions,
 } from "./windows/index.js";
+
+export {
+  createDarwinOperatingSystem,
+  createNodeDarwinCommandRunner,
+  createDarwinApplicationService,
+  createDarwinTerminalService,
+  createDarwinClipboardService,
+  createDarwinNotificationService,
+  parseDarwinProcessList,
+} from "./darwin/index.js";
+
+export type {
+  DarwinCommandResult,
+  DarwinCommandRunOptions,
+  DarwinCommandRunner,
+  CreateDarwinOperatingSystemOptions,
+} from "./darwin/index.js";
