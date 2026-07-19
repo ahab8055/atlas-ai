@@ -90,6 +90,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0064](./0064-macos-platform-provider.md)                 | macOS platform provider                 | Accepted |
 | [0065](./0065-linux-platform-provider.md)                 | Linux platform provider                 | Accepted |
 | [0066](./0066-os-permission-broker.md)                    | OS permission broker                    | Accepted |
+| [0067](./0067-platform-service-registry.md)               | Platform service registry               | Accepted |
 
 ## Naming
 

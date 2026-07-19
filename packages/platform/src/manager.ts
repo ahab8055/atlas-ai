@@ -1,6 +1,6 @@
 /**
  * PlatformManager — loads the correct Node OS adapter at runtime
- * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065 / 0066).
+ * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065 / 0066 / 0067).
  */
 import {
   getDefaultPermissionManager,
@@ -180,6 +180,11 @@ export function getDefaultPlatformManager(): PlatformManager {
     defaultManager = PlatformManager.create();
   }
   return defaultManager;
+}
+
+/** Replace the lazy singleton (hosts / tests / bootstrap). */
+export function setDefaultPlatformManager(manager: PlatformManager): void {
+  defaultManager = manager;
 }
 
 /** Test helper — clears the lazy singleton. */

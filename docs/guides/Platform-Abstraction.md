@@ -15,6 +15,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0064](../adr/0064-macos-platform-provider.md),
 [ADR-0065](../adr/0065-linux-platform-provider.md),
 [ADR-0066](../adr/0066-os-permission-broker.md),
+[ADR-0067](../adr/0067-platform-service-registry.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -26,6 +27,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 - Detect OS, architecture, kernel, and runtime via `PlatformDetector`
 - Isolate platform-specific implementations (darwin / linux / win32)
 - Load the correct adapter at runtime via `PlatformManager`
+- Resolve services via **`PlatformServiceRegistry`** (loose coupling)
 - Keep business logic free of direct `process` / `os` / `fs` / shell calls
 
 ---
@@ -35,7 +37,9 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 ```
 Atlas packages (tools / core / desktop)
               │
-       PlatformManager
+       PlatformServiceRegistry  ← resolve("os") / getOs()
+              │
+       PlatformManager  (factory)
               │
        OsPermissionBroker ──► PermissionManager (audit + approvals)
               │
@@ -50,13 +54,51 @@ Atlas packages (tools / core / desktop)
               ├── paths / env   (ungated infra)
 ```
 
-**Rule:** future OS modules depend only on these interfaces. Swap
-implementations via `PlatformManager` DI (`os?: Partial<OperatingSystem>`).
+**Rule:** future OS modules depend only on these interfaces. Resolve via
+`PlatformServiceRegistry` (or inject `PlatformServices`); do not import
+darwin/linux/win32 providers. Swap implementations via `PlatformManager` DI
+(`os?: Partial<OperatingSystem>`) then `register({ replace: true })`.
 
 Privileged OS calls go through **`OsPermissionBroker` → `PermissionManager`**
 (default on). Tools/ExecutionController also gate via the same permission
 framework. OS keychain uses `SecureStorageProvider`. Screen capture is out of
 this facade.
+
+---
+
+## Service registry
+
+Register platform services at startup; modules resolve by key or typed getters.
+
+```ts
+import {
+  bootstrapPlatformServices,
+  getDefaultPlatformServiceRegistry,
+} from "@atlas-ai/platform";
+
+// Host startup
+bootstrapPlatformServices({/* PlatformManagerOptions */});
+
+const registry = getDefaultPlatformServiceRegistry();
+const os = registry.getOs();
+const apps = registry.resolve("os.applications");
+const info = registry.getInfo();
+```
+
+| Key                                    | Type                                  |
+| -------------------------------------- | ------------------------------------- |
+| `info` / `paths` / `env` / `fs` / `os` | Top-level `PlatformServices`          |
+| `os.applications` … `os.env`           | Nested `OperatingSystem` capabilities |
+
+- **Singleton:** `getDefaultPlatformServiceRegistry` /
+  `setDefaultPlatformServiceRegistry`
+- **DI:** inject `platformRegistry` into the request pipeline, or
+  `register({ replace: true })` after building a custom `PlatformManager`
+- **Lazy fallback:** if resolve runs before explicit register, services are
+  taken once from `getDefaultPlatformManager()`
+
+`PlatformManager` remains the factory (adapter selection + permission wrap).
+The registry is the lookup surface only.
 
 ---
 

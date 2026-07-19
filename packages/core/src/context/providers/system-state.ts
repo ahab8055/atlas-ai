@@ -1,10 +1,10 @@
 import type { PlatformInfo } from "@atlas-ai/platform";
-import { getDefaultPlatformManager } from "@atlas-ai/platform";
+import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
 
 import type { ContextContribution, ContextProvider } from "../types.js";
 
 function resolvePlatformInfo(platform?: PlatformInfo): PlatformInfo {
-  return platform ?? getDefaultPlatformManager().getServices().info;
+  return platform ?? getDefaultPlatformServiceRegistry().getInfo();
 }
 
 /**

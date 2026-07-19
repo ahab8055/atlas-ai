@@ -39,7 +39,7 @@ export interface ContextManagerOptions {
   taskStore?: ActiveTaskStore;
   /** Active project loader (workspace detection). */
   projectLoader?: () => import("./types.js").ProjectContext | undefined;
-  /** Host platform identity for system-state (defaults via PlatformManager). */
+  /** Host platform identity for system-state (defaults via PlatformServiceRegistry). */
   platform?: PlatformInfo;
   /** Extra / replacement providers (by id). */
   providers?: ContextProvider[];

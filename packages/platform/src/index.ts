@@ -29,9 +29,21 @@ export {
   PlatformManager,
   createPlatformManager,
   getDefaultPlatformManager,
+  setDefaultPlatformManager,
   __resetDefaultPlatformManagerForTests,
   type PlatformManagerOptions,
 } from "./manager.js";
+
+export {
+  PlatformServiceRegistry,
+  getDefaultPlatformServiceRegistry,
+  setDefaultPlatformServiceRegistry,
+  bootstrapPlatformServices,
+  __resetDefaultPlatformServiceRegistryForTests,
+  type PlatformServiceKey,
+  type PlatformServiceResolved,
+  type RegisterPlatformServicesOptions,
+} from "./registry.js";
 
 export { resolvePlatformPaths } from "./resolve-paths.js";
 

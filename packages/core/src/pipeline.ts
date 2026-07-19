@@ -1,5 +1,8 @@
 import type { Logger } from "@atlas-ai/logging";
-import { getDefaultPlatformManager } from "@atlas-ai/platform";
+import {
+  getDefaultPlatformServiceRegistry,
+  type PlatformServiceRegistry,
+} from "@atlas-ai/platform";
 
 import type { ContextManager } from "./context/manager.js";
 import { getDefaultContextManager } from "./context/manager.js";
@@ -50,6 +53,8 @@ export interface PipelineOptions {
   errorHandler?: ErrorHandler;
   /** Context Builder options (ADR-0053). */
   contextBuilder?: ContextBuilderOptions;
+  /** Platform service registry for OS identity (ADR-0067). */
+  platformRegistry?: PlatformServiceRegistry;
 }
 
 function stageCategory(stage: PipelineStageName): "tool" | "ai" {
@@ -79,9 +84,14 @@ function emitCoreEvent<T extends CoreEventType>(
   });
 }
 
-function emptyContext(request: NormalizedRequest): LoadedContext {
+function emptyContext(
+  request: NormalizedRequest,
+  platformRegistry?: PlatformServiceRegistry,
+): LoadedContext {
   const assembledAt = new Date().toISOString();
-  const platformInfo = getDefaultPlatformManager().getServices().info;
+  const platformInfo = (
+    platformRegistry ?? getDefaultPlatformServiceRegistry()
+  ).getInfo();
   return {
     assembledAt,
     sources: [],
@@ -183,9 +193,10 @@ function degradedPipelineResult(
     context?: LoadedContext;
     plan?: ExecutionPlan;
   },
+  platformRegistry?: PlatformServiceRegistry,
 ): PipelineResult {
   const intent = partial?.intent ?? unknownIntent(request.text);
-  const context = partial?.context ?? emptyContext(request);
+  const context = partial?.context ?? emptyContext(request, platformRegistry);
   const plan =
     partial?.plan ??
     finalizePlan({
@@ -218,6 +229,8 @@ export function runPipeline(
     options.executionController ?? getDefaultExecutionController();
   const eventBus = options.eventBus ?? getDefaultEventBus();
   const errorHandler = options.errorHandler ?? getDefaultErrorHandler();
+  const platformRegistry =
+    options.platformRegistry ?? getDefaultPlatformServiceRegistry();
   const request = normalizeRequest(incoming);
 
   let intent: DetectedIntent | undefined;
@@ -434,11 +447,16 @@ export function runPipeline(
               : "execution",
       },
     });
-    const result = degradedPipelineResult(request, structured, {
-      intent,
-      context,
-      plan,
-    });
+    const result = degradedPipelineResult(
+      request,
+      structured,
+      {
+        intent,
+        context,
+        plan,
+      },
+      platformRegistry,
+    );
     contextManager.recordAssistant(
       request.sessionId,
       result.response.text,
