@@ -13,6 +13,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0062](../adr/0062-operating-system-interface.md),
 [ADR-0063](../adr/0063-windows-platform-provider.md),
 [ADR-0064](../adr/0064-macos-platform-provider.md),
+[ADR-0065](../adr/0065-linux-platform-provider.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -87,15 +88,15 @@ createPlatformManager({
 });
 ```
 
-| Capability    | Interface                    | Node today                                                |
-| ------------- | ---------------------------- | --------------------------------------------------------- |
-| Applications  | `ApplicationService`         | **Windows** + **macOS**; linux: stub                      |
-| Files         | `FileSystemService`          | real                                                      |
-| Terminal      | `TerminalService`            | **Windows** + **macOS** (runner spawn); linux: stub       |
-| Notifications | `NotificationService`        | **Windows** + **macOS** (`osascript`); linux: stub        |
-| Clipboard     | `ClipboardService`           | **Windows** + **macOS** (`pbcopy`/`pbpaste`); linux: stub |
-| System info   | `SystemInformationService`   | real                                                      |
-| Paths / env   | `PathService` / `EnvService` | real                                                      |
+| Capability    | Interface                    | Node today                                      |
+| ------------- | ---------------------------- | ----------------------------------------------- |
+| Applications  | `ApplicationService`         | **Windows** + **macOS** + **Linux**             |
+| Files         | `FileSystemService`          | real                                            |
+| Terminal      | `TerminalService`            | **Windows** + **macOS** + **Linux** (runner)    |
+| Notifications | `NotificationService`        | **Windows** + **macOS** + **Linux**             |
+| Clipboard     | `ClipboardService`           | **Windows** + **macOS** + **Linux** (fallbacks) |
+| System info   | `SystemInformationService`   | real                                            |
+| Paths / env   | `PathService` / `EnvService` | real                                            |
 
 Prefer `os.files` over the thin legacy `FsService` for new code.
 
@@ -165,8 +166,40 @@ createPlatformManager({
 });
 ```
 
-Linux computer-control remains stubs (`not_implemented`) until a Linux
-provider lands.
+---
+
+## Linux provider
+
+When `PlatformManager` detects (or forces) `linux`, it auto-loads
+`createLinuxOperatingSystem` — no separate registration step. Desktop and
+distro differences use ordered freedesktop CLI fallbacks.
+
+| Capability           | Mechanism                                                     |
+| -------------------- | ------------------------------------------------------------- |
+| `applications.open`  | Path/URL → `xdg-open`; bare id → `gtk-launch` then `xdg-open` |
+| `listRunning`        | `ps -eo pid=,comm=`                                           |
+| `focus` / `quit`     | `wmctrl` / `xdotool` (best-effort); `kill` / `pkill -x`       |
+| `terminal.execute`   | Direct spawn via `LinuxCommandRunner`                         |
+| `clipboard`          | `wl-copy`/`wl-paste`, then `xclip`, then `xsel`               |
+| `notifications.show` | `notify-send`                                                 |
+
+```ts
+import { createPlatformManager } from "@atlas-ai/platform";
+
+// On Linux hosts (or platformId: "linux") — Linux provider is automatic
+const { os } = createPlatformManager({ platformId: "linux" }).getServices();
+await os.applications.open("firefox");
+
+// Tests: inject a mock runner (no real Linux binaries required)
+createPlatformManager({
+  platformId: "linux",
+  linuxRunner: {
+    async run(command, args) {
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+  },
+});
+```
 
 ---
 

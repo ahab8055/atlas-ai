@@ -5,14 +5,31 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createPlatformManager } from "../manager.js";
+import { createNodeEnvService } from "../node/shared.js";
+import { createPathService } from "../node/paths.js";
+import { createNodeOperatingSystem } from "./create.js";
 import { PlatformError, isPlatformError } from "./errors.js";
 import { createNodeFileSystemService } from "./node-files.js";
 import type { ClipboardService } from "./types.js";
 
 describe("OperatingSystem stubs", () => {
   it("throws not_implemented for computer-control capabilities", async () => {
-    // Linux still uses stubs; Windows/darwin providers are real (ADR-0063/0064).
-    const os = createPlatformManager({ platformId: "linux" }).getServices().os;
+    // Generic Node OS still stubs computer-control; OS providers are real
+    // (ADR-0063/0064/0065).
+    const env = createNodeEnvService({});
+    const paths = createPathService("linux", { env, homeDir: "/tmp" });
+    const os = createNodeOperatingSystem({
+      info: {
+        id: "linux",
+        os: "linux",
+        arch: "x64",
+        kernelVersion: "6.1.0",
+        osType: "Linux",
+        runtime: { kind: "node", version: "22.0.0" },
+      },
+      paths,
+      env,
+    });
     await expect(os.applications.open("TextEdit")).rejects.toMatchObject({
       code: "not_implemented",
     });

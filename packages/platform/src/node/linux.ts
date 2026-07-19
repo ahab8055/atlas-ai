@@ -4,9 +4,15 @@ import {
   type CreateNodeServicesOptions,
 } from "./services.js";
 
-/** Isolated linux Node adapter. */
+/**
+ * Isolated linux Node adapter — auto-wires Linux OperatingSystem provider
+ * (ADR-0065).
+ */
 export function createLinuxPlatformServices(
   options: CreateNodeServicesOptions = {},
 ): PlatformServices {
-  return createNodePlatformServices("linux", options);
+  return createNodePlatformServices("linux", {
+    ...options,
+    useLinuxOs: options.useLinuxOs !== false,
+  });
 }

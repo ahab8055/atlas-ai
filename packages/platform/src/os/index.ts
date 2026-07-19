@@ -60,3 +60,20 @@ export type {
   DarwinCommandRunner,
   CreateDarwinOperatingSystemOptions,
 } from "./darwin/index.js";
+
+export {
+  createLinuxOperatingSystem,
+  createNodeLinuxCommandRunner,
+  createLinuxApplicationService,
+  createLinuxTerminalService,
+  createLinuxClipboardService,
+  createLinuxNotificationService,
+  parseLinuxProcessList,
+} from "./linux/index.js";
+
+export type {
+  LinuxCommandResult,
+  LinuxCommandRunOptions,
+  LinuxCommandRunner,
+  CreateLinuxOperatingSystemOptions,
+} from "./linux/index.js";

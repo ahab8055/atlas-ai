@@ -5,6 +5,8 @@ import { createPlatformDetector } from "../detector.js";
 import { createNodeOperatingSystem } from "../os/create.js";
 import { createDarwinOperatingSystem } from "../os/darwin/create.js";
 import type { DarwinCommandRunner } from "../os/darwin/runner.js";
+import { createLinuxOperatingSystem } from "../os/linux/create.js";
+import type { LinuxCommandRunner } from "../os/linux/runner.js";
 import { createWindowsOperatingSystem } from "../os/windows/create.js";
 import type { WindowsCommandRunner } from "../os/windows/runner.js";
 import type { OperatingSystem } from "../os/types.js";
@@ -32,6 +34,8 @@ export interface CreateNodeServicesOptions {
   windowsRunner?: WindowsCommandRunner;
   /** Injectable Darwin command runner (tests). */
   darwinRunner?: DarwinCommandRunner;
+  /** Injectable Linux command runner (tests). */
+  linuxRunner?: LinuxCommandRunner;
   /**
    * When true (default for win32 adapter), use Windows OperatingSystem provider.
    * Forced false for generic createNodePlatformServices on non-win32.
@@ -41,6 +45,10 @@ export interface CreateNodeServicesOptions {
    * When true (default for darwin adapter), use Darwin OperatingSystem provider.
    */
   useDarwinOs?: boolean;
+  /**
+   * When true (default for linux adapter), use Linux OperatingSystem provider.
+   */
+  useLinuxOs?: boolean;
   /** Force platform id when detecting (tests). */
   platformId?: PlatformId;
   arch?: string;
@@ -111,6 +119,9 @@ export function createNodePlatformServices(
   const useDarwin =
     options.useDarwinOs === true ||
     (options.useDarwinOs !== false && id === "darwin");
+  const useLinux =
+    options.useLinuxOs === true ||
+    (options.useLinuxOs !== false && id === "linux");
 
   let os: OperatingSystem;
   if (useWindows) {
@@ -127,6 +138,14 @@ export function createNodePlatformServices(
       paths,
       env,
       runner: options.darwinRunner,
+      overrides: options.osOverrides,
+    });
+  } else if (useLinux) {
+    os = createLinuxOperatingSystem({
+      info,
+      paths,
+      env,
+      runner: options.linuxRunner,
       overrides: options.osOverrides,
     });
   } else {

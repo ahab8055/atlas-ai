@@ -1,6 +1,6 @@
 /**
  * PlatformManager — loads the correct Node OS adapter at runtime
- * (ADR-0060 / 0061 / 0062 / 0063 / 0064).
+ * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065).
  */
 import { createPlatformDetector } from "./detector.js";
 import { detectPlatformId } from "./detect.js";
@@ -9,6 +9,7 @@ import { createLinuxPlatformServices } from "./node/linux.js";
 import { createWin32PlatformServices } from "./node/win32.js";
 import type { CreateNodeServicesOptions } from "./node/services.js";
 import type { DarwinCommandRunner } from "./os/darwin/runner.js";
+import type { LinuxCommandRunner } from "./os/linux/runner.js";
 import type { OperatingSystem } from "./os/types.js";
 import type { WindowsCommandRunner } from "./os/windows/runner.js";
 import type { OsProbe } from "./probe.js";
@@ -41,6 +42,8 @@ export interface PlatformManagerOptions {
   windowsRunner?: WindowsCommandRunner;
   /** Injectable Darwin command runner (tests / DI). */
   darwinRunner?: DarwinCommandRunner;
+  /** Injectable Linux command runner (tests / DI). */
+  linuxRunner?: LinuxCommandRunner;
   /** Passed through to Node adapter construction (tests). */
   arch?: string;
   nodeVersion?: string;
@@ -108,6 +111,7 @@ export class PlatformManager {
       osOverrides: options.os,
       windowsRunner: options.windowsRunner,
       darwinRunner: options.darwinRunner,
+      linuxRunner: options.linuxRunner,
       arch: options.arch,
       nodeVersion: options.nodeVersion,
       kernelVersion: options.kernelVersion,
@@ -123,7 +127,7 @@ export class PlatformManager {
       paths: options.services?.paths ?? base.paths,
       env: options.services?.env ?? base.env,
       fs: options.services?.fs ?? base.fs,
-      // Prefer adapter-built OS (Windows/darwin providers); allow full replace via services.os
+      // Prefer adapter-built OS (win/darwin/linux providers); allow full replace via services.os
       os: options.services?.os ?? base.os,
     };
     return new PlatformManager(platformId, services);

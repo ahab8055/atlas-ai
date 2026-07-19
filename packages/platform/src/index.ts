@@ -109,3 +109,20 @@ export {
   createDarwinNotificationService,
   parseDarwinProcessList,
 } from "./os/darwin/index.js";
+
+export type {
+  LinuxCommandResult,
+  LinuxCommandRunOptions,
+  LinuxCommandRunner,
+  CreateLinuxOperatingSystemOptions,
+} from "./os/linux/index.js";
+
+export {
+  createLinuxOperatingSystem,
+  createNodeLinuxCommandRunner,
+  createLinuxApplicationService,
+  createLinuxTerminalService,
+  createLinuxClipboardService,
+  createLinuxNotificationService,
+  parseLinuxProcessList,
+} from "./os/linux/index.js";
