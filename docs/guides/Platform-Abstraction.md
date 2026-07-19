@@ -16,6 +16,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0065](../adr/0065-linux-platform-provider.md),
 [ADR-0066](../adr/0066-os-permission-broker.md),
 [ADR-0067](../adr/0067-platform-service-registry.md),
+[ADR-0068](../adr/0068-os-error-translation.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -153,6 +154,22 @@ createPlatformManager({ enforceOsPermissions: false, platformId: "linux" });
 ```
 
 Prefer `os.files` over the thin legacy `FsService` for new code.
+
+### Error translation
+
+OS providers throw **`PlatformError`** with a stable code and category. Native
+Node errno/spawn failures are mapped by `translateNativeError`.
+
+| Category     | Codes                                        |
+| ------------ | -------------------------------------------- |
+| `permission` | `permission_denied`                          |
+| `resource`   | `resource_not_found`                         |
+| `system`     | `io_error`, `not_implemented`, `unsupported` |
+| `unknown`    | `invalid_input`, `unknown`                   |
+
+Diagnostics live on `detail` (`errno`, `syscall`, `path`, …) and `cause`
+(original native error). Core maps these via `fromPlatformError` into
+`AtlasErrorResponse` while keeping `platformCode` / `detail` in `context`.
 
 | Capability    | Interface                    | Node today                                      |
 | ------------- | ---------------------------- | ----------------------------------------------- |

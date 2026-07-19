@@ -12,6 +12,7 @@ export {
   classifyCategory,
   createAtlasError,
   formatErrorCategory,
+  fromPlatformError,
   fromUnknown,
   isAtlasErrorResponse,
 } from "./classify.js";

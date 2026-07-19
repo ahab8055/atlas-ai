@@ -18,6 +18,9 @@ function isCommandMissing(error: unknown): boolean {
   if (!(error instanceof PlatformError)) {
     return false;
   }
+  if (error.detail?.errno === "ENOENT" || error.code === "resource_not_found") {
+    return true;
+  }
   const msg = error.message.toLowerCase();
   return (
     msg.includes("enoent") ||

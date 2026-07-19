@@ -2,7 +2,7 @@
 
 Central error classification, consistent response shape, logging, and recovery suggestions.
 
-Related: [Logging.md](./Logging.md), [Response-Generation.md](./Response-Generation.md), [Request-Pipeline.md](./Request-Pipeline.md), [Execution-Controller.md](./Execution-Controller.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (§ Failure Handling), [ADR-0020](../adr/0020-error-handling-framework.md), [`@atlas-ai/core`](../../packages/core/src/errors/).
+Related: [Logging.md](./Logging.md), [Response-Generation.md](./Response-Generation.md), [Request-Pipeline.md](./Request-Pipeline.md), [Execution-Controller.md](./Execution-Controller.md), [Platform-Abstraction.md](./Platform-Abstraction.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (§ Failure Handling), [ADR-0020](../adr/0020-error-handling-framework.md), [ADR-0068](../adr/0068-os-error-translation.md), [`@atlas-ai/core`](../../packages/core/src/errors/).
 
 ---
 
@@ -16,6 +16,21 @@ Related: [Logging.md](./Logging.md), [Response-Generation.md](./Response-Generat
 | `ai`     | AI Error     | `model_failed`, `intent_failed`, `plan_failed`      |
 
 Aligned with Architecture/22 failure types (permission → user, tools, model → ai, infra → system).
+
+### PlatformError → Atlas
+
+`fromPlatformError` / `fromUnknown` map `@atlas-ai/platform` errors:
+
+| Platform category | Atlas category                       | Atlas code (typical)                               |
+| ----------------- | ------------------------------------ | -------------------------------------------------- |
+| `permission`      | `user`                               | `permission_blocked`                               |
+| `resource`        | `tool`                               | `not_found`                                        |
+| `system`          | `system`                             | `system_error` / `not_implemented` / `unsupported` |
+| `unknown`         | `user` (`invalid_input`) or `system` | `invalid_input` / `unknown`                        |
+
+`context` retains `platformCode`, `platformCategory`, `approvalId`, and `detail`
+for debugging. The request pipeline preserves PlatformError classification
+instead of overwriting with `pipeline_error`.
 
 ---
 

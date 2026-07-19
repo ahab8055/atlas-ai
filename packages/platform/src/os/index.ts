@@ -14,14 +14,20 @@ export type {
   TerminalService,
 } from "./types.js";
 
-export type { PlatformErrorCode } from "./errors.js";
-export { PlatformError, isPlatformError } from "./errors.js";
-
+export type {
+  PlatformErrorCode,
+  PlatformErrorCategory,
+  PlatformErrorDetail,
+} from "./errors.js";
 export {
-  OsPermissionBroker,
-  wrapOperatingSystemWithBroker,
-  type OsAuthorizeInput,
-} from "./permission-broker.js";
+  PlatformError,
+  isPlatformError,
+  categoryForPlatformCode,
+} from "./errors.js";
+export {
+  translateNativeError,
+  type TranslateNativeErrorContext,
+} from "./translate-error.js";
 
 export { createNodeOperatingSystem } from "./create.js";
 export { createNodeFileSystemService } from "./node-files.js";

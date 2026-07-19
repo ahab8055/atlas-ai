@@ -1,6 +1,7 @@
 import type { Logger } from "@atlas-ai/logging";
 import {
   getDefaultPlatformServiceRegistry,
+  isPlatformError,
   type PlatformServiceRegistry,
 } from "@atlas-ai/platform";
 
@@ -432,21 +433,26 @@ export function runPipeline(
       response,
     };
   } catch (thrown) {
-    const structured = errorHandler.handle(thrown, {
-      logger,
-      traceId: request.traceId,
-      category: "system",
-      code: "pipeline_error",
-      context: {
-        stage: !intent
-          ? "intent"
-          : !context
-            ? "context"
-            : !plan
-              ? "planning"
-              : "execution",
-      },
-    });
+    const stage = !intent
+      ? "intent"
+      : !context
+        ? "context"
+        : !plan
+          ? "planning"
+          : "execution";
+    const structured = isPlatformError(thrown)
+      ? errorHandler.handle(thrown, {
+          logger,
+          traceId: request.traceId,
+          context: { stage },
+        })
+      : errorHandler.handle(thrown, {
+          logger,
+          traceId: request.traceId,
+          category: "system",
+          code: "pipeline_error",
+          context: { stage },
+        });
     const result = degradedPipelineResult(
       request,
       structured,

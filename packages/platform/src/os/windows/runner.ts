@@ -4,6 +4,7 @@
 import { spawn } from "node:child_process";
 
 import { PlatformError } from "../errors.js";
+import { translateNativeError } from "../translate-error.js";
 
 export interface WindowsCommandRunOptions {
   cwd?: string;
@@ -85,10 +86,10 @@ export function createNodeWindowsCommandRunner(): WindowsCommandRunner {
             clearTimeout(timer);
           }
           reject(
-            new PlatformError(
-              "io_error",
-              error instanceof Error ? error.message : String(error),
-            ),
+            translateNativeError(error, {
+              operation: `Windows command: ${command}`,
+              platform: "win32",
+            }),
           );
         });
 

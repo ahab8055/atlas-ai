@@ -4,6 +4,7 @@
 import { spawn } from "node:child_process";
 
 import { PlatformError } from "../errors.js";
+import { translateNativeError } from "../translate-error.js";
 
 export interface LinuxCommandRunOptions {
   cwd?: string;
@@ -84,10 +85,10 @@ export function createNodeLinuxCommandRunner(): LinuxCommandRunner {
             clearTimeout(timer);
           }
           reject(
-            new PlatformError(
-              "io_error",
-              error instanceof Error ? error.message : String(error),
-            ),
+            translateNativeError(error, {
+              operation: `Linux command: ${command}`,
+              platform: "linux",
+            }),
           );
         });
 

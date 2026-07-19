@@ -1,5 +1,5 @@
 /**
- * Node FileSystemService — fuller FS API over node:fs (ADR-0062).
+ * Node FileSystemService — fuller FS API over node:fs (ADR-0062 / 0068).
  */
 import {
   existsSync,
@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 
-import { PlatformError } from "./errors.js";
+import { translateNativeError } from "./translate-error.js";
 import type { FileStat, FileSystemService } from "./types.js";
 
 export function createNodeFileSystemService(): FileSystemService {
@@ -23,10 +23,10 @@ export function createNodeFileSystemService(): FileSystemService {
       try {
         return readFileSync(path, "utf8");
       } catch (error) {
-        throw new PlatformError(
-          "io_error",
-          error instanceof Error ? error.message : String(error),
-        );
+        throw translateNativeError(error, {
+          operation: "files.readText",
+          path,
+        });
       }
     },
     writeText(path: string, data: string, mode?: number): void {
@@ -36,40 +36,40 @@ export function createNodeFileSystemService(): FileSystemService {
           ...(mode !== undefined ? { mode } : {}),
         });
       } catch (error) {
-        throw new PlatformError(
-          "io_error",
-          error instanceof Error ? error.message : String(error),
-        );
+        throw translateNativeError(error, {
+          operation: "files.writeText",
+          path,
+        });
       }
     },
     mkdirp(path: string): void {
       try {
         mkdirSync(path, { recursive: true });
       } catch (error) {
-        throw new PlatformError(
-          "io_error",
-          error instanceof Error ? error.message : String(error),
-        );
+        throw translateNativeError(error, {
+          operation: "files.mkdirp",
+          path,
+        });
       }
     },
     remove(path: string): void {
       try {
         rmSync(path, { recursive: true, force: true });
       } catch (error) {
-        throw new PlatformError(
-          "io_error",
-          error instanceof Error ? error.message : String(error),
-        );
+        throw translateNativeError(error, {
+          operation: "files.remove",
+          path,
+        });
       }
     },
     listDir(path: string): string[] {
       try {
         return readdirSync(path);
       } catch (error) {
-        throw new PlatformError(
-          "io_error",
-          error instanceof Error ? error.message : String(error),
-        );
+        throw translateNativeError(error, {
+          operation: "files.listDir",
+          path,
+        });
       }
     },
     stat(path: string): FileStat {
@@ -83,10 +83,10 @@ export function createNodeFileSystemService(): FileSystemService {
           mtimeMs: s.mtimeMs,
         };
       } catch (error) {
-        throw new PlatformError(
-          "io_error",
-          error instanceof Error ? error.message : String(error),
-        );
+        throw translateNativeError(error, {
+          operation: "files.stat",
+          path,
+        });
       }
     },
   };

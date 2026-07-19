@@ -1,4 +1,5 @@
 import { createLogger, type LogRecord } from "@atlas-ai/logging";
+import { PlatformError } from "@atlas-ai/platform";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +7,7 @@ import {
   classifyCategory,
   createAtlasError,
   ErrorHandler,
+  fromPlatformError,
   fromUnknown,
   handleError,
   markRecoveryAttempted,
@@ -91,5 +93,33 @@ describe("ErrorHandler", () => {
     expect(handleError("plain string", { log: false }).message).toBe(
       "plain string",
     );
+  });
+
+  it("maps PlatformError via fromPlatformError with diagnostics", () => {
+    const platform = new PlatformError(
+      "permission_denied",
+      "blocked by broker",
+      {
+        approvalId: "apr_1",
+        detail: { errno: "EACCES", path: "/tmp/x" },
+      },
+    );
+    const atlas = fromPlatformError(platform, { traceId: "t-os" });
+    expect(atlas.category).toBe("user");
+    expect(atlas.code).toBe("permission_blocked");
+    expect(atlas.context?.platformCode).toBe("permission_denied");
+    expect(atlas.context?.platformCategory).toBe("permission");
+    expect(atlas.context?.approvalId).toBe("apr_1");
+    expect(atlas.context?.detail).toMatchObject({ errno: "EACCES" });
+    expect(atlas.traceId).toBe("t-os");
+
+    const resource = fromUnknown(
+      new PlatformError("resource_not_found", "missing", {
+        detail: { errno: "ENOENT" },
+      }),
+    );
+    expect(resource.category).toBe("tool");
+    expect(resource.code).toBe("not_found");
+    expect(resource.context?.platformCode).toBe("resource_not_found");
   });
 });

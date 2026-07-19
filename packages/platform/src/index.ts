@@ -75,8 +75,20 @@ export type {
   TerminalService,
 } from "./os/types.js";
 
-export type { PlatformErrorCode } from "./os/errors.js";
-export { PlatformError, isPlatformError } from "./os/errors.js";
+export type {
+  PlatformErrorCode,
+  PlatformErrorCategory,
+  PlatformErrorDetail,
+} from "./os/errors.js";
+export {
+  PlatformError,
+  isPlatformError,
+  categoryForPlatformCode,
+} from "./os/errors.js";
+export {
+  translateNativeError,
+  type TranslateNativeErrorContext,
+} from "./os/translate-error.js";
 
 export {
   OsPermissionBroker,

@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { isPlatformError, type PlatformError } from "@atlas-ai/platform";
+
 import { suggestRecovery } from "./recovery.js";
 import {
   ERROR_CATEGORY_LABELS,
@@ -133,6 +135,71 @@ export function createAtlasError(
   };
 }
 
+/**
+ * Map PlatformError into AtlasErrorResponse (ADR-0068).
+ * Preserves platform code/category/detail under context for debugging.
+ */
+export function fromPlatformError(
+  error: PlatformError,
+  options: {
+    context?: Record<string, unknown>;
+    traceId?: string;
+  } = {},
+): AtlasErrorResponse {
+  let atlasCategory: ErrorCategory;
+  let atlasCode: string;
+
+  switch (error.category) {
+    case "permission":
+      atlasCategory = "user";
+      atlasCode = "permission_blocked";
+      break;
+    case "resource":
+      atlasCategory = "tool";
+      atlasCode = "not_found";
+      break;
+    case "unknown":
+      if (error.code === "invalid_input") {
+        atlasCategory = "user";
+        atlasCode = "invalid_input";
+      } else {
+        atlasCategory = "system";
+        atlasCode = "unknown";
+      }
+      break;
+    case "system":
+    default:
+      atlasCategory = "system";
+      if (error.code === "io_error") {
+        atlasCode = "system_error";
+      } else if (error.code === "not_implemented") {
+        atlasCode = "not_implemented";
+      } else if (error.code === "unsupported") {
+        atlasCode = "unsupported";
+      } else {
+        atlasCode = error.code;
+      }
+      break;
+  }
+
+  return createAtlasError({
+    category: atlasCategory,
+    code: atlasCode,
+    message: error.message,
+    cause: error.cause instanceof Error ? error.cause : error,
+    context: {
+      ...options.context,
+      platformCode: error.code,
+      platformCategory: error.category,
+      ...(error.approvalId !== undefined
+        ? { approvalId: error.approvalId }
+        : {}),
+      ...(error.detail !== undefined ? { detail: error.detail } : {}),
+    },
+    traceId: options.traceId,
+  });
+}
+
 /** Classify an unknown thrown value into an AtlasErrorResponse. */
 export function fromUnknown(
   error: unknown,
@@ -148,6 +215,12 @@ export function fromUnknown(
   }
   if (error instanceof AtlasError) {
     return error.toResponse();
+  }
+  if (isPlatformError(error)) {
+    return fromPlatformError(error, {
+      context: options.context,
+      traceId: options.traceId,
+    });
   }
   const message =
     error instanceof Error
