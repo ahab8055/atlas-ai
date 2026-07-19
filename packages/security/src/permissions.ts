@@ -22,7 +22,10 @@ export type PermissionCapability =
   | "software.install"
   | "memory.read"
   | "memory.write"
-  | "memory.delete";
+  | "memory.delete"
+  | "clipboard.read"
+  | "clipboard.write"
+  | "notifications.show";
 
 export type ApprovalDecision =
   | "allow"

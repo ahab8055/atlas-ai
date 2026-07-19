@@ -89,6 +89,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0063](./0063-windows-platform-provider.md)               | Windows platform provider               | Accepted |
 | [0064](./0064-macos-platform-provider.md)                 | macOS platform provider                 | Accepted |
 | [0065](./0065-linux-platform-provider.md)                 | Linux platform provider                 | Accepted |
+| [0066](./0066-os-permission-broker.md)                    | OS permission broker                    | Accepted |
 
 ## Naming
 

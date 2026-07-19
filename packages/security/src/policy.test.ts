@@ -85,6 +85,27 @@ describe("evaluatePermission", () => {
     ).toBe("require_explicit_approval");
   });
 
+  it("maps clipboard and notifications capabilities", () => {
+    expect(
+      evaluatePermission({
+        capability: "clipboard.read",
+        reason: "paste",
+      }).level,
+    ).toBe(1);
+    expect(
+      evaluatePermission({
+        capability: "clipboard.write",
+        reason: "copy",
+      }).level,
+    ).toBe(2);
+    expect(
+      evaluatePermission({
+        capability: "notifications.show",
+        reason: "alert",
+      }).level,
+    ).toBe(1);
+  });
+
   it("allows critical ops under Trusted Execution after grant", () => {
     const del = evaluatePermission(
       { capability: "filesystem.delete", reason: "cleanup" },

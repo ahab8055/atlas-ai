@@ -4,7 +4,7 @@ Foundation rules for permissions, secure storage, and sensitive data.
 
 **Principle:** _The AI can suggest actions, but the user owns the final authority._
 
-Related: [Architecture/06-Security-Architecture.md](../Architecture/06-Security-Architecture.md), [`@atlas-ai/security`](../../packages/security/), [ADR-0006](../adr/0006-security-baseline.md), [ADR-0014](../adr/0014-permission-management-foundation.md), [Configuration.md](./Configuration.md), [Logging.md](./Logging.md).
+Related: [Architecture/06-Security-Architecture.md](../Architecture/06-Security-Architecture.md), [`@atlas-ai/security`](../../packages/security/), [ADR-0006](../adr/0006-security-baseline.md), [ADR-0014](../adr/0014-permission-management-foundation.md), [ADR-0066](../adr/0066-os-permission-broker.md), [Platform-Abstraction.md](./Platform-Abstraction.md), [Configuration.md](./Configuration.md), [Logging.md](./Logging.md).
 
 ---
 
@@ -73,7 +73,21 @@ permissions.listDecisions(); // allowed | blocked | approved | denied | cancelle
 
 Low-level policy remains `evaluatePermission()` / `isActionBlocked()`.
 
-**ExecutionController** and **ToolExecutor** (`checkPermissions: true`) call `PermissionManager.requestPermission()` so checks are audited.
+**ExecutionController** and **ToolExecutor** (`checkPermissions: true`) call
+`PermissionManager.requestPermission()` so checks are audited.
+
+Privileged **OS** calls (`os.applications`, `os.files`, …) are also gated by
+[`OsPermissionBroker`](../guides/Platform-Abstraction.md) inside
+`PlatformManager` (ADR-0066). Blocked OS ops throw `PlatformError`
+`permission_denied` with optional `approvalId` for future dialogs.
+
+Additional OS-related capabilities:
+
+| Capability           | Level | Used by                  |
+| -------------------- | ----- | ------------------------ |
+| `clipboard.read`     | 1     | `os.clipboard.readText`  |
+| `clipboard.write`    | 2     | `os.clipboard.writeText` |
+| `notifications.show` | 1     | `os.notifications.show`  |
 
 ---
 

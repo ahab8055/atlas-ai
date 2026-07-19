@@ -1,7 +1,12 @@
 /**
  * PlatformManager — loads the correct Node OS adapter at runtime
- * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065).
+ * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065 / 0066).
  */
+import {
+  getDefaultPermissionManager,
+  type PermissionManager,
+} from "@atlas-ai/security";
+
 import { createPlatformDetector } from "./detector.js";
 import { detectPlatformId } from "./detect.js";
 import { createDarwinPlatformServices } from "./node/darwin.js";
@@ -10,6 +15,10 @@ import { createWin32PlatformServices } from "./node/win32.js";
 import type { CreateNodeServicesOptions } from "./node/services.js";
 import type { DarwinCommandRunner } from "./os/darwin/runner.js";
 import type { LinuxCommandRunner } from "./os/linux/runner.js";
+import {
+  OsPermissionBroker,
+  wrapOperatingSystemWithBroker,
+} from "./os/permission-broker.js";
 import type { OperatingSystem } from "./os/types.js";
 import type { WindowsCommandRunner } from "./os/windows/runner.js";
 import type { OsProbe } from "./probe.js";
@@ -44,6 +53,15 @@ export interface PlatformManagerOptions {
   darwinRunner?: DarwinCommandRunner;
   /** Injectable Linux command runner (tests / DI). */
   linuxRunner?: LinuxCommandRunner;
+  /** Permission manager used by the OS permission broker. */
+  permissionManager?: PermissionManager;
+  /** Custom OS permission broker (overrides permissionManager). */
+  permissionBroker?: OsPermissionBroker;
+  /**
+   * When true (default), wrap OS privileged methods with OsPermissionBroker.
+   * Set false for raw provider tests.
+   */
+  enforceOsPermissions?: boolean;
   /** Passed through to Node adapter construction (tests). */
   arch?: string;
   nodeVersion?: string;
@@ -122,13 +140,23 @@ export class PlatformManager {
       },
     });
 
+    let os = base.os;
+    if (options.enforceOsPermissions !== false) {
+      const broker =
+        options.permissionBroker ??
+        new OsPermissionBroker(
+          options.permissionManager ?? getDefaultPermissionManager(),
+        );
+      os = wrapOperatingSystemWithBroker(os, broker);
+    }
+
     const services: PlatformServices = {
       info: options.services?.info ?? base.info,
       paths: options.services?.paths ?? base.paths,
       env: options.services?.env ?? base.env,
       fs: options.services?.fs ?? base.fs,
-      // Prefer adapter-built OS (win/darwin/linux providers); allow full replace via services.os
-      os: options.services?.os ?? base.os,
+      // Prefer adapter-built OS (optionally broker-wrapped); allow full replace via services.os
+      os: options.services?.os ?? os,
     };
     return new PlatformManager(platformId, services);
   }

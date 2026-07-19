@@ -193,6 +193,7 @@ describe("Linux provider auto-registration", () => {
     const calls: string[] = [];
     const manager = createPlatformManager({
       platformId: "linux",
+      enforceOsPermissions: false,
       linuxRunner: mockRunner(async (command) => {
         calls.push(command);
         return { stdout: "", stderr: "", exitCode: 0 };

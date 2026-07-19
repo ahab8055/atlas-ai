@@ -105,6 +105,7 @@ describe("OperatingSystem DI swap", () => {
     };
     const manager = createPlatformManager({
       os: { clipboard: fake },
+      enforceOsPermissions: false,
     });
     expect(await manager.getServices().os.clipboard.readText()).toBe(
       "injected",

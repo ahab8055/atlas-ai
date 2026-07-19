@@ -19,6 +19,9 @@
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@atlas-ai/security": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "22",
     "typescript": "~5.8.3"

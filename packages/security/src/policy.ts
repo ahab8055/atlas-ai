@@ -22,6 +22,9 @@ export const CAPABILITY_LEVELS: Record<PermissionCapability, PermissionLevel> =
     "memory.read": 1,
     "memory.write": 2,
     "memory.delete": 3,
+    "clipboard.read": 1,
+    "clipboard.write": 2,
+    "notifications.show": 1,
   };
 
 const LEVEL_RISK: Record<PermissionLevel, RiskLevel> = {

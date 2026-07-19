@@ -169,6 +169,7 @@ describe("Darwin provider auto-registration", () => {
     const calls: string[] = [];
     const manager = createPlatformManager({
       platformId: "darwin",
+      enforceOsPermissions: false,
       darwinRunner: mockRunner(async (command) => {
         calls.push(command);
         return { stdout: "", stderr: "", exitCode: 0 };

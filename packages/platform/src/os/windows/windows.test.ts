@@ -163,6 +163,7 @@ describe("Windows provider auto-registration", () => {
     const calls: string[] = [];
     const manager = createPlatformManager({
       platformId: "win32",
+      enforceOsPermissions: false,
       windowsRunner: mockRunner(async (command) => {
         calls.push(command);
         return { stdout: "", stderr: "", exitCode: 0 };

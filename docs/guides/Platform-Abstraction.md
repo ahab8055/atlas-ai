@@ -14,6 +14,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0063](../adr/0063-windows-platform-provider.md),
 [ADR-0064](../adr/0064-macos-platform-provider.md),
 [ADR-0065](../adr/0065-linux-platform-provider.md),
+[ADR-0066](../adr/0066-os-permission-broker.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -36,57 +37,80 @@ Atlas packages (tools / core / desktop)
               │
        PlatformManager
               │
+       OsPermissionBroker ──► PermissionManager (audit + approvals)
+              │
        PlatformDetector ──► OsProbe (Node)
               │
        PlatformServices
        ├── PlatformInfo
        ├── PathService / EnvService / FsService (legacy thin fs)
-       └── OperatingSystem  (preferred API)
-              ├── applications  (stub → Phase 4)
-              ├── files         (Node)
-              ├── terminal      (stub → Phase 4)
-              ├── notifications (stub → Phase 4)
-              ├── clipboard     (stub → Phase 4)
+       └── OperatingSystem  (preferred API; privileged methods gated)
+              ├── applications / files / terminal / notifications / clipboard
               ├── system        (PlatformInfo + hostname/uptime)
-              ├── paths / env
+              ├── paths / env   (ungated infra)
 ```
 
 **Rule:** future OS modules depend only on these interfaces. Swap
 implementations via `PlatformManager` DI (`os?: Partial<OperatingSystem>`).
 
-Permission gating stays in `@atlas-ai/security` + tool executor. OS keychain
-uses `SecureStorageProvider`. Screen capture is out of this facade.
+Privileged OS calls go through **`OsPermissionBroker` → `PermissionManager`**
+(default on). Tools/ExecutionController also gate via the same permission
+framework. OS keychain uses `SecureStorageProvider`. Screen capture is out of
+this facade.
 
 ---
 
 ## OperatingSystem facade
 
 ```ts
+import { PermissionManager } from "@atlas-ai/security";
 import { createPlatformManager, PlatformError } from "@atlas-ai/platform";
 
-const { os } = createPlatformManager().getServices();
+const permissions = new PermissionManager({
+  grantedCapabilities: ["filesystem.write", "application.control"],
+});
+const { os } = createPlatformManager({
+  permissionManager: permissions,
+}).getServices();
 
-os.system.getPlatform(); // enriched PlatformInfo
-os.files.writeText("/tmp/a.txt", "hi");
+os.system.getPlatform(); // L0 — allowed and logged
+os.files.writeText("/tmp/a.txt", "hi"); // requires filesystem.write grant
 
 try {
   await os.applications.open("TextEdit");
 } catch (e) {
-  if (e instanceof PlatformError && e.code === "not_implemented") {
-    // Phase 4 adapter not wired yet
+  if (e instanceof PlatformError && e.code === "permission_denied") {
+    // approval pending — e.approvalId for future Permission Center dialogs
   }
 }
-
-// DI: swap one capability without rewriting callers
-createPlatformManager({
-  os: {
-    clipboard: {
-      readText: async () => "test",
-      writeText: async () => undefined,
-    },
-  },
-});
 ```
+
+### OS permission broker
+
+`PlatformManager` wraps privileged OS methods by default (`enforceOsPermissions:
+true`). Unauthorized calls throw `PlatformError` with code `permission_denied`
+and optional `approvalId`. Every check is logged on `PermissionManager`.
+
+| OS methods                    | Capability            |
+| ----------------------------- | --------------------- |
+| `applications.*`              | `application.control` |
+| `terminal.execute`            | `terminal.execute`    |
+| `files` exists/read/list/stat | `filesystem.read`     |
+| `files` write/mkdirp          | `filesystem.write`    |
+| `files` remove                | `filesystem.delete`   |
+| `clipboard.readText`          | `clipboard.read`      |
+| `clipboard.writeText`         | `clipboard.write`     |
+| `notifications.show`          | `notifications.show`  |
+| `system.*`                    | `system.info` (L0)    |
+
+`paths.*` and `env.*` are not gated (bootstrap/infra).
+
+```ts
+// Raw provider tests — skip broker
+createPlatformManager({ enforceOsPermissions: false, platformId: "linux" });
+```
+
+Prefer `os.files` over the thin legacy `FsService` for new code.
 
 | Capability    | Interface                    | Node today                                      |
 | ------------- | ---------------------------- | ----------------------------------------------- |
@@ -96,9 +120,7 @@ createPlatformManager({
 | Notifications | `NotificationService`        | **Windows** + **macOS** + **Linux**             |
 | Clipboard     | `ClipboardService`           | **Windows** + **macOS** + **Linux** (fallbacks) |
 | System info   | `SystemInformationService`   | real                                            |
-| Paths / env   | `PathService` / `EnvService` | real                                            |
-
-Prefer `os.files` over the thin legacy `FsService` for new code.
+| Paths / env   | `PathService` / `EnvService` | real (ungated)                                  |
 
 ---
 

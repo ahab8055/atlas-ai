@@ -67,6 +67,12 @@ export type { PlatformErrorCode } from "./os/errors.js";
 export { PlatformError, isPlatformError } from "./os/errors.js";
 
 export {
+  OsPermissionBroker,
+  wrapOperatingSystemWithBroker,
+  type OsAuthorizeInput,
+} from "./os/permission-broker.js";
+
+export {
   createNodeOperatingSystem,
   createNodeFileSystemService,
   createNodeSystemInformationService,
