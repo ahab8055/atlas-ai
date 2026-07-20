@@ -144,6 +144,15 @@ describe("applyEnvOverrides", () => {
     });
     expect(next.platform.forcePlatformId).toBe("linux");
   });
+
+  it("accepts ATLAS_PLATFORM feature flags as true", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_PLATFORM_FEATURE_OS_PERMISSION_BROKER: "true",
+      ATLAS_PLATFORM_FEATURE_EVENTS: "true",
+    });
+    expect(next.platform.features.osPermissionBroker).toBe(true);
+    expect(next.platform.features.platformEvents).toBe(true);
+  });
 });
 
 describe("loadConfig", () => {
@@ -266,5 +275,17 @@ describe("mergeAppConfig", () => {
       envVars: { ATLAS_ENV: "test" },
     });
     expect(config.platform.forcePlatformId).toBe("linux");
+  });
+
+  it("loadConfig test platform maps to manager-compatible shape", () => {
+    const config = loadConfig({
+      repoRoot: resolve(import.meta.dirname, "../../.."),
+      env: "test",
+      loadEnvFile: false,
+      envVars: { ATLAS_ENV: "test" },
+    });
+    expect(config.platform.forcePlatformId).toBe("linux");
+    expect(config.platform.features.osPermissionBroker).toBe(true);
+    expect(config.platform.features.platformEvents).toBe(true);
   });
 });

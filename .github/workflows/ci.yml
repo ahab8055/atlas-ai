@@ -87,6 +87,9 @@ jobs:
       - name: Vitest
         run: pnpm test
 
+      - name: Platform coverage gate
+        run: pnpm --filter @atlas-ai/platform test:coverage
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:

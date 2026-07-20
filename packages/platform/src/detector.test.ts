@@ -17,6 +17,29 @@ function mockProbe(
 }
 
 describe("PlatformDetector", () => {
+  it("detectId maps known platforms and rejects unsupported", () => {
+    expect(
+      createPlatformDetector({
+        probe: mockProbe({ platform: () => "darwin" }),
+      }).detectId(),
+    ).toBe("darwin");
+    expect(
+      createPlatformDetector({
+        probe: mockProbe({ platform: () => "linux" }),
+      }).detectId(),
+    ).toBe("linux");
+    expect(
+      createPlatformDetector({
+        probe: mockProbe({ platform: () => "win32" }),
+      }).detectId(),
+    ).toBe("win32");
+    expect(() =>
+      createPlatformDetector({
+        probe: mockProbe({ platform: () => "freebsd" }),
+      }).detectId(),
+    ).toThrow(/Unsupported platform/);
+  });
+
   it("detects darwin as macos with kernel and runtime", () => {
     const info = createPlatformDetector({
       probe: mockProbe({
@@ -74,6 +97,16 @@ describe("PlatformDetector", () => {
       probe: mockProbe({
         platform: () => "linux",
         version: () => undefined,
+      }),
+    }).detect();
+    expect(info.osVersion).toBeUndefined();
+  });
+
+  it("omits osVersion when probe returns empty string", () => {
+    const info = createPlatformDetector({
+      probe: mockProbe({
+        platform: () => "linux",
+        version: () => "",
       }),
     }).detect();
     expect(info.osVersion).toBeUndefined();

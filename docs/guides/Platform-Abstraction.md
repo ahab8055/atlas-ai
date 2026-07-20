@@ -20,6 +20,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0069](../adr/0069-platform-event-integration.md),
 [ADR-0070](../adr/0070-platform-configuration-management.md),
 [ADR-0071](../adr/0071-platform-logging-diagnostics.md),
+[ADR-0072](../adr/0072-platform-unit-testing.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -405,9 +406,30 @@ absolute user-data layouts.
 
 ---
 
+## Testing
+
+Colocated Vitest under `packages/platform/src/**/*.test.ts` (ADR-0072):
+
+- Detection / probe / manager edge cases
+- Registry resolve matrix + bootstrap
+- OS contracts (focus / quit / notifications + Linux fallbacks) with mock runners
+- Config → `toPlatformManagerOptions` + host `platformEvents` wiring
+- Permission broker wrap matrix
+
+```bash
+pnpm exec vitest run packages/platform
+pnpm --filter @atlas-ai/platform test:coverage   # ≥80% lines/functions/statements, ≥70% branches
+```
+
+Use `enforceOsPermissions: false` and injectable `*Runner` mocks — no real OS
+binaries in unit tests.
+
+---
+
 ## Commands
 
 ```bash
 pnpm platform:build
 pnpm exec vitest run packages/platform
+pnpm --filter @atlas-ai/platform test:coverage
 ```

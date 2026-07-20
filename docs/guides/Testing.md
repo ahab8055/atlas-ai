@@ -67,6 +67,7 @@ Workspace packages export `dist/`. `pnpm test` builds them first so CI and fresh
 | Area                 | Example                                                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `@atlas-ai/config`   | `packages/config/src/merge.test.ts`                                                                                                  |
+| `@atlas-ai/platform` | Colocated `packages/platform/src/**/*.test.ts`; coverage gate: `pnpm --filter @atlas-ai/platform test:coverage` (ADR-0072)           |
 | `@atlas-ai/logging`  | `packages/logging/src/logger.test.ts`                                                                                                |
 | Phase 1 core runtime | `tests/integration/phase1-core-runtime.test.ts` — see [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md)               |
 | Phase 2 Local AI     | `tests/integration/phase2-local-ai.test.ts` — see [Phase2-Local-AI-Integration-Testing.md](./Phase2-Local-AI-Integration-Testing.md) |

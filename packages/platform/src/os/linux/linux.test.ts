@@ -186,6 +186,148 @@ describe("Linux OperatingSystem interface", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]?.name).toBe("init");
   });
+
+  it("open falls back to xdg-open when gtk-launch is missing", async () => {
+    const calls: string[] = [];
+    const os = baseOs(
+      mockRunner(async (command) => {
+        calls.push(command);
+        if (command === "gtk-launch") {
+          throw new PlatformError(
+            "resource_not_found",
+            "gtk-launch not found",
+            {
+              detail: { errno: "ENOENT" },
+            },
+          );
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.applications.open("firefox");
+    expect(calls).toEqual(["gtk-launch", "xdg-open"]);
+  });
+
+  it("open throws io_error when xdg-open fallback fails", async () => {
+    const os = baseOs(
+      mockRunner(async (command) => {
+        if (command === "gtk-launch") {
+          return { stdout: "", stderr: "fail", exitCode: 1 };
+        }
+        return { stdout: "", stderr: "xdg failed", exitCode: 1 };
+      }),
+    );
+    await expect(os.applications.open("firefox")).rejects.toMatchObject({
+      code: "io_error",
+    });
+  });
+
+  it("focus and quit invoke expected tools", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        if (command === "xdotool" && args[0] === "search") {
+          return { stdout: "0x1234\n", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.applications.focus(42);
+    await os.applications.quit(42);
+    await os.applications.quit("firefox");
+    expect(
+      calls.some(
+        (c) =>
+          c.command === "xdotool" &&
+          c.args.includes("search") &&
+          c.args.includes("42"),
+      ),
+    ).toBe(true);
+    expect(
+      calls.some((c) => c.command === "kill" && c.args.includes("42")),
+    ).toBe(true);
+    expect(
+      calls.some((c) => c.command === "pkill" && c.args.includes("firefox")),
+    ).toBe(true);
+  });
+
+  it("notifications.show invokes notify-send", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.notifications.show({ title: "Hello", body: "World" });
+    expect(calls[0]).toEqual({
+      command: "notify-send",
+      args: ["Hello", "World"],
+    });
+    await expect(
+      os.notifications.show({ title: "  ", body: "" }),
+    ).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+  });
+
+  it("clipboard uses xsel when xclip fails and not on Wayland", async () => {
+    const calls: string[] = [];
+    const os = baseOs(
+      mockRunner(async (command) => {
+        calls.push(command);
+        if (command === "xclip") {
+          throw new PlatformError("resource_not_found", "missing", {
+            detail: { errno: "ENOENT" },
+          });
+        }
+        if (command === "xsel") {
+          return { stdout: "from-xsel", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "", exitCode: 1 };
+      }),
+      { DISPLAY: ":0", XDG_SESSION_TYPE: "x11" },
+    );
+    expect(await os.clipboard.readText()).toBe("from-xsel");
+    expect(calls).toContain("xsel");
+  });
+
+  it("focus by name uses wmctrl", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.applications.focus("Firefox");
+    expect(
+      calls.some((c) => c.command === "wmctrl" && c.args.includes("Firefox")),
+    ).toBe(true);
+  });
+
+  it("notifications.show throws io_error on non-zero exit", async () => {
+    const os = baseOs(
+      mockRunner(async () => ({
+        stdout: "",
+        stderr: "notify failed",
+        exitCode: 1,
+      })),
+    );
+    await expect(
+      os.notifications.show({ title: "Hi", body: "There" }),
+    ).rejects.toMatchObject({ code: "io_error" });
+  });
+
+  it("terminal.execute rejects empty command", async () => {
+    const os = baseOs(
+      mockRunner(async () => ({ stdout: "", stderr: "", exitCode: 0 })),
+    );
+    await expect(os.terminal.execute("  ", [])).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+  });
 });
 
 describe("Linux provider auto-registration", () => {

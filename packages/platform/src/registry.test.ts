@@ -74,4 +74,47 @@ describe("PlatformServiceRegistry", () => {
     expect(registry.resolve("os.clipboard")).toBe(registry.getOs().clipboard);
     expect(registry.resolve("os.system")).toBe(registry.getOs().system);
   });
+
+  it("tryResolve returns services and survives clear via lazy bootstrap", () => {
+    const registry = bootstrapPlatformServices({
+      platformId: "linux",
+      enforceOsPermissions: false,
+    });
+    expect(registry.tryResolve("os")).toBe(registry.getOs());
+    expect(registry.tryResolve("paths")).toBe(registry.getPaths());
+
+    registry.clear();
+    // clear + tryResolve lazy-bootstraps from default PlatformManager
+    expect(registry.tryResolve("os")).toBeDefined();
+  });
+
+  it("resolves the full platform service key matrix", () => {
+    const registry = bootstrapPlatformServices({
+      platformId: "linux",
+      enforceOsPermissions: false,
+    });
+    const keys = [
+      "info",
+      "paths",
+      "env",
+      "fs",
+      "os",
+      "os.applications",
+      "os.files",
+      "os.terminal",
+      "os.notifications",
+      "os.clipboard",
+      "os.system",
+      "os.paths",
+      "os.env",
+    ] as const;
+    for (const key of keys) {
+      expect(registry.has(key)).toBe(true);
+      expect(registry.resolve(key)).toBeDefined();
+    }
+    expect(registry.getPaths()).toBe(registry.resolve("paths"));
+    expect(registry.getEnv()).toBe(registry.resolve("env"));
+    expect(registry.getFs()).toBe(registry.resolve("fs"));
+    expect(registry.getServices().os).toBe(registry.getOs());
+  });
 });

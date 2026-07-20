@@ -140,6 +140,22 @@ describe("Darwin OperatingSystem interface", () => {
     ).toBe(true);
   });
 
+  it("clipboard throws io_error on non-zero exit", async () => {
+    const os = baseOs(
+      mockRunner(async () => ({
+        stdout: "",
+        stderr: "fail",
+        exitCode: 1,
+      })),
+    );
+    await expect(os.clipboard.readText()).rejects.toMatchObject({
+      code: "io_error",
+    });
+    await expect(os.clipboard.writeText("x")).rejects.toMatchObject({
+      code: "io_error",
+    });
+  });
+
   it("listRunning parses osascript comma-pair fixture", async () => {
     const os = baseOs(
       mockRunner(async () => ({
@@ -177,5 +193,64 @@ describe("Darwin provider auto-registration", () => {
     });
     await manager.getServices().os.applications.open("TextEdit");
     expect(calls).toContain("open");
+  });
+});
+
+describe("Darwin focus quit notifications", () => {
+  it("focus and quit invoke osascript or kill", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.applications.focus(99);
+    await os.applications.quit(99);
+    await os.applications.quit("TextEdit");
+    expect(calls.some((c) => c.command === "osascript")).toBe(true);
+    expect(
+      calls.some((c) => c.command === "kill" && c.args.includes("99")),
+    ).toBe(true);
+  });
+
+  it("notifications.show uses osascript display notification", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.notifications.show({ title: "Hi", body: "There" });
+    expect(calls[0]?.command).toBe("osascript");
+    expect(calls[0]?.args[1]).toContain("display notification");
+    await expect(
+      os.notifications.show({ title: "", body: "" }),
+    ).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+  });
+
+  it("notifications.show throws on osascript failure", async () => {
+    const os = baseOs(
+      mockRunner(async () => ({
+        stdout: "",
+        stderr: "fail",
+        exitCode: 1,
+      })),
+    );
+    await expect(
+      os.notifications.show({ title: "Hi", body: "There" }),
+    ).rejects.toMatchObject({ code: "io_error" });
+  });
+
+  it("terminal.execute rejects empty command", async () => {
+    const os = baseOs(
+      mockRunner(async () => ({ stdout: "", stderr: "", exitCode: 0 })),
+    );
+    await expect(os.terminal.execute("", [])).rejects.toMatchObject({
+      code: "invalid_input",
+    });
   });
 });

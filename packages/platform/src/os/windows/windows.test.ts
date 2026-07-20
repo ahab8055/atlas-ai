@@ -125,6 +125,24 @@ describe("Windows OperatingSystem interface", () => {
     ).toBe(true);
   });
 
+  it("clipboard write falls back to Set-Clipboard when clip.exe fails", async () => {
+    const calls: string[] = [];
+    const os = baseOs(
+      mockRunner(async (command) => {
+        calls.push(command);
+        if (command === "clip.exe") {
+          return { stdout: "", stderr: "fail", exitCode: 1 };
+        }
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.clipboard.writeText("hello");
+    expect(calls).toContain("clip.exe");
+    expect(calls.filter((c) => c === "powershell.exe").length).toBeGreaterThan(
+      0,
+    );
+  });
+
   it("listRunning parses Get-Process JSON fixture", async () => {
     const fixture = JSON.stringify([
       { Id: 100, ProcessName: "notepad", Path: "C:\\Windows\\notepad.exe" },
@@ -171,5 +189,52 @@ describe("Windows provider auto-registration", () => {
     });
     await manager.getServices().os.applications.open("calc");
     expect(calls).toContain("cmd.exe");
+  });
+});
+
+describe("Windows focus quit notifications", () => {
+  it("focus and quit invoke powershell", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.applications.focus(100);
+    await os.applications.quit(100);
+    expect(calls.every((c) => c.command === "powershell.exe")).toBe(true);
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("notifications.show invokes powershell balloon tip", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const os = baseOs(
+      mockRunner(async (command, args) => {
+        calls.push({ command, args });
+        return { stdout: "", stderr: "", exitCode: 0 };
+      }),
+    );
+    await os.notifications.show({ title: "Title", body: "Body" });
+    expect(calls[0]?.command).toBe("powershell.exe");
+    expect(calls[0]?.args.join(" ")).toContain("BalloonTipTitle");
+    await expect(
+      os.notifications.show({ title: "  ", body: "" }),
+    ).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+  });
+
+  it("notifications.show throws on powershell failure", async () => {
+    const os = baseOs(
+      mockRunner(async () => ({
+        stdout: "",
+        stderr: "fail",
+        exitCode: 1,
+      })),
+    );
+    await expect(
+      os.notifications.show({ title: "Title", body: "Body" }),
+    ).rejects.toMatchObject({ code: "io_error" });
   });
 });

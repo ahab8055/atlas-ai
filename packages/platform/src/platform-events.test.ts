@@ -173,4 +173,53 @@ describe("platform event emission", () => {
       },
     });
   });
+
+  it("emits PlatformProviderFailed for sync files failures", () => {
+    const { publisher, events } = collectPublisher();
+    const permissions = new PermissionManager({
+      grantedCapabilities: ["filesystem.read"],
+    });
+    const broker = new OsPermissionBroker({
+      permissions,
+      onPlatformEvent: publisher,
+    });
+    const inner = buildOs(
+      mockRunner(() => ({ stdout: "", stderr: "", exitCode: 0 })),
+    );
+    vi.spyOn(inner.files, "readText").mockImplementation(() => {
+      throw new PlatformError("io_error", "read failed", {
+        detail: { errno: "EIO", path: "/tmp/x" },
+      });
+    });
+    const os = wrapOperatingSystemWithBroker(inner, broker);
+
+    expect(() => os.files.readText("/tmp/x")).toThrow(/read failed/);
+    expect(events).toContainEqual({
+      type: "PlatformProviderFailed",
+      payload: expect.objectContaining({
+        operation: "files.readText",
+        code: "io_error",
+        detail: { errno: "EIO", path: "/tmp/x" },
+      }),
+    });
+  });
+
+  it("does not emit PlatformProviderFailed for non-PlatformError", async () => {
+    const { publisher, events } = collectPublisher();
+    const permissions = new PermissionManager({
+      grantedCapabilities: ["application.control"],
+    });
+    const broker = new OsPermissionBroker({
+      permissions,
+      onPlatformEvent: publisher,
+    });
+    const inner = buildOs(
+      mockRunner(() => ({ stdout: "", stderr: "", exitCode: 0 })),
+    );
+    vi.spyOn(inner.applications, "open").mockRejectedValue(new Error("boom"));
+    const os = wrapOperatingSystemWithBroker(inner, broker);
+
+    await expect(os.applications.open("firefox")).rejects.toThrow("boom");
+    expect(events.some((e) => e.type === "PlatformProviderFailed")).toBe(false);
+  });
 });

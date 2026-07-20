@@ -164,4 +164,77 @@ describe("OsPermissionBroker", () => {
     await manager.getServices().os.applications.open("firefox");
     expect(calls).toContain("gtk-launch");
   });
+
+  it("gates the wrap matrix until capabilities are granted", async () => {
+    const runner = mockRunner(() => ({
+      stdout: "ok",
+      stderr: "",
+      exitCode: 0,
+    }));
+    const permissions = new PermissionManager();
+    const broker = new OsPermissionBroker(permissions);
+    const os = wrapOperatingSystemWithBroker(buildOs(runner), broker);
+
+    expect(() => os.files.readText("/tmp/a")).toThrow(
+      /Grant permission for filesystem.read|permission_denied|Permission denied/i,
+    );
+    await expect(os.terminal.execute("echo", [])).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    await expect(os.clipboard.readText()).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    await expect(
+      os.notifications.show({ title: "t", body: "" }),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+    await expect(os.applications.listRunning()).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    await expect(os.applications.focus(1)).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    await expect(os.applications.quit(1)).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+
+    permissions.grant("filesystem.read");
+    permissions.grant("terminal.execute");
+    permissions.grant("clipboard.read");
+    permissions.grant("notifications.show");
+    permissions.grant("application.control");
+
+    try {
+      os.files.readText("/tmp/atlas-broker-matrix-test-missing");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PlatformError);
+      expect((error as PlatformError).code).not.toBe("permission_denied");
+    }
+    await os.terminal.execute("echo", []);
+    await os.clipboard.readText();
+    await os.notifications.show({ title: "t", body: "" });
+    await os.applications.listRunning();
+    await os.applications.focus(1);
+    await os.applications.quit(1);
+    expect(os.system.getHostname()).toBeTruthy();
+  });
+
+  it("uses an injected permissionBroker on PlatformManager", async () => {
+    const calls: string[] = [];
+    const permissions = new PermissionManager({
+      grantedCapabilities: ["application.control"],
+    });
+    const broker = new OsPermissionBroker(permissions);
+    const manager = createPlatformManager({
+      platformId: "linux",
+      permissionBroker: broker,
+      linuxRunner: {
+        async run(command) {
+          calls.push(command);
+          return { stdout: "", stderr: "", exitCode: 0 };
+        },
+      },
+    });
+    await manager.getServices().os.applications.open("firefox");
+    expect(calls).toContain("gtk-launch");
+  });
 });

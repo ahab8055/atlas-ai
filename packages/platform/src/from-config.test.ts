@@ -1,9 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { PermissionManager } from "@atlas-ai/security";
 
-import { toPlatformManagerOptions } from "./from-config.js";
+import {
+  __resetDefaultPlatformManagerForTests,
+  __resetDefaultPlatformServiceRegistryForTests,
+  bootstrapPlatformServices,
+  toPlatformManagerOptions,
+  type PlatformEventPublisher,
+} from "./index.js";
 import { createPlatformManager } from "./manager.js";
+
+afterEach(() => {
+  __resetDefaultPlatformServiceRegistryForTests();
+  __resetDefaultPlatformManagerForTests();
+});
 
 describe("toPlatformManagerOptions", () => {
   it("maps forcePlatformId and osPermissionBroker", () => {
@@ -70,5 +81,66 @@ describe("toPlatformManagerOptions", () => {
     await manager.getServices().os.applications.open("firefox");
     expect(calls).toContain("gtk-launch");
     expect(permissions.listDecisions()).toHaveLength(0);
+  });
+
+  it("host omits onPlatformEvent when platformEvents is false", () => {
+    const events: string[] = [];
+    const publisher: PlatformEventPublisher = {
+      publish(type) {
+        events.push(type);
+      },
+    };
+    const platform = {
+      forcePlatformId: "linux" as const,
+      features: {
+        osPermissionBroker: false,
+        platformEvents: false,
+      },
+    };
+    bootstrapPlatformServices({
+      ...toPlatformManagerOptions(platform, {
+        onPlatformEvent: platform.features.platformEvents
+          ? publisher
+          : undefined,
+      }),
+    });
+    expect(events).toHaveLength(0);
+  });
+
+  it("host attaches onPlatformEvent when platformEvents is true", () => {
+    const events: string[] = [];
+    const publisher: PlatformEventPublisher = {
+      publish(type) {
+        events.push(type);
+      },
+    };
+    const platform = {
+      forcePlatformId: "linux" as const,
+      features: {
+        osPermissionBroker: false,
+        platformEvents: true,
+      },
+    };
+    bootstrapPlatformServices({
+      ...toPlatformManagerOptions(platform, {
+        onPlatformEvent: platform.features.platformEvents
+          ? publisher
+          : undefined,
+      }),
+    });
+    expect(events).toContain("PlatformDetected");
+    expect(events).toContain("PlatformServicesStarted");
+  });
+
+  it("maps duck-typed test config like loadConfig platform section", () => {
+    const options = toPlatformManagerOptions({
+      forcePlatformId: "linux",
+      features: {
+        osPermissionBroker: true,
+        platformEvents: true,
+      },
+    });
+    expect(options.platformId).toBe("linux");
+    expect(options.enforceOsPermissions).toBe(true);
   });
 });

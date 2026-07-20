@@ -95,6 +95,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0069](./0069-platform-event-integration.md)              | Platform event integration              | Accepted |
 | [0070](./0070-platform-configuration-management.md)       | Platform configuration management       | Accepted |
 | [0071](./0071-platform-logging-diagnostics.md)            | Platform logging and diagnostics        | Accepted |
+| [0072](./0072-platform-unit-testing.md)                   | Platform unit testing and coverage      | Accepted |
 
 ## Naming
 

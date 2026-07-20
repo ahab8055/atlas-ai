@@ -119,6 +119,56 @@ describe("PlatformManager", () => {
     expect(info.kernelVersion).toBe("6.1.0-test");
     expect(info.runtime.version).toBe("22.1.0");
   });
+
+  it("remaps friendly os when forced platformId differs from probe", () => {
+    const manager = createPlatformManager({
+      platformId: "win32",
+      enforceOsPermissions: false,
+      probe: {
+        platform: () => "linux",
+        arch: () => "x64",
+        release: () => "6.1.0",
+        type: () => "Linux",
+        version: () => "Linux",
+        nodeVersion: () => "22.0.0",
+      },
+      homeDir: "C:\\Users\\test",
+      env: createNodeEnvService({
+        APPDATA: "C:\\Users\\test\\AppData\\Roaming",
+        LOCALAPPDATA: "C:\\Users\\test\\AppData\\Local",
+      }),
+    });
+    expect(manager.platformId).toBe("win32");
+    expect(manager.getServices().info.id).toBe("win32");
+    expect(manager.getServices().info.os).toBe("windows");
+  });
+
+  it("short-circuits detection when services.info is provided", () => {
+    const manager = createPlatformManager({
+      enforceOsPermissions: false,
+      services: {
+        info: {
+          id: "darwin",
+          os: "macos",
+          arch: "arm64",
+          kernelVersion: "24.0.0-injected",
+          osType: "Darwin",
+          runtime: { kind: "node", version: "22.9.0" },
+        },
+      },
+      probe: {
+        platform: () => "linux",
+        arch: () => "x64",
+        release: () => "should-not-use",
+        type: () => "Linux",
+        version: () => "nope",
+        nodeVersion: () => "0.0.0",
+      },
+    });
+    expect(manager.platformId).toBe("darwin");
+    expect(manager.getServices().info.kernelVersion).toBe("24.0.0-injected");
+    expect(manager.getServices().info.runtime.version).toBe("22.9.0");
+  });
 });
 
 describe("resolvePlatformPaths", () => {
