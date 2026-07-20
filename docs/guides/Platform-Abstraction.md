@@ -17,6 +17,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0066](../adr/0066-os-permission-broker.md),
 [ADR-0067](../adr/0067-platform-service-registry.md),
 [ADR-0068](../adr/0068-os-error-translation.md),
+[ADR-0069](../adr/0069-platform-event-integration.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -74,11 +75,17 @@ Register platform services at startup; modules resolve by key or typed getters.
 ```ts
 import {
   bootstrapPlatformServices,
-  getDefaultPlatformServiceRegistry,
-} from "@atlas-ai/platform";
+  createPlatformEventPublisher,
+  EventBus,
+} from "@atlas-ai/core";
+import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
 
+const eventBus = new EventBus();
 // Host startup
-bootstrapPlatformServices({/* PlatformManagerOptions */});
+bootstrapPlatformServices({
+  onPlatformEvent: createPlatformEventPublisher(eventBus),
+  permissionManager: permissions,
+});
 
 const registry = getDefaultPlatformServiceRegistry();
 const os = registry.getOs();
@@ -147,6 +154,41 @@ and optional `approvalId`. Every check is logged on `PermissionManager`.
 | `system.*`                    | `system.info` (L0)    |
 
 `paths.*` and `env.*` are not gated (bootstrap/infra).
+
+### Platform events
+
+Lifecycle, permission, and provider failures publish through an optional
+**`PlatformEventPublisher`** callback (no `@atlas-ai/core` dependency in
+platform). The host bridges to `EventBus` via `createPlatformEventPublisher`.
+
+| Event                     | When                                           |
+| ------------------------- | ---------------------------------------------- |
+| `PlatformDetected`        | After `PlatformManager.create` builds services |
+| `PlatformServicesStarted` | After `bootstrapPlatformServices` registers    |
+| `PermissionDenied`        | `OsPermissionBroker` blocks a gated operation  |
+| `PlatformProviderFailed`  | Gated op throws non-permission `PlatformError` |
+
+```ts
+import {
+  bootstrapPlatformServices,
+  createPlatformEventPublisher,
+  EventBus,
+} from "@atlas-ai/core";
+import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
+
+const eventBus = new EventBus();
+bootstrapPlatformServices({
+  onPlatformEvent: createPlatformEventPublisher(eventBus),
+  permissionManager: permissions,
+});
+
+eventBus.subscribe("PermissionDenied", (event) => {
+  console.log(event.payload.operation, event.payload.reason);
+});
+```
+
+Constant: `PLATFORM_EVENTS` in `@atlas-ai/platform` (re-exported from core).
+See [Event-System.md](./Event-System.md) and [ADR-0069](../adr/0069-platform-event-integration.md).
 
 ```ts
 // Raw provider tests — skip broker

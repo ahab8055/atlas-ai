@@ -1,8 +1,10 @@
 import {
   ContextManager,
   EventBus,
+  bootstrapPlatformServices,
   createKnowledgeProvider,
   createMemoryProvider,
+  createPlatformEventPublisher,
   createRequestHandler,
   type ContextBuilderOptions,
   type PipelineResult,
@@ -118,6 +120,12 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   const permissions = new PermissionManager({
     grantedCapabilities: ["memory.read", "memory.write"],
   });
+
+  bootstrapPlatformServices({
+    onPlatformEvent: createPlatformEventPublisher(eventBus),
+    permissionManager: permissions,
+  });
+
   const memoryAccessLog = new MemoryAccessLog();
   const memoryAnalytics = createMemoryAnalyticsMonitor();
   const longTermMemory = database

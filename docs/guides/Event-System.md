@@ -2,7 +2,7 @@
 
 Internal event bus foundation for modular component communication.
 
-Related: [Architecture/10-Event-System-Architecture.md](../Architecture/10-Event-System-Architecture.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (orchestration events), [Request-Pipeline.md](./Request-Pipeline.md), [ADR-0016](../adr/0016-event-system-integration.md), [`@atlas-ai/core`](../../packages/core/).
+Related: [Architecture/10-Event-System-Architecture.md](../Architecture/10-Event-System-Architecture.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (orchestration events), [Platform-Abstraction.md](./Platform-Abstraction.md), [Request-Pipeline.md](./Request-Pipeline.md), [ADR-0016](../adr/0016-event-system-integration.md), [ADR-0069](../adr/0069-platform-event-integration.md), [`@atlas-ai/core`](../../packages/core/).
 
 ---
 
@@ -72,6 +72,43 @@ Constant: `CORE_EVENTS` (alias `ORCHESTRATION_EVENTS`).
 
 ---
 
+## Platform events
+
+Published by `@atlas-ai/platform` when the host passes
+`onPlatformEvent: createPlatformEventPublisher(bus)` at bootstrap. Source:
+`atlas.platform`.
+
+| Event                     | When                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| `PlatformDetected`        | Platform manager built adapter + services            |
+| `PlatformServicesStarted` | Registry registered after bootstrap                  |
+| `PermissionDenied`        | OS permission broker blocked an operation            |
+| `PlatformProviderFailed`  | Gated OS call failed with a provider `PlatformError` |
+
+Constant: `PLATFORM_EVENTS`. Typed payloads: `PlatformEventPayloadMap`.
+
+```ts
+import {
+  EventBus,
+  PLATFORM_EVENTS,
+  createPlatformEventPublisher,
+  bootstrapPlatformServices,
+} from "@atlas-ai/core";
+
+const bus = new EventBus();
+bootstrapPlatformServices({
+  onPlatformEvent: createPlatformEventPublisher(bus),
+});
+
+bus.subscribe("PlatformDetected", (event) => {
+  console.log(event.payload.platformId);
+});
+```
+
+Subscribers use event type strings only — no darwin/linux/win32 imports.
+
+---
+
 ## Publish / subscribe
 
 ```ts
@@ -115,6 +152,7 @@ Typed helper for core events: `publishCoreEvent(bus, "PlanCreated", payload, { t
 | ------------------ | -------------------------------------- |
 | In-process bus     | Done (`EventBus`)                      |
 | Core events        | Done (pipeline emits)                  |
+| Platform events    | Done (publisher → bus at bootstrap)    |
 | In-memory history  | Done (`getHistory`, limit default 200) |
 | SQLite event store | Later (Architecture/17)                |
 | Distributed bus    | Later (NATS/Kafka)                     |

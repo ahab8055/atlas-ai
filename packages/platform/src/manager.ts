@@ -9,6 +9,7 @@ import {
 
 import { createPlatformDetector } from "./detector.js";
 import { detectPlatformId } from "./detect.js";
+import { emitPlatformEvent, type PlatformEventPublisher } from "./events.js";
 import { createDarwinPlatformServices } from "./node/darwin.js";
 import { createLinuxPlatformServices } from "./node/linux.js";
 import { createWin32PlatformServices } from "./node/win32.js";
@@ -57,6 +58,8 @@ export interface PlatformManagerOptions {
   permissionManager?: PermissionManager;
   /** Custom OS permission broker (overrides permissionManager). */
   permissionBroker?: OsPermissionBroker;
+  /** Optional callback for platform lifecycle / permission / failure events. */
+  onPlatformEvent?: PlatformEventPublisher;
   /**
    * When true (default), wrap OS privileged methods with OsPermissionBroker.
    * Set false for raw provider tests.
@@ -144,9 +147,11 @@ export class PlatformManager {
     if (options.enforceOsPermissions !== false) {
       const broker =
         options.permissionBroker ??
-        new OsPermissionBroker(
-          options.permissionManager ?? getDefaultPermissionManager(),
-        );
+        new OsPermissionBroker({
+          permissions:
+            options.permissionManager ?? getDefaultPermissionManager(),
+          onPlatformEvent: options.onPlatformEvent,
+        });
       os = wrapOperatingSystemWithBroker(os, broker);
     }
 
@@ -158,7 +163,13 @@ export class PlatformManager {
       // Prefer adapter-built OS (optionally broker-wrapped); allow full replace via services.os
       os: options.services?.os ?? os,
     };
-    return new PlatformManager(platformId, services);
+    const manager = new PlatformManager(platformId, services);
+    emitPlatformEvent(options.onPlatformEvent, "PlatformDetected", {
+      platformId,
+      os: services.info.os,
+      arch: services.info.arch,
+    });
+    return manager;
   }
 
   getServices(): PlatformServices {

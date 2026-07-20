@@ -14,6 +14,15 @@ export type {
 
 export { DEFAULT_APP_NAME, platformIdToOs } from "./types.js";
 
+export {
+  PLATFORM_EVENTS,
+  emitPlatformEvent,
+  isPlatformEventType,
+  type PlatformEventPayloadMap,
+  type PlatformEventPublisher,
+  type PlatformEventType,
+} from "./events.js";
+
 export { detectPlatformId } from "./detect.js";
 
 export type { OsProbe } from "./probe.js";
@@ -94,6 +103,7 @@ export {
   OsPermissionBroker,
   wrapOperatingSystemWithBroker,
   type OsAuthorizeInput,
+  type OsPermissionBrokerOptions,
 } from "./os/permission-broker.js";
 
 export {

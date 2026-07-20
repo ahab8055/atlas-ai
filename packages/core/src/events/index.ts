@@ -22,3 +22,15 @@ export {
   isCoreEventType,
   publishCoreEvent,
 } from "./publish.js";
+
+export {
+  PLATFORM_EVENTS,
+  createPlatformEventPublisher,
+  isPlatformEventType,
+  publishPlatformEvent,
+} from "./platform.js";
+export type {
+  PlatformEventPayloadMap,
+  PlatformEventPublisher,
+  PlatformEventType,
+} from "./platform.js";

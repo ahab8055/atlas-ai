@@ -2,6 +2,7 @@
  * PlatformServiceRegistry — resolve OS/platform services without provider imports
  * (ADR-0067).
  */
+import { emitPlatformEvent } from "./events.js";
 import {
   createPlatformManager,
   getDefaultPlatformManager,
@@ -218,5 +219,9 @@ export function bootstrapPlatformServices(
   setDefaultPlatformManager(manager);
   const registry = getDefaultPlatformServiceRegistry();
   registry.registerFromManager(manager, { replace: true });
+  emitPlatformEvent(options.onPlatformEvent, "PlatformServicesStarted", {
+    platformId: manager.platformId,
+    via: "bootstrap",
+  });
   return registry;
 }

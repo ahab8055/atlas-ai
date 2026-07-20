@@ -12,12 +12,23 @@ export {
   CORE_EVENTS,
   EventBus,
   ORCHESTRATION_EVENTS,
+  PLATFORM_EVENTS,
   assertAtlasEvent,
+  createPlatformEventPublisher,
   getDefaultEventBus,
   isCoreEventType,
+  isPlatformEventType,
   publishCoreEvent,
+  publishPlatformEvent,
   setDefaultEventBus,
 } from "./events/index.js";
+export type {
+  PlatformEventPayloadMap,
+  PlatformEventPublisher,
+  PlatformEventType,
+} from "./events/index.js";
+
+export { bootstrapPlatformServices } from "@atlas-ai/platform";
 
 export {
   AtlasError,

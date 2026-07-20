@@ -7,7 +7,8 @@ import {
   type PermissionManager,
 } from "@atlas-ai/security";
 
-import { PlatformError } from "./errors.js";
+import { emitPlatformEvent, type PlatformEventPublisher } from "../events.js";
+import { PlatformError, isPlatformError } from "./errors.js";
 import type {
   ApplicationService,
   ClipboardService,
@@ -26,15 +27,30 @@ export interface OsAuthorizeInput {
   resource?: string;
 }
 
+export interface OsPermissionBrokerOptions {
+  permissions?: PermissionManager;
+  onPlatformEvent?: PlatformEventPublisher;
+}
+
 /**
  * Central gate for privileged OperatingSystem calls.
  * Logs every check via PermissionManager; throws when blocked.
  */
 export class OsPermissionBroker {
   private readonly permissions: PermissionManager;
+  private readonly publisher?: PlatformEventPublisher;
 
-  constructor(permissions?: PermissionManager) {
-    this.permissions = permissions ?? getDefaultPermissionManager();
+  constructor(
+    permissionsOrOptions?: PermissionManager | OsPermissionBrokerOptions,
+  ) {
+    if (permissionsOrOptions && "requestPermission" in permissionsOrOptions) {
+      this.permissions = permissionsOrOptions;
+      this.publisher = undefined;
+    } else {
+      const opts = permissionsOrOptions ?? {};
+      this.permissions = opts.permissions ?? getDefaultPermissionManager();
+      this.publisher = opts.onPlatformEvent;
+    }
   }
 
   getPermissionManager(): PermissionManager {
@@ -48,13 +64,58 @@ export class OsPermissionBroker {
       resource: input.resource,
     });
     if (check.blocked) {
-      throw new PlatformError(
-        "permission_denied",
+      const reason =
         check.evaluation.message ||
-          `Permission denied for ${input.operation} (${input.capability})`,
-        { approvalId: check.approval?.id },
-      );
+        `Permission denied for ${input.operation} (${input.capability})`;
+      emitPlatformEvent(this.publisher, "PermissionDenied", {
+        operation: input.operation,
+        capability: input.capability,
+        approvalId: check.approval?.id,
+        reason,
+      });
+      throw new PlatformError("permission_denied", reason, {
+        approvalId: check.approval?.id,
+      });
     }
+  }
+
+  /** Emit PlatformProviderFailed for non-permission PlatformErrors. */
+  emitProviderFailed(operation: string, error: unknown): void {
+    if (!isPlatformError(error) || error.code === "permission_denied") {
+      return;
+    }
+    emitPlatformEvent(this.publisher, "PlatformProviderFailed", {
+      operation,
+      code: error.code,
+      category: error.category,
+      message: error.message,
+    });
+  }
+}
+
+function runSyncGated<T>(
+  broker: OsPermissionBroker,
+  operation: string,
+  fn: () => T,
+): T {
+  try {
+    return fn();
+  } catch (error) {
+    broker.emitProviderFailed(operation, error);
+    throw error;
+  }
+}
+
+async function runAsyncGated<T>(
+  broker: OsPermissionBroker,
+  operation: string,
+  fn: () => T | Promise<T>,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    broker.emitProviderFailed(operation, error);
+    throw error;
   }
 }
 
@@ -70,7 +131,9 @@ function wrapApplications(
         reason: "Open application or path",
         resource: appIdOrPath,
       });
-      return inner.open(appIdOrPath);
+      return runAsyncGated(broker, "applications.open", () =>
+        inner.open(appIdOrPath),
+      );
     },
     async listRunning() {
       broker.authorize({
@@ -78,7 +141,9 @@ function wrapApplications(
         capability: "application.control",
         reason: "List running applications",
       });
-      return inner.listRunning();
+      return runAsyncGated(broker, "applications.listRunning", () =>
+        inner.listRunning(),
+      );
     },
     async focus(pidOrId) {
       broker.authorize({
@@ -87,7 +152,9 @@ function wrapApplications(
         reason: "Focus application window",
         resource: String(pidOrId),
       });
-      return inner.focus(pidOrId);
+      return runAsyncGated(broker, "applications.focus", () =>
+        inner.focus(pidOrId),
+      );
     },
     async quit(pidOrId) {
       broker.authorize({
@@ -96,7 +163,9 @@ function wrapApplications(
         reason: "Quit application",
         resource: String(pidOrId),
       });
-      return inner.quit(pidOrId);
+      return runAsyncGated(broker, "applications.quit", () =>
+        inner.quit(pidOrId),
+      );
     },
   };
 }
@@ -113,7 +182,7 @@ function wrapFiles(
         reason: "Check path existence",
         resource: path,
       });
-      return inner.exists(path);
+      return runSyncGated(broker, "files.exists", () => inner.exists(path));
     },
     readText(path) {
       broker.authorize({
@@ -122,7 +191,7 @@ function wrapFiles(
         reason: "Read file contents",
         resource: path,
       });
-      return inner.readText(path);
+      return runSyncGated(broker, "files.readText", () => inner.readText(path));
     },
     writeText(path, data, mode) {
       broker.authorize({
@@ -131,7 +200,9 @@ function wrapFiles(
         reason: "Write file contents",
         resource: path,
       });
-      return inner.writeText(path, data, mode);
+      return runSyncGated(broker, "files.writeText", () =>
+        inner.writeText(path, data, mode),
+      );
     },
     mkdirp(path) {
       broker.authorize({
@@ -140,7 +211,7 @@ function wrapFiles(
         reason: "Create directory",
         resource: path,
       });
-      return inner.mkdirp(path);
+      return runSyncGated(broker, "files.mkdirp", () => inner.mkdirp(path));
     },
     remove(path) {
       broker.authorize({
@@ -149,7 +220,7 @@ function wrapFiles(
         reason: "Remove path",
         resource: path,
       });
-      return inner.remove(path);
+      return runSyncGated(broker, "files.remove", () => inner.remove(path));
     },
     listDir(path) {
       broker.authorize({
@@ -158,7 +229,7 @@ function wrapFiles(
         reason: "List directory",
         resource: path,
       });
-      return inner.listDir(path);
+      return runSyncGated(broker, "files.listDir", () => inner.listDir(path));
     },
     stat(path) {
       broker.authorize({
@@ -167,7 +238,7 @@ function wrapFiles(
         reason: "Stat path",
         resource: path,
       });
-      return inner.stat(path);
+      return runSyncGated(broker, "files.stat", () => inner.stat(path));
     },
   };
 }
@@ -184,7 +255,9 @@ function wrapTerminal(
         reason: "Execute terminal command",
         resource: command,
       });
-      return inner.execute(command, args, options);
+      return runAsyncGated(broker, "terminal.execute", () =>
+        inner.execute(command, args, options),
+      );
     },
   };
 }
@@ -201,7 +274,9 @@ function wrapNotifications(
         reason: "Show desktop notification",
         resource: input.title,
       });
-      return inner.show(input);
+      return runAsyncGated(broker, "notifications.show", () =>
+        inner.show(input),
+      );
     },
   };
 }
@@ -217,7 +292,9 @@ function wrapClipboard(
         capability: "clipboard.read",
         reason: "Read clipboard text",
       });
-      return inner.readText();
+      return runAsyncGated(broker, "clipboard.readText", () =>
+        inner.readText(),
+      );
     },
     async writeText(text) {
       broker.authorize({
@@ -225,7 +302,9 @@ function wrapClipboard(
         capability: "clipboard.write",
         reason: "Write clipboard text",
       });
-      return inner.writeText(text);
+      return runAsyncGated(broker, "clipboard.writeText", () =>
+        inner.writeText(text),
+      );
     },
   };
 }
@@ -241,7 +320,9 @@ function wrapSystem(
         capability: "system.info",
         reason: "Read platform information",
       });
-      return inner.getPlatform();
+      return runSyncGated(broker, "system.getPlatform", () =>
+        inner.getPlatform(),
+      );
     },
     getHostname() {
       broker.authorize({
@@ -249,7 +330,9 @@ function wrapSystem(
         capability: "system.info",
         reason: "Read hostname",
       });
-      return inner.getHostname();
+      return runSyncGated(broker, "system.getHostname", () =>
+        inner.getHostname(),
+      );
     },
     getUptime() {
       broker.authorize({
@@ -257,7 +340,7 @@ function wrapSystem(
         capability: "system.info",
         reason: "Read system uptime",
       });
-      return inner.getUptime();
+      return runSyncGated(broker, "system.getUptime", () => inner.getUptime());
     },
   };
 }
