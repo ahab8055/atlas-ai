@@ -120,6 +120,30 @@ describe("applyEnvOverrides", () => {
     expect(next.profile.learning.learnOnRequest).toBe(false);
     expect(next.profile.learning.minConfidence).toBe(0.7);
   });
+
+  it("overrides platform force id and feature flags from env", () => {
+    const next = applyEnvOverrides(DEFAULT_APP_CONFIG, {
+      ATLAS_PLATFORM_FORCE_ID: "darwin",
+      ATLAS_PLATFORM_FEATURE_OS_PERMISSION_BROKER: "false",
+      ATLAS_PLATFORM_FEATURE_EVENTS: "false",
+    });
+    expect(next.platform.forcePlatformId).toBe("darwin");
+    expect(next.platform.features.osPermissionBroker).toBe(false);
+    expect(next.platform.features.platformEvents).toBe(false);
+  });
+
+  it("ignores invalid ATLAS_PLATFORM_FORCE_ID", () => {
+    const withForce = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      platform: {
+        forcePlatformId: "linux",
+        features: { osPermissionBroker: true, platformEvents: true },
+      },
+    });
+    const next = applyEnvOverrides(withForce, {
+      ATLAS_PLATFORM_FORCE_ID: "solaris",
+    });
+    expect(next.platform.forcePlatformId).toBe("linux");
+  });
 });
 
 describe("loadConfig", () => {
@@ -214,5 +238,33 @@ describe("mergeAppConfig", () => {
     expect(merged.memory.consolidation.conflictMinScore).toBe(0.7);
     expect(merged.memory.consolidation.candidateLimit).toBe(3);
     expect(merged.memory.consolidation.consolidateOnStore).toBe(false);
+  });
+
+  it("includes platform defaults", () => {
+    expect(DEFAULT_APP_CONFIG.platform.features.osPermissionBroker).toBe(true);
+    expect(DEFAULT_APP_CONFIG.platform.features.platformEvents).toBe(true);
+    expect(DEFAULT_APP_CONFIG.platform.forcePlatformId).toBeUndefined();
+  });
+
+  it("merges platform feature and force overrides", () => {
+    const merged = mergeAppConfig(DEFAULT_APP_CONFIG, {
+      platform: {
+        forcePlatformId: "win32",
+        features: { osPermissionBroker: false },
+      },
+    });
+    expect(merged.platform.forcePlatformId).toBe("win32");
+    expect(merged.platform.features.osPermissionBroker).toBe(false);
+    expect(merged.platform.features.platformEvents).toBe(true);
+  });
+
+  it("loads test.json forcePlatformId", () => {
+    const config = loadConfig({
+      repoRoot: resolve(import.meta.dirname, "../../.."),
+      env: "test",
+      loadEnvFile: false,
+      envVars: { ATLAS_ENV: "test" },
+    });
+    expect(config.platform.forcePlatformId).toBe("linux");
   });
 });

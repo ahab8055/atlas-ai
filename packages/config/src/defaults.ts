@@ -18,6 +18,12 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
     telemetry: false,
     offlineMode: true,
   },
+  platform: {
+    features: {
+      osPermissionBroker: true,
+      platformEvents: true,
+    },
+  },
   ai: {
     provider: "mock",
     endpoint: "http://127.0.0.1:8080",

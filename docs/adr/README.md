@@ -93,6 +93,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0067](./0067-platform-service-registry.md)               | Platform service registry               | Accepted |
 | [0068](./0068-os-error-translation.md)                    | OS error translation framework          | Accepted |
 | [0069](./0069-platform-event-integration.md)              | Platform event integration              | Accepted |
+| [0070](./0070-platform-configuration-management.md)       | Platform configuration management       | Accepted |
 
 ## Naming
 

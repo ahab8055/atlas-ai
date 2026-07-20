@@ -2,7 +2,7 @@
 
 Centralized configuration for development, test, and production — with secrets kept out of source control.
 
-Related: [`@atlas-ai/config`](../../packages/config/), [`config/`](../../config/), [ADR-0003](../adr/0003-configuration-management.md), [Security Architecture § Secrets](../Architecture/06-Security-Architecture.md).
+Related: [`@atlas-ai/config`](../../packages/config/), [`config/`](../../config/), [Platform-Abstraction.md](./Platform-Abstraction.md), [ADR-0003](../adr/0003-configuration-management.md), [ADR-0070](../adr/0070-platform-configuration-management.md), [Security Architecture § Secrets](../Architecture/06-Security-Architecture.md).
 
 ---
 
@@ -58,32 +58,48 @@ Resolve environment from `ATLAS_ENV` (`development` | `production` | `test`), de
 
 Stored in `config/*.json` and/or overridden with:
 
-| Variable                                      | Maps to                                             |
-| --------------------------------------------- | --------------------------------------------------- |
-| `ATLAS_ENV`                                   | `config.env`                                        |
-| `ATLAS_LOG_LEVEL`                             | `config.logLevel`                                   |
-| `ATLAS_DATA_DIR`                              | `config.paths.dataDir`                              |
-| `ATLAS_MODELS_DIR`                            | `config.paths.modelsDir`                            |
-| `ATLAS_DATABASE_PATH`                         | `config.paths.databasePath`                         |
-| `ATLAS_HOST`                                  | `config.server.host`                                |
-| `ATLAS_PORT`                                  | `config.server.port`                                |
-| `ATLAS_FEATURE_CLOUD_PROVIDERS`               | `config.features.cloudProviders` (`true`/`false`)   |
-| `ATLAS_FEATURE_TELEMETRY`                     | `config.features.telemetry` (`true`/`false`)        |
-| `ATLAS_FEATURE_OFFLINE_MODE`                  | `config.features.offlineMode` (`true`/`false`)      |
-| `ATLAS_MEMORY_SHORT_TERM_MAX_ENTRIES`         | `config.memory.shortTerm.maxEntries`                |
-| `ATLAS_MEMORY_SHORT_TERM_TTL_MS`              | `config.memory.shortTerm.ttlMs` (0 disables TTL)    |
-| `ATLAS_MEMORY_CLASSIFY_MIN_IMPORTANCE`        | `config.memory.classification.minImportanceToStore` |
-| `ATLAS_MEMORY_CLASSIFY_MIN_CONFIDENCE`        | `config.memory.classification.minConfidenceToStore` |
-| `ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS`      | `config.memory.classification.temporaryTtlMs`       |
-| `ATLAS_MEMORY_RETRIEVAL_LIMIT`                | `config.memory.retrieval.limit`                     |
-| `ATLAS_MEMORY_RETRIEVAL_MIN_SCORE`            | `config.memory.retrieval.minScore`                  |
-| `ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS`  | `config.memory.retrieval.recencyHalfLifeMs`         |
-| `ATLAS_MEMORY_CONSOLIDATE_MERGE_MIN_SCORE`    | `config.memory.consolidation.mergeMinScore`         |
-| `ATLAS_MEMORY_CONSOLIDATE_CONFLICT_MIN_SCORE` | `config.memory.consolidation.conflictMinScore`      |
-| `ATLAS_MEMORY_CONSOLIDATE_CANDIDATE_LIMIT`    | `config.memory.consolidation.candidateLimit`        |
-| `ATLAS_MEMORY_CONSOLIDATE_ON_STORE`           | `config.memory.consolidation.consolidateOnStore`    |
+| Variable                                      | Maps to                                                      |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `ATLAS_ENV`                                   | `config.env`                                                 |
+| `ATLAS_LOG_LEVEL`                             | `config.logLevel`                                            |
+| `ATLAS_DATA_DIR`                              | `config.paths.dataDir`                                       |
+| `ATLAS_MODELS_DIR`                            | `config.paths.modelsDir`                                     |
+| `ATLAS_DATABASE_PATH`                         | `config.paths.databasePath`                                  |
+| `ATLAS_HOST`                                  | `config.server.host`                                         |
+| `ATLAS_PORT`                                  | `config.server.port`                                         |
+| `ATLAS_FEATURE_CLOUD_PROVIDERS`               | `config.features.cloudProviders` (`true`/`false`)            |
+| `ATLAS_FEATURE_TELEMETRY`                     | `config.features.telemetry` (`true`/`false`)                 |
+| `ATLAS_FEATURE_OFFLINE_MODE`                  | `config.features.offlineMode` (`true`/`false`)               |
+| `ATLAS_PLATFORM_FORCE_ID`                     | `config.platform.forcePlatformId` (`darwin`/`linux`/`win32`) |
+| `ATLAS_PLATFORM_FEATURE_OS_PERMISSION_BROKER` | `config.platform.features.osPermissionBroker`                |
+| `ATLAS_PLATFORM_FEATURE_EVENTS`               | `config.platform.features.platformEvents`                    |
+| `ATLAS_MEMORY_SHORT_TERM_MAX_ENTRIES`         | `config.memory.shortTerm.maxEntries`                         |
+| `ATLAS_MEMORY_SHORT_TERM_TTL_MS`              | `config.memory.shortTerm.ttlMs` (0 disables TTL)             |
+| `ATLAS_MEMORY_CLASSIFY_MIN_IMPORTANCE`        | `config.memory.classification.minImportanceToStore`          |
+| `ATLAS_MEMORY_CLASSIFY_MIN_CONFIDENCE`        | `config.memory.classification.minConfidenceToStore`          |
+| `ATLAS_MEMORY_CLASSIFY_TEMPORARY_TTL_MS`      | `config.memory.classification.temporaryTtlMs`                |
+| `ATLAS_MEMORY_RETRIEVAL_LIMIT`                | `config.memory.retrieval.limit`                              |
+| `ATLAS_MEMORY_RETRIEVAL_MIN_SCORE`            | `config.memory.retrieval.minScore`                           |
+| `ATLAS_MEMORY_RETRIEVAL_RECENCY_HALFLIFE_MS`  | `config.memory.retrieval.recencyHalfLifeMs`                  |
+| `ATLAS_MEMORY_CONSOLIDATE_MERGE_MIN_SCORE`    | `config.memory.consolidation.mergeMinScore`                  |
+| `ATLAS_MEMORY_CONSOLIDATE_CONFLICT_MIN_SCORE` | `config.memory.consolidation.conflictMinScore`               |
+| `ATLAS_MEMORY_CONSOLIDATE_CANDIDATE_LIMIT`    | `config.memory.consolidation.candidateLimit`                 |
+| `ATLAS_MEMORY_CONSOLIDATE_ON_STORE`           | `config.memory.consolidation.consolidateOnStore`             |
 
 Public frontend values may use `VITE_*` (e.g. `VITE_ATLAS_API_URL`) and must never include secrets.
+
+### Platform section
+
+Serializable OS behaviour (ADR-0070). Path layout stays on `paths` / `ATLAS_DATA_DIR`.
+
+| Field                                  | Default | Notes                                            |
+| -------------------------------------- | ------- | ------------------------------------------------ |
+| `platform.forcePlatformId`             | unset   | Force `darwin` / `linux` / `win32` (tests/CI)    |
+| `platform.features.osPermissionBroker` | `true`  | Map to `enforceOsPermissions`                    |
+| `platform.features.platformEvents`     | `true`  | Host attaches `PlatformEventPublisher` when true |
+
+Hosts map with `toPlatformManagerOptions(config.platform, extras)` then
+`bootstrapPlatformServices`. See [Platform-Abstraction.md](./Platform-Abstraction.md).
 
 ---
 

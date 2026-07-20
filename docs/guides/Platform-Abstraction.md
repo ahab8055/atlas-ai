@@ -18,6 +18,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0067](../adr/0067-platform-service-registry.md),
 [ADR-0068](../adr/0068-os-error-translation.md),
 [ADR-0069](../adr/0069-platform-event-integration.md),
+[ADR-0070](../adr/0070-platform-configuration-management.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -73,18 +74,24 @@ this facade.
 Register platform services at startup; modules resolve by key or typed getters.
 
 ```ts
+import { loadConfig } from "@atlas-ai/config";
 import {
   bootstrapPlatformServices,
   createPlatformEventPublisher,
   EventBus,
+  toPlatformManagerOptions,
 } from "@atlas-ai/core";
 import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
 
+const config = loadConfig();
 const eventBus = new EventBus();
-// Host startup
 bootstrapPlatformServices({
-  onPlatformEvent: createPlatformEventPublisher(eventBus),
-  permissionManager: permissions,
+  ...toPlatformManagerOptions(config.platform, {
+    permissionManager: permissions,
+    onPlatformEvent: config.platform.features.platformEvents
+      ? createPlatformEventPublisher(eventBus)
+      : undefined,
+  }),
 });
 
 const registry = getDefaultPlatformServiceRegistry();
@@ -92,6 +99,10 @@ const os = registry.getOs();
 const apps = registry.resolve("os.applications");
 const info = registry.getInfo();
 ```
+
+Config-driven behaviour (ADR-0070): `config.platform.forcePlatformId`,
+`features.osPermissionBroker`, `features.platformEvents`. Paths stay on
+`config.paths` — see [Configuration.md](./Configuration.md).
 
 | Key                                    | Type                                  |
 | -------------------------------------- | ------------------------------------- |

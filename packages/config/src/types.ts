@@ -30,6 +30,29 @@ export interface AtlasFeatureFlags {
   offlineMode: boolean;
 }
 
+/** Host OS platform id — matches `@atlas-ai/platform` PlatformId. */
+export type AtlasPlatformId = "darwin" | "linux" | "win32";
+
+export interface AtlasPlatformFeatureFlags {
+  /** Wrap privileged OS methods with OsPermissionBroker (default true). */
+  osPermissionBroker: boolean;
+  /** Host should attach PlatformEventPublisher when an EventBus exists (default true). */
+  platformEvents: boolean;
+}
+
+/**
+ * Serializable platform behaviour (ADR-0070).
+ * Path layout stays on `paths` / ATLAS_DATA_DIR — not dual-owned here.
+ */
+export interface AtlasPlatformConfig {
+  /**
+   * Force adapter for tests / CI. Omit = detect host OS.
+   * Prefer config/test.json or ATLAS_PLATFORM_FORCE_ID — not production.json.
+   */
+  forcePlatformId?: AtlasPlatformId;
+  features: AtlasPlatformFeatureFlags;
+}
+
 export interface AtlasAiInferenceConfig {
   temperature: number;
   maxTokens: number;
@@ -212,6 +235,7 @@ export interface AtlasAppConfig {
   paths: AtlasPathsConfig;
   server: AtlasServerConfig;
   features: AtlasFeatureFlags;
+  platform: AtlasPlatformConfig;
   ai: AtlasAiConfig;
   memory: AtlasMemoryConfig;
   knowledge: AtlasKnowledgeConfig;

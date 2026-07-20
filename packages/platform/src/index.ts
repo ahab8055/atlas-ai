@@ -44,6 +44,12 @@ export {
 } from "./manager.js";
 
 export {
+  toPlatformManagerOptions,
+  type PlatformConfigLike,
+  type PlatformManagerExtras,
+} from "./from-config.js";
+
+export {
   PlatformServiceRegistry,
   getDefaultPlatformServiceRegistry,
   setDefaultPlatformServiceRegistry,

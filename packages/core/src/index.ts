@@ -28,7 +28,14 @@ export type {
   PlatformEventType,
 } from "./events/index.js";
 
-export { bootstrapPlatformServices } from "@atlas-ai/platform";
+export {
+  bootstrapPlatformServices,
+  toPlatformManagerOptions,
+} from "@atlas-ai/platform";
+export type {
+  PlatformConfigLike,
+  PlatformManagerExtras,
+} from "@atlas-ai/platform";
 
 export {
   AtlasError,

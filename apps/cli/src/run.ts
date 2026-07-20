@@ -6,6 +6,7 @@ import {
   createMemoryProvider,
   createPlatformEventPublisher,
   createRequestHandler,
+  toPlatformManagerOptions,
   type ContextBuilderOptions,
   type PipelineResult,
 } from "@atlas-ai/core";
@@ -122,8 +123,12 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   });
 
   bootstrapPlatformServices({
-    onPlatformEvent: createPlatformEventPublisher(eventBus),
-    permissionManager: permissions,
+    ...toPlatformManagerOptions(config.platform, {
+      permissionManager: permissions,
+      onPlatformEvent: config.platform.features.platformEvents
+        ? createPlatformEventPublisher(eventBus)
+        : undefined,
+    }),
   });
 
   const memoryAccessLog = new MemoryAccessLog();

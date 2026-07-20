@@ -6,6 +6,9 @@ import type {
   AtlasAppConfig,
   AtlasEnvironment,
   AtlasFeatureFlags,
+  AtlasPlatformConfig,
+  AtlasPlatformFeatureFlags,
+  AtlasPlatformId,
   AtlasKnowledgeConfig,
   AtlasKnowledgeExtractionConfig,
   AtlasKnowledgeRelationshipsConfig,
@@ -120,6 +123,61 @@ function mergeFeatures(
     cloudProviders: asBoolean(patch.cloudProviders, base.cloudProviders),
     telemetry: asBoolean(patch.telemetry, base.telemetry),
     offlineMode: asBoolean(patch.offlineMode, base.offlineMode),
+  };
+}
+
+const PLATFORM_IDS: readonly AtlasPlatformId[] = [
+  "darwin",
+  "linux",
+  "win32",
+] as const;
+
+function asPlatformId(
+  value: unknown,
+  fallback: AtlasPlatformId | undefined,
+): AtlasPlatformId | undefined {
+  if (
+    typeof value === "string" &&
+    (PLATFORM_IDS as readonly string[]).includes(value)
+  ) {
+    return value as AtlasPlatformId;
+  }
+  return fallback;
+}
+
+function mergePlatformFeatures(
+  base: AtlasPlatformFeatureFlags,
+  patch: unknown,
+): AtlasPlatformFeatureFlags {
+  if (!isRecord(patch)) {
+    return { ...base };
+  }
+  return {
+    osPermissionBroker: asBoolean(
+      patch.osPermissionBroker,
+      base.osPermissionBroker,
+    ),
+    platformEvents: asBoolean(patch.platformEvents, base.platformEvents),
+  };
+}
+
+function mergePlatform(
+  base: AtlasPlatformConfig,
+  patch: unknown,
+): AtlasPlatformConfig {
+  if (!isRecord(patch)) {
+    return {
+      forcePlatformId: base.forcePlatformId,
+      features: { ...base.features },
+    };
+  }
+  const forcePlatformId =
+    "forcePlatformId" in patch
+      ? asPlatformId(patch.forcePlatformId, undefined)
+      : base.forcePlatformId;
+  return {
+    ...(forcePlatformId !== undefined ? { forcePlatformId } : {}),
+    features: mergePlatformFeatures(base.features, patch.features),
   };
 }
 
@@ -515,6 +573,7 @@ export function mergeAppConfig(
       paths: { ...base.paths },
       server: { ...base.server },
       features: { ...base.features },
+      platform: mergePlatform(base.platform, undefined),
       ai: mergeAi(base.ai, undefined),
       memory: mergeMemory(base.memory, undefined),
       knowledge: mergeKnowledge(base.knowledge, undefined),
@@ -530,6 +589,7 @@ export function mergeAppConfig(
     paths: mergePaths(base.paths, patch.paths),
     server: mergeServer(base.server, patch.server),
     features: mergeFeatures(base.features, patch.features),
+    platform: mergePlatform(base.platform, patch.platform),
     ai: mergeAi(base.ai, patch.ai),
     memory: mergeMemory(base.memory, patch.memory),
     knowledge: mergeKnowledge(base.knowledge, patch.knowledge),
@@ -573,6 +633,25 @@ export function applyEnvOverrides(
         envVars.ATLAS_FEATURE_OFFLINE_MODE !== undefined
           ? envVars.ATLAS_FEATURE_OFFLINE_MODE === "true"
           : config.features.offlineMode,
+    },
+    platform: {
+      forcePlatformId:
+        envVars.ATLAS_PLATFORM_FORCE_ID !== undefined
+          ? asPlatformId(
+              envVars.ATLAS_PLATFORM_FORCE_ID,
+              config.platform.forcePlatformId,
+            )
+          : config.platform.forcePlatformId,
+      features: {
+        osPermissionBroker:
+          envVars.ATLAS_PLATFORM_FEATURE_OS_PERMISSION_BROKER !== undefined
+            ? envVars.ATLAS_PLATFORM_FEATURE_OS_PERMISSION_BROKER === "true"
+            : config.platform.features.osPermissionBroker,
+        platformEvents:
+          envVars.ATLAS_PLATFORM_FEATURE_EVENTS !== undefined
+            ? envVars.ATLAS_PLATFORM_FEATURE_EVENTS === "true"
+            : config.platform.features.platformEvents,
+      },
     },
     ai: {
       provider: envVars.ATLAS_AI_PROVIDER ?? config.ai.provider,
