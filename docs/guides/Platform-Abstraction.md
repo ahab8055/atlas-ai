@@ -408,7 +408,9 @@ absolute user-data layouts.
 
 ## Testing
 
-Colocated Vitest under `packages/platform/src/**/*.test.ts` (ADR-0072):
+### Unit (ADR-0072)
+
+Colocated Vitest under `packages/platform/src/**/*.test.ts`:
 
 - Detection / probe / manager edge cases
 - Registry resolve matrix + bootstrap
@@ -423,6 +425,17 @@ pnpm --filter @atlas-ai/platform test:coverage   # ≥80% lines/functions/statem
 
 Use `enforceOsPermissions: false` and injectable `*Runner` mocks — no real OS
 binaries in unit tests.
+
+### Integration (ADR-0073)
+
+Cross-package suite under `tests/integration/phase4-platform.test.ts` forces
+`darwin` / `linux` / `win32` via mock runners on a single CI host. See
+[Phase4-Platform-Integration-Testing.md](./Phase4-Platform-Integration-Testing.md).
+
+```bash
+pnpm test:integration
+pnpm exec vitest run tests/integration/phase4-platform.test.ts
+```
 
 ---
 

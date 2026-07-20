@@ -31,7 +31,7 @@ atlas-ai/
 ├── tests/
 │   ├── README.md
 │   ├── unit/                  # optional shared unit helpers
-│   ├── integration/           # cross-package Phase 1–3 suites
+│   ├── integration/           # cross-package Phase 1–4 suites
 │   └── e2e/                   # Playwright (later)
 └── apps/desktop/src-tauri/    # #[cfg(test)] modules
 ```
@@ -40,7 +40,8 @@ Rules:
 
 - Prefer **colocated** `*.test.ts` beside implementation.
 - Use `tests/integration/` for **cross-package** workflows (Phase 1 core runtime;
-  Phase 2 Local AI Engine; Phase 3 Memory & Personal Context).
+  Phase 2 Local AI Engine; Phase 3 Memory & Personal Context; Phase 4 Platform
+  Abstraction).
 - Use `tests/e2e/` only for cross-cutting UI flows.
 - Do not commit secrets or live `.env` values into fixtures; use inline `envVars` like config tests.
 
@@ -72,6 +73,7 @@ Workspace packages export `dist/`. `pnpm test` builds them first so CI and fresh
 | Phase 1 core runtime | `tests/integration/phase1-core-runtime.test.ts` — see [Phase1-Integration-Testing.md](./Phase1-Integration-Testing.md)               |
 | Phase 2 Local AI     | `tests/integration/phase2-local-ai.test.ts` — see [Phase2-Local-AI-Integration-Testing.md](./Phase2-Local-AI-Integration-Testing.md) |
 | Phase 3 Memory       | `tests/integration/phase3-memory.test.ts` — see [Phase3-Memory-Integration-Testing.md](./Phase3-Memory-Integration-Testing.md)       |
+| Phase 4 Platform     | `tests/integration/phase4-platform.test.ts` — see [Phase4-Platform-Integration-Testing.md](./Phase4-Platform-Integration-Testing.md) |
 | Desktop smoke        | `apps/desktop/src/smoke.test.ts`                                                                                                     |
 | Rust greet helper    | `apps/desktop/src-tauri/src/lib.rs` (`tests` module)                                                                                 |
 
