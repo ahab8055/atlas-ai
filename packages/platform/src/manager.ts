@@ -1,7 +1,8 @@
 /**
  * PlatformManager — loads the correct Node OS adapter at runtime
- * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065 / 0066 / 0067).
+ * (ADR-0060 / 0061 / 0062 / 0063 / 0064 / 0065 / 0066 / 0067 / 0071).
  */
+import type { Logger } from "@atlas-ai/logging";
 import {
   getDefaultPermissionManager,
   type PermissionManager,
@@ -9,6 +10,7 @@ import {
 
 import { createPlatformDetector } from "./detector.js";
 import { detectPlatformId } from "./detect.js";
+import { platformLog } from "./diagnostics.js";
 import { emitPlatformEvent, type PlatformEventPublisher } from "./events.js";
 import { createDarwinPlatformServices } from "./node/darwin.js";
 import { createLinuxPlatformServices } from "./node/linux.js";
@@ -60,6 +62,8 @@ export interface PlatformManagerOptions {
   permissionBroker?: OsPermissionBroker;
   /** Optional callback for platform lifecycle / permission / failure events. */
   onPlatformEvent?: PlatformEventPublisher;
+  /** Optional structured logger for Atlas diagnostics (ADR-0071). */
+  logger?: Logger;
   /**
    * When true (default), wrap OS privileged methods with OsPermissionBroker.
    * Set false for raw provider tests.
@@ -86,6 +90,7 @@ export class PlatformManager {
   }
 
   static create(options: PlatformManagerOptions = {}): PlatformManager {
+    const logger = options.logger;
     const detector = createPlatformDetector({ probe: options.probe });
     let info: PlatformInfo | undefined = options.services?.info;
     let platformId = options.platformId;
@@ -143,14 +148,26 @@ export class PlatformManager {
       },
     });
 
+    platformLog(logger, "info", "Platform provider loaded", {
+      platformId,
+      os: base.info.os,
+      arch: base.info.arch,
+    });
+
+    const enforceOsPermissions = options.enforceOsPermissions !== false;
+    platformLog(logger, "debug", "OS permission broker wrap", {
+      enforceOsPermissions,
+    });
+
     let os = base.os;
-    if (options.enforceOsPermissions !== false) {
+    if (enforceOsPermissions) {
       const broker =
         options.permissionBroker ??
         new OsPermissionBroker({
           permissions:
             options.permissionManager ?? getDefaultPermissionManager(),
           onPlatformEvent: options.onPlatformEvent,
+          logger,
         });
       os = wrapOperatingSystemWithBroker(os, broker);
     }
@@ -165,6 +182,11 @@ export class PlatformManager {
     };
     const manager = new PlatformManager(platformId, services);
     emitPlatformEvent(options.onPlatformEvent, "PlatformDetected", {
+      platformId,
+      os: services.info.os,
+      arch: services.info.arch,
+    });
+    platformLog(logger, "info", "Platform initialized", {
       platformId,
       os: services.info.os,
       arch: services.info.arch,

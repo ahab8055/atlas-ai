@@ -2,6 +2,7 @@
  * Platform lifecycle / permission / failure events (ADR-0069).
  * Published via optional callback — no dependency on @atlas-ai/core EventBus.
  */
+import type { PlatformErrorDetail } from "./os/errors.js";
 import type { PlatformId } from "./types.js";
 
 export const PLATFORM_EVENTS = [
@@ -34,6 +35,8 @@ export interface PlatformEventPayloadMap {
     code: string;
     category: string;
     message: string;
+    /** Native / provider troubleshooting fields when available. */
+    detail?: PlatformErrorDetail;
   };
 }
 

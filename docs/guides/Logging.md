@@ -2,7 +2,7 @@
 
 Structured, local-first logging for monitoring and debugging.
 
-Related: [Architecture/15-Monitoring-Architecture.md](../Architecture/15-Monitoring-Architecture.md), [ADR-0004](../adr/0004-structured-logging.md), [`@atlas-ai/logging`](../../packages/logging/), Rust `tracing` in `apps/desktop/src-tauri`.
+Related: [Architecture/15-Monitoring-Architecture.md](../Architecture/15-Monitoring-Architecture.md), [Platform-Abstraction.md](./Platform-Abstraction.md), [ADR-0004](../adr/0004-structured-logging.md), [ADR-0071](../adr/0071-platform-logging-diagnostics.md), [`@atlas-ai/logging`](../../packages/logging/), Rust `tracing` in `apps/desktop/src-tauri`.
 
 ---
 
@@ -77,6 +77,9 @@ log.logError("operation failed", err, {
   category: "tool",
   context: { tool: "file.read" },
 });
+
+// Hosts inject child loggers into packages, e.g. platform diagnostics (ADR-0071):
+// logger.child("platform") → service "atlas-cli.platform"
 ```
 
 Sinks:

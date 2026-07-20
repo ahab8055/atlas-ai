@@ -3,6 +3,7 @@
  * (ADR-0067).
  */
 import { emitPlatformEvent } from "./events.js";
+import { platformLog } from "./diagnostics.js";
 import {
   createPlatformManager,
   getDefaultPlatformManager,
@@ -220,6 +221,10 @@ export function bootstrapPlatformServices(
   const registry = getDefaultPlatformServiceRegistry();
   registry.registerFromManager(manager, { replace: true });
   emitPlatformEvent(options.onPlatformEvent, "PlatformServicesStarted", {
+    platformId: manager.platformId,
+    via: "bootstrap",
+  });
+  platformLog(options.logger, "info", "Platform services started", {
     platformId: manager.platformId,
     via: "bootstrap",
   });

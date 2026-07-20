@@ -6,7 +6,9 @@ import {
   type PermissionCapability,
   type PermissionManager,
 } from "@atlas-ai/security";
+import type { Logger } from "@atlas-ai/logging";
 
+import { platformLogError, platformSecurityLog } from "../diagnostics.js";
 import { emitPlatformEvent, type PlatformEventPublisher } from "../events.js";
 import { PlatformError, isPlatformError } from "./errors.js";
 import type {
@@ -30,6 +32,7 @@ export interface OsAuthorizeInput {
 export interface OsPermissionBrokerOptions {
   permissions?: PermissionManager;
   onPlatformEvent?: PlatformEventPublisher;
+  logger?: Logger;
 }
 
 /**
@@ -39,6 +42,7 @@ export interface OsPermissionBrokerOptions {
 export class OsPermissionBroker {
   private readonly permissions: PermissionManager;
   private readonly publisher?: PlatformEventPublisher;
+  private readonly logger?: Logger;
 
   constructor(
     permissionsOrOptions?: PermissionManager | OsPermissionBrokerOptions,
@@ -46,10 +50,12 @@ export class OsPermissionBroker {
     if (permissionsOrOptions && "requestPermission" in permissionsOrOptions) {
       this.permissions = permissionsOrOptions;
       this.publisher = undefined;
+      this.logger = undefined;
     } else {
       const opts = permissionsOrOptions ?? {};
       this.permissions = opts.permissions ?? getDefaultPermissionManager();
       this.publisher = opts.onPlatformEvent;
+      this.logger = opts.logger;
     }
   }
 
@@ -73,10 +79,22 @@ export class OsPermissionBroker {
         approvalId: check.approval?.id,
         reason,
       });
+      platformSecurityLog(this.logger, "warn", "OS permission denied", {
+        operation: input.operation,
+        capability: input.capability,
+        reason,
+        ...(check.approval?.id !== undefined
+          ? { approvalId: check.approval.id }
+          : {}),
+      });
       throw new PlatformError("permission_denied", reason, {
         approvalId: check.approval?.id,
       });
     }
+    platformSecurityLog(this.logger, "debug", "OS permission allowed", {
+      operation: input.operation,
+      capability: input.capability,
+    });
   }
 
   /** Emit PlatformProviderFailed for non-permission PlatformErrors. */
@@ -89,6 +107,14 @@ export class OsPermissionBroker {
       code: error.code,
       category: error.category,
       message: error.message,
+      ...(error.detail !== undefined ? { detail: error.detail } : {}),
+    });
+    platformLogError(this.logger, "Platform provider failed", error, {
+      operation,
+      code: error.code,
+      category: error.category,
+      message: error.message,
+      ...(error.detail !== undefined ? { detail: error.detail } : {}),
     });
   }
 }

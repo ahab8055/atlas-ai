@@ -23,6 +23,13 @@ export {
   type PlatformEventType,
 } from "./events.js";
 
+export {
+  platformLog,
+  platformLogError,
+  platformSecurityLog,
+  type PlatformLogger,
+} from "./diagnostics.js";
+
 export { detectPlatformId } from "./detect.js";
 
 export type { OsProbe } from "./probe.js";

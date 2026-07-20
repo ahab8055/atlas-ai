@@ -125,6 +125,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   bootstrapPlatformServices({
     ...toPlatformManagerOptions(config.platform, {
       permissionManager: permissions,
+      logger: logger.child("platform"),
       onPlatformEvent: config.platform.features.platformEvents
         ? createPlatformEventPublisher(eventBus)
         : undefined,

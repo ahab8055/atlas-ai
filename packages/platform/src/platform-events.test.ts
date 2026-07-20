@@ -153,7 +153,9 @@ describe("platform event emission", () => {
       mockRunner(() => ({ stdout: "", stderr: "", exitCode: 0 })),
     );
     vi.spyOn(inner.applications, "open").mockRejectedValue(
-      new PlatformError("io_error", "spawn failed"),
+      new PlatformError("io_error", "spawn failed", {
+        detail: { errno: "ENOENT", syscall: "spawn" },
+      }),
     );
     const os = wrapOperatingSystemWithBroker(inner, broker);
 
@@ -167,6 +169,7 @@ describe("platform event emission", () => {
         code: "io_error",
         category: "system",
         message: "spawn failed",
+        detail: { errno: "ENOENT", syscall: "spawn" },
       },
     });
   });

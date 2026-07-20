@@ -242,6 +242,9 @@ importers:
 
   packages/platform:
     dependencies:
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../logging
       '@atlas-ai/security':
         specifier: workspace:*
         version: link:../security

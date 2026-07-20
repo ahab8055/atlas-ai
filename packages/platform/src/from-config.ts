@@ -18,6 +18,7 @@ export type PlatformManagerExtras = Pick<
   | "permissionManager"
   | "permissionBroker"
   | "onPlatformEvent"
+  | "logger"
   | "probe"
   | "services"
   | "os"

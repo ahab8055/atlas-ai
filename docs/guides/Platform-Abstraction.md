@@ -19,6 +19,7 @@ Related: [Desktop-Shell.md](./Desktop-Shell.md), [Security.md](./Security.md),
 [ADR-0068](../adr/0068-os-error-translation.md),
 [ADR-0069](../adr/0069-platform-event-integration.md),
 [ADR-0070](../adr/0070-platform-configuration-management.md),
+[ADR-0071](../adr/0071-platform-logging-diagnostics.md),
 [`@atlas-ai/platform`](../../packages/platform/).
 
 ---
@@ -81,13 +82,16 @@ import {
   EventBus,
   toPlatformManagerOptions,
 } from "@atlas-ai/core";
+import { createLogger } from "@atlas-ai/logging";
 import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
 
 const config = loadConfig();
+const logger = createLogger({ service: "atlas-host" });
 const eventBus = new EventBus();
 bootstrapPlatformServices({
   ...toPlatformManagerOptions(config.platform, {
     permissionManager: permissions,
+    logger: logger.child("platform"),
     onPlatformEvent: config.platform.features.platformEvents
       ? createPlatformEventPublisher(eventBus)
       : undefined,
@@ -166,31 +170,56 @@ and optional `approvalId`. Every check is logged on `PermissionManager`.
 
 `paths.*` and `env.*` are not gated (bootstrap/infra).
 
+### Logging and diagnostics
+
+Optional **`logger?: Logger`** from `@atlas-ai/logging` (ADR-0071). Parallel to
+platform events — logs still emit when `platformEvents` is false. Distinct from
+the PermissionManager **decision log** (security audit of grants/denies).
+
+| Site                                   | Level                  | Notes                                     |
+| -------------------------------------- | ---------------------- | ----------------------------------------- |
+| Provider loaded / platform initialized | `info`                 | `platformId`, `os`, `arch`                |
+| Broker wrap on/off                     | `debug`                | `enforceOsPermissions`                    |
+| Services started (bootstrap)           | `info`                 | `via: "bootstrap"`                        |
+| Permission denied                      | `warn` (`security`)    | operation, capability, reason, approvalId |
+| Permission allowed                     | `debug` (`security`)   | operation, capability                     |
+| Provider failed                        | `error` via `logError` | includes `PlatformError.detail`           |
+
+CLI injects `logger.child("platform")`. Failure events also carry optional
+`detail` on `PlatformProviderFailed`. See [Logging.md](./Logging.md).
+
 ### Platform events
 
 Lifecycle, permission, and provider failures publish through an optional
 **`PlatformEventPublisher`** callback (no `@atlas-ai/core` dependency in
 platform). The host bridges to `EventBus` via `createPlatformEventPublisher`.
 
-| Event                     | When                                           |
-| ------------------------- | ---------------------------------------------- |
-| `PlatformDetected`        | After `PlatformManager.create` builds services |
-| `PlatformServicesStarted` | After `bootstrapPlatformServices` registers    |
-| `PermissionDenied`        | `OsPermissionBroker` blocks a gated operation  |
-| `PlatformProviderFailed`  | Gated op throws non-permission `PlatformError` |
+| Event                     | When                                                               |
+| ------------------------- | ------------------------------------------------------------------ |
+| `PlatformDetected`        | After `PlatformManager.create` builds services                     |
+| `PlatformServicesStarted` | After `bootstrapPlatformServices` registers                        |
+| `PermissionDenied`        | `OsPermissionBroker` blocks a gated operation                      |
+| `PlatformProviderFailed`  | Gated op throws non-permission `PlatformError` (optional `detail`) |
 
 ```ts
+import { loadConfig } from "@atlas-ai/config";
 import {
   bootstrapPlatformServices,
   createPlatformEventPublisher,
   EventBus,
+  toPlatformManagerOptions,
 } from "@atlas-ai/core";
-import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
+import { createLogger } from "@atlas-ai/logging";
 
+const config = loadConfig();
+const logger = createLogger({ service: "atlas-cli" });
 const eventBus = new EventBus();
 bootstrapPlatformServices({
-  onPlatformEvent: createPlatformEventPublisher(eventBus),
-  permissionManager: permissions,
+  ...toPlatformManagerOptions(config.platform, {
+    permissionManager: permissions,
+    logger: logger.child("platform"),
+    onPlatformEvent: createPlatformEventPublisher(eventBus),
+  }),
 });
 
 eventBus.subscribe("PermissionDenied", (event) => {
