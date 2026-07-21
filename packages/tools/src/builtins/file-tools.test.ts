@@ -153,12 +153,27 @@ describe("file.* builtin tools", () => {
   });
 
   it("writes, moves, and deletes", () => {
-    expect(
-      executeTool({
-        name: "file.write",
-        input: { path: "out.txt", content: "new" },
-      }).ok,
-    ).toBe(true);
+    const wrote = executeTool({
+      name: "file.write",
+      input: { path: "out.txt", content: "new" },
+    });
+    expect(wrote.ok).toBe(true);
+    expect(wrote.output?.data?.mode).toBe("overwrite");
+    expect(wrote.output?.data?.atomic).toBe(true);
+    expect(wrote.output?.data?.created).toBe(true);
+    expect(typeof wrote.output?.data?.bytesWritten).toBe("number");
+
+    const appended = executeTool({
+      name: "file.write",
+      input: {
+        path: "out.txt",
+        content: "!",
+        mode: "append",
+        atomic: false,
+      },
+    });
+    expect(appended.ok).toBe(true);
+    expect(appended.output?.data?.mode).toBe("append");
 
     expect(
       executeTool({

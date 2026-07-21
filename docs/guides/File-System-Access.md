@@ -11,16 +11,17 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0076](../adr/0076-file-search-engine.md),
 [ADR-0077](../adr/0077-file-metadata-service.md),
 [ADR-0078](../adr/0078-file-reading-engine.md),
+[ADR-0079](../adr/0079-file-writing-engine.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
 
 ## Layering
 
-| Layer   | Type                             | Role                                                      |
-| ------- | -------------------------------- | --------------------------------------------------------- |
-| Product | `FileAccessService`              | Search, CRUD, navigate, metadata, reading; roots + deny   |
-| OS      | `FileSystemService` (`os.files`) | Path CRUD + ranged `readBytes` + `PlatformError` + broker |
+| Layer   | Type                             | Role                                                 |
+| ------- | -------------------------------- | ---------------------------------------------------- |
+| Product | `FileAccessService`              | Search, CRUD, navigate, metadata, read/write engines |
+| OS      | `FileSystemService` (`os.files`) | Path CRUD + ranged bytes + rename + `PlatformError`  |
 
 ```ts
 import {
@@ -50,10 +51,27 @@ const tree = files.walkDirectory(".", { maxDepth: 4 });
 
 ### CRUD (ADR-0074)
 
-- `writeFile(path, content, { createDirs?, overwrite? })`
 - `createDirectory(path)`
 - `deleteFile(path)`
 - `moveFile(from, to)` — files only (MVP)
+
+### Writing engine (ADR-0079)
+
+`writeFile(path, content, opts?)` → `WriteFileResult`:
+
+```ts
+{
+  (path, bytesWritten, encoding, mode, atomic, created);
+}
+```
+
+Options: `createDirs` (default true), `mode` (`create` | `overwrite` |
+`append`, default overwrite), legacy `overwrite: false` → create, `encoding`
+(`utf-8` | `utf-16le` | `utf-16be`), `atomic` (default true for
+create/overwrite; false for append), `bom` (UTF-8 only; UTF-16 always BOM).
+
+Atomic writes use temp `writeBytes` + `rename`. Atomic append rewrites under
+16 MiB; otherwise `appendBytes`.
 
 ### Reading engine (ADR-0078)
 
@@ -165,6 +183,9 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 `file.read` accepts `path` plus optional `offset`, `maxBytes`, `parse` and
 returns format / encoding / truncation / optional structured `data`.
 
+`file.write` accepts `path`, `content`, plus optional `mode`, `overwrite`,
+`encoding`, `atomic`, `bom`, `createDirs` and returns write result fields.
+
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.
 
@@ -184,7 +205,9 @@ pnpm packages:build
 
 - Persistent file index / hybrid search (Architecture/24)
 - Migrating all remaining `node:fs` usage in ai/logging/database
-- Directory `moveFile` / native rename
+- Directory `moveFile` / native rename (writing engine uses rename for atomic
+  replace only)
 - FS watchers / Tauri native FS plugins
+- Cross-volume atomic rename fallbacks / fsync durability beyond rename
 - Content-based MIME sniffing / Windows ACL owner resolution
 - Full YAML 1.2 / XML DOM / Markdown AST / streaming multi-GB without a window

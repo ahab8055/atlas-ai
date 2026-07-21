@@ -302,4 +302,43 @@ describe("FileAccessService", () => {
     expect(part.size).toBe(body.length);
     expect(part.parseError).toBe("parse skipped: content truncated");
   });
+
+  it("writes with create, overwrite, append, and atomic modes", () => {
+    const svc = buildService({ [ROOT]: null });
+
+    const created = svc.writeFile("out.txt", "hello", { mode: "create" });
+    expect(created.created).toBe(true);
+    expect(created.mode).toBe("create");
+    expect(created.atomic).toBe(true);
+    expect(created.encoding).toBe("utf-8");
+    expect(created.bytesWritten).toBeGreaterThan(0);
+    expect(svc.readFile("out.txt").content).toBe("hello");
+
+    expect(() => svc.writeFile("out.txt", "nope", { mode: "create" })).toThrow(
+      PlatformError,
+    );
+
+    const over = svc.writeFile("out.txt", "world", { mode: "overwrite" });
+    expect(over.created).toBe(false);
+    expect(svc.readFile("out.txt").content).toBe("world");
+
+    const appended = svc.writeFile("out.txt", "!", {
+      mode: "append",
+      atomic: false,
+    });
+    expect(appended.mode).toBe("append");
+    expect(appended.atomic).toBe(false);
+    expect(svc.readFile("out.txt").content).toBe("world!");
+
+    const atomicAppend = svc.writeFile("out.txt", "?", {
+      mode: "append",
+      atomic: true,
+    });
+    expect(atomicAppend.atomic).toBe(true);
+    expect(svc.readFile("out.txt").content).toBe("world!?");
+
+    expect(() => svc.writeFile("out.txt", "x", { overwrite: false })).toThrow(
+      PlatformError,
+    );
+  });
 });

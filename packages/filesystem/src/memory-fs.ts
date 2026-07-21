@@ -1,14 +1,18 @@
 /**
  * In-memory FileSystemService for unit tests (no node:fs I/O).
  * Supports optional symlinks for directory-navigation tests (ADR-0075).
+ * File bodies stored as bytes so writeBytes / UTF-16 round-trips work.
  */
 import type { FileStat, FileSystemService } from "@atlas-ai/platform";
 import { PlatformError } from "@atlas-ai/platform";
 
 type Entry =
-  | { kind: "file"; content: string }
+  | { kind: "file"; bytes: Uint8Array }
   | { kind: "dir" }
   | { kind: "symlink"; target: string };
+
+const utf8 = new TextEncoder();
+const utf8Dec = new TextDecoder("utf-8");
 
 function norm(p: string): string {
   const n = p.replace(/\\/g, "/");
@@ -29,6 +33,13 @@ function baseStat(
     uid: partial.uid ?? 1000,
     gid: partial.gid ?? 1000,
   };
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0);
+  out.set(b, a.length);
+  return out;
 }
 
 export interface MemoryFileSystemService extends FileSystemService {
@@ -98,7 +109,7 @@ export function createMemoryFileSystemService(
       } else {
         store.set(".", { kind: "dir" });
       }
-      store.set(norm(p), { kind: "file", content });
+      store.set(norm(p), { kind: "file", bytes: utf8.encode(content) });
     }
   }
 
@@ -111,7 +122,7 @@ export function createMemoryFileSystemService(
       if (entry.kind !== "file") {
         throw new PlatformError("io_error", `Is a directory: ${p}`);
       }
-      return entry.content;
+      return utf8Dec.decode(entry.bytes);
     },
     readBytes(
       p: string,
@@ -121,7 +132,7 @@ export function createMemoryFileSystemService(
       if (entry.kind !== "file") {
         throw new PlatformError("io_error", `Is a directory: ${p}`);
       }
-      const all = new TextEncoder().encode(entry.content);
+      const all = entry.bytes;
       const offset = opts?.offset ?? 0;
       if (!Number.isFinite(offset) || offset < 0) {
         throw new PlatformError("invalid_input", `Invalid offset: ${offset}`);
@@ -137,7 +148,37 @@ export function createMemoryFileSystemService(
       return all.subarray(offset, offset + toRead);
     },
     writeText(p: string, data: string): void {
-      store.set(norm(p), { kind: "file", content: data });
+      store.set(norm(p), { kind: "file", bytes: utf8.encode(data) });
+    },
+    writeBytes(p: string, data: Uint8Array): void {
+      store.set(norm(p), { kind: "file", bytes: new Uint8Array(data) });
+    },
+    appendBytes(p: string, data: Uint8Array): void {
+      const key = norm(p);
+      const existing = store.get(key);
+      if (!existing) {
+        store.set(key, { kind: "file", bytes: new Uint8Array(data) });
+        return;
+      }
+      if (existing.kind !== "file") {
+        throw new PlatformError("io_error", `Is a directory: ${p}`);
+      }
+      store.set(key, {
+        kind: "file",
+        bytes: concatBytes(existing.bytes, data),
+      });
+    },
+    rename(from: string, to: string): void {
+      const fromKey = norm(from);
+      const toKey = norm(to);
+      const entry = store.get(fromKey);
+      if (!entry) {
+        throw new PlatformError("resource_not_found", `missing ${from}`, {
+          detail: { path: from, errno: "ENOENT" },
+        });
+      }
+      store.delete(fromKey);
+      store.set(toKey, entry);
     },
     mkdirp(p: string): void {
       mkdirpInternal(p);
@@ -184,8 +225,7 @@ export function createMemoryFileSystemService(
         path: p,
         isFile: entry.kind === "file",
         isDirectory: entry.kind === "dir",
-        size:
-          entry.kind === "file" ? Buffer.byteLength(entry.content, "utf8") : 0,
+        size: entry.kind === "file" ? entry.bytes.length : 0,
         mtimeMs: 0,
         isSymbolicLink: false,
       });
@@ -213,7 +253,7 @@ export function createMemoryFileSystemService(
         path: p,
         isFile: e.kind === "file",
         isDirectory: e.kind === "dir",
-        size: e.kind === "file" ? Buffer.byteLength(e.content, "utf8") : 0,
+        size: e.kind === "file" ? e.bytes.length : 0,
         mtimeMs: 0,
         isSymbolicLink: false,
       });

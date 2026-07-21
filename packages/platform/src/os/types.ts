@@ -49,6 +49,12 @@ export interface FileSystemService {
    */
   readBytes(path: string, opts?: ReadBytesOptions): Uint8Array;
   writeText(path: string, data: string, mode?: number): void;
+  /** Write raw bytes (create/overwrite). */
+  writeBytes(path: string, data: Uint8Array, opts?: { mode?: number }): void;
+  /** Append raw bytes to an existing file (creates if missing). */
+  appendBytes(path: string, data: Uint8Array): void;
+  /** Rename/move a path (same-volume atomic replace on POSIX). */
+  rename(from: string, to: string): void;
   mkdirp(path: string): void;
   remove(path: string): void;
   listDir(path: string): string[];

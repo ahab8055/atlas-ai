@@ -81,8 +81,35 @@ export interface ReadFileOptions {
 export interface WriteFileOptions {
   /** Create parent directories when missing (default true). */
   createDirs?: boolean;
-  /** Allow overwriting an existing file (default true). */
+  /** Write mode (default "overwrite"). */
+  mode?: WriteMode;
+  /**
+   * Prefer `mode`. When `mode` is omitted and this is false, behaves as
+   * `mode: "create"`.
+   */
   overwrite?: boolean;
+  encoding?: WriteEncoding;
+  /**
+   * Atomic temp→rename for create/overwrite (default true).
+   * For append: when true, rewrite via atomic replace (size-capped);
+   * when false, platform appendBytes.
+   */
+  atomic?: boolean;
+  /** UTF-8 BOM (default false). UTF-16 always includes BOM. */
+  bom?: boolean;
+}
+
+export type WriteMode = "create" | "overwrite" | "append";
+
+export type WriteEncoding = "utf-8" | "utf-16le" | "utf-16be";
+
+export interface WriteFileResult {
+  path: string;
+  bytesWritten: number;
+  encoding: WriteEncoding;
+  mode: WriteMode;
+  atomic: boolean;
+  created: boolean;
 }
 
 export interface DirEntry {
@@ -113,7 +140,11 @@ export interface WalkDirectoryOptions {
 export interface FileAccessService {
   findFiles(query: FindFilesQuery): FileSearchResult;
   readFile(path: string, opts?: ReadFileOptions): FileContent;
-  writeFile(path: string, content: string, opts?: WriteFileOptions): void;
+  writeFile(
+    path: string,
+    content: string,
+    opts?: WriteFileOptions,
+  ): WriteFileResult;
   createDirectory(path: string): void;
   deleteFile(path: string): void;
   moveFile(from: string, to: string): void;

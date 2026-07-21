@@ -13,7 +13,10 @@ export type {
   ListDirectoryOptions,
   ReadFileOptions,
   WalkDirectoryOptions,
+  WriteEncoding,
   WriteFileOptions,
+  WriteFileResult,
+  WriteMode,
 } from "./types.js";
 
 export {
@@ -43,7 +46,7 @@ export {
 
 export { mimeForEntry, mimeFromExtension } from "./mime.js";
 export { modeToPermissions } from "./permissions-format.js";
-export { decodeBytes } from "./encoding.js";
+export { decodeBytes, encodeBytes } from "./encoding.js";
 export {
   formatFromExtension,
   isBinaryMime,

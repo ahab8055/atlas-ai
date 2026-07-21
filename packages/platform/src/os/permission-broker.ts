@@ -241,6 +241,37 @@ function wrapFiles(
         inner.writeText(path, data, mode),
       );
     },
+    writeBytes(path, data, opts) {
+      broker.authorize({
+        operation: "files.writeBytes",
+        capability: "filesystem.write",
+        reason: "Write file bytes",
+        resource: path,
+      });
+      return runSyncGated(broker, "files.writeBytes", () =>
+        inner.writeBytes(path, data, opts),
+      );
+    },
+    appendBytes(path, data) {
+      broker.authorize({
+        operation: "files.appendBytes",
+        capability: "filesystem.write",
+        reason: "Append file bytes",
+        resource: path,
+      });
+      return runSyncGated(broker, "files.appendBytes", () =>
+        inner.appendBytes(path, data),
+      );
+    },
+    rename(from, to) {
+      broker.authorize({
+        operation: "files.rename",
+        capability: "filesystem.write",
+        reason: "Rename path",
+        resource: to,
+      });
+      return runSyncGated(broker, "files.rename", () => inner.rename(from, to));
+    },
     mkdirp(path) {
       broker.authorize({
         operation: "files.mkdirp",

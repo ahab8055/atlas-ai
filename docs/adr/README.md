@@ -102,6 +102,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0076](./0076-file-search-engine.md)                      | File search engine                      | Accepted |
 | [0077](./0077-file-metadata-service.md)                   | File metadata service                   | Accepted |
 | [0078](./0078-file-reading-engine.md)                     | File reading engine                     | Accepted |
+| [0079](./0079-file-writing-engine.md)                     | File writing engine                     | Accepted |
 
 ## Naming
 

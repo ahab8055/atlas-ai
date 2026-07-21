@@ -12,7 +12,7 @@ import {
 } from "@atlas-ai/platform";
 
 import { mimeForEntry, mimeFromExtension } from "./mime.js";
-import { decodeBytes } from "./encoding.js";
+import { decodeBytes, encodeBytes } from "./encoding.js";
 import { formatFromExtension, isUnsupportedBinaryFormat } from "./format.js";
 import { parseCsvSafe } from "./parsers/csv.js";
 import { parseJsonSafe } from "./parsers/json.js";
@@ -39,13 +39,17 @@ import type {
   DirEntry,
   ReadFileOptions,
   WalkDirectoryOptions,
+  WriteEncoding,
   WriteFileOptions,
+  WriteFileResult,
+  WriteMode,
 } from "./types.js";
 
 const DEFAULT_MAX_DEPTH = 8;
 const DEFAULT_MAX_READ_BYTES = 256 * 1024;
 const DEFAULT_LIMIT = 50;
 const DEFAULT_MAX_CHECKSUM_BYTES = 16 * 1024 * 1024;
+const DEFAULT_MAX_ATOMIC_APPEND_BYTES = 16 * 1024 * 1024;
 
 export interface FileAccessServiceOptions {
   files: FileSystemService;
@@ -61,6 +65,27 @@ export interface FileAccessServiceOptions {
 
 function parentDir(filePath: string): string {
   return path.dirname(filePath);
+}
+
+function writeAtomic(
+  files: FileSystemService,
+  absolute: string,
+  data: Uint8Array,
+): void {
+  const tmp = `${absolute}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    files.writeBytes(tmp, data);
+    files.rename(tmp, absolute);
+  } catch (error) {
+    try {
+      if (files.exists(tmp)) {
+        files.remove(tmp);
+      }
+    } catch {
+      // best-effort cleanup
+    }
+    throw error;
+  }
 }
 
 export function createFileAccessService(
@@ -641,12 +666,17 @@ export function createFileAccessService(
       inputPath: string,
       content: string,
       opts: WriteFileOptions = {},
-    ): void {
+    ): WriteFileResult {
       const absolute = resolve(inputPath);
       const createDirs = opts.createDirs !== false;
-      const overwrite = opts.overwrite !== false;
+      const encoding: WriteEncoding = opts.encoding ?? "utf-8";
+      const mode: WriteMode =
+        opts.mode ?? (opts.overwrite === false ? "create" : "overwrite");
+      const useAtomic =
+        opts.atomic !== undefined ? opts.atomic : mode !== "append";
 
-      if (files.exists(absolute)) {
+      const existed = files.exists(absolute);
+      if (existed) {
         const st = files.stat(absolute);
         if (st.isDirectory) {
           throw new PlatformError(
@@ -655,7 +685,7 @@ export function createFileAccessService(
             { detail: { path: absolute } },
           );
         }
-        if (!overwrite) {
+        if (mode === "create") {
           throw new PlatformError(
             "invalid_input",
             `File already exists: ${absolute}`,
@@ -664,14 +694,66 @@ export function createFileAccessService(
         }
       }
 
-      if (createDirs) {
-        const parent = parentDir(absolute);
-        if (parent && parent !== absolute && !files.exists(parent)) {
-          files.mkdirp(parent);
+      const parent = parentDir(absolute);
+      if (parent && parent !== absolute && !files.exists(parent)) {
+        if (!createDirs) {
+          throw new PlatformError(
+            "invalid_input",
+            `Parent directory does not exist: ${parent}`,
+            { detail: { path: parent } },
+          );
         }
+        files.mkdirp(parent);
       }
 
-      files.writeText(absolute, content);
+      const payload = encodeBytes(content, {
+        encoding,
+        bom: opts.bom,
+      });
+
+      if (mode === "append") {
+        if (useAtomic) {
+          const existing = existed
+            ? files.readBytes(absolute)
+            : new Uint8Array(0);
+          if (existing.length > DEFAULT_MAX_ATOMIC_APPEND_BYTES) {
+            throw new PlatformError(
+              "invalid_input",
+              `Atomic append rejected: file exceeds ${DEFAULT_MAX_ATOMIC_APPEND_BYTES} bytes: ${absolute}`,
+              { detail: { path: absolute } },
+            );
+          }
+          const merged = new Uint8Array(existing.length + payload.length);
+          merged.set(existing, 0);
+          merged.set(payload, existing.length);
+          writeAtomic(files, absolute, merged);
+        } else {
+          files.appendBytes(absolute, payload);
+        }
+        return {
+          path: absolute,
+          bytesWritten: payload.length,
+          encoding,
+          mode,
+          atomic: useAtomic,
+          created: !existed,
+        };
+      }
+
+      if (useAtomic) {
+        writeAtomic(files, absolute, payload);
+      } else {
+        files.writeBytes(absolute, payload);
+      }
+
+      return {
+        path: absolute,
+        bytesWritten: payload.length,
+        encoding,
+        mode,
+        atomic: useAtomic,
+        created: !existed,
+      };
     },
 
     createDirectory(inputPath: string): void {

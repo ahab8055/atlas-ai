@@ -2,6 +2,7 @@
  * Node FileSystemService — fuller FS API over node:fs (ADR-0062 / 0068 / 0075 / 0077).
  */
 import {
+  appendFileSync,
   closeSync,
   existsSync,
   lstatSync,
@@ -11,6 +12,7 @@ import {
   readFileSync,
   readlinkSync,
   readSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -100,6 +102,38 @@ export function createNodeFileSystemService(): FileSystemService {
         throw translateNativeError(error, {
           operation: "files.writeText",
           path,
+        });
+      }
+    },
+    writeBytes(path: string, data: Uint8Array, opts?: { mode?: number }): void {
+      try {
+        writeFileSync(path, data, {
+          ...(opts?.mode !== undefined ? { mode: opts.mode } : {}),
+        });
+      } catch (error) {
+        throw translateNativeError(error, {
+          operation: "files.writeBytes",
+          path,
+        });
+      }
+    },
+    appendBytes(path: string, data: Uint8Array): void {
+      try {
+        appendFileSync(path, data);
+      } catch (error) {
+        throw translateNativeError(error, {
+          operation: "files.appendBytes",
+          path,
+        });
+      }
+    },
+    rename(from: string, to: string): void {
+      try {
+        renameSync(from, to);
+      } catch (error) {
+        throw translateNativeError(error, {
+          operation: "files.rename",
+          path: from,
         });
       }
     },

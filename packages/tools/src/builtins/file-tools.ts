@@ -189,11 +189,12 @@ export const fileRead = defineTool(
 export const fileWrite = defineTool(
   {
     name: "file.write",
-    description: "Create or modify a local text file",
-    version: "1.0.0",
+    description:
+      "Create or modify a local file (create/overwrite/append, encoding, atomic)",
+    version: "1.1.0",
     permissions: ["filesystem.write"],
     risk: "high",
-    tags: ["filesystem", "mvp"],
+    tags: ["filesystem", "mvp", "writing"],
     inputSchema: {
       type: "object",
       required: ["path", "content"],
@@ -201,7 +202,11 @@ export const fileWrite = defineTool(
         path: { type: "string" },
         content: { type: "string" },
         createDirs: { type: "boolean" },
+        mode: { type: "string" },
         overwrite: { type: "boolean" },
+        encoding: { type: "string" },
+        atomic: { type: "boolean" },
+        bom: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -210,22 +215,56 @@ export const fileWrite = defineTool(
       properties: {
         message: { type: "string" },
         path: { type: "string" },
+        bytesWritten: { type: "number" },
+        encoding: { type: "string" },
+        mode: { type: "string" },
+        atomic: { type: "boolean" },
+        created: { type: "boolean" },
       },
     },
   },
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      access().writeFile(filePath, String(input.content ?? ""), {
+      const modeRaw = input.mode !== undefined ? String(input.mode) : undefined;
+      const mode =
+        modeRaw === "create" || modeRaw === "overwrite" || modeRaw === "append"
+          ? modeRaw
+          : undefined;
+      const encodingRaw =
+        input.encoding !== undefined ? String(input.encoding) : undefined;
+      const encoding =
+        encodingRaw === "utf-8" ||
+        encodingRaw === "utf-16le" ||
+        encodingRaw === "utf-16be"
+          ? encodingRaw
+          : undefined;
+      const result = access().writeFile(filePath, String(input.content ?? ""), {
         createDirs:
           input.createDirs === undefined
             ? undefined
             : Boolean(input.createDirs),
+        mode,
         overwrite:
           input.overwrite === undefined ? undefined : Boolean(input.overwrite),
+        encoding,
+        atomic: input.atomic === undefined ? undefined : Boolean(input.atomic),
+        bom: input.bom === undefined ? undefined : Boolean(input.bom),
       });
-      const message = `Wrote ${filePath}`;
-      return { ok: true, message, data: { message, path: filePath } };
+      const message = `Wrote ${result.path} (${result.mode}, ${result.bytesWritten} bytes)`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: result.path,
+          bytesWritten: result.bytesWritten,
+          encoding: result.encoding,
+          mode: result.mode,
+          atomic: result.atomic,
+          created: result.created,
+        },
+      };
     } catch (error) {
       return fail(error);
     }

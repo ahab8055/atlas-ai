@@ -76,6 +76,17 @@ describe("OperatingSystem files", () => {
       expect(files.readBytes(file, { offset: 6, length: 5 })).toEqual(
         new TextEncoder().encode("atlas"),
       );
+      const bytesPath = join(dir, "raw.bin");
+      files.writeBytes(bytesPath, new Uint8Array([1, 2, 3]));
+      expect(files.readBytes(bytesPath)).toEqual(new Uint8Array([1, 2, 3]));
+      files.appendBytes(bytesPath, new Uint8Array([4, 5]));
+      expect(files.readBytes(bytesPath)).toEqual(
+        new Uint8Array([1, 2, 3, 4, 5]),
+      );
+      const renamed = join(dir, "renamed.bin");
+      files.rename(bytesPath, renamed);
+      expect(files.exists(bytesPath)).toBe(false);
+      expect(files.readBytes(renamed)).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
       files.remove(file);
       expect(files.exists(file)).toBe(false);
     } finally {
