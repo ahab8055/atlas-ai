@@ -1,8 +1,11 @@
 export type {
+  DirEntry,
   FileAccessService,
   FileContent,
   FileHit,
   FindFilesQuery,
+  ListDirectoryOptions,
+  WalkDirectoryOptions,
   WriteFileOptions,
 } from "./types.js";
 
@@ -29,4 +32,7 @@ export {
   resolveWithinRoots,
 } from "./paths.js";
 
-export { createMemoryFileSystemService } from "./memory-fs.js";
+export {
+  createMemoryFileSystemService,
+  type MemoryFileSystemService,
+} from "./memory-fs.js";

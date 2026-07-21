@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -65,9 +65,35 @@ describe("OperatingSystem files", () => {
       expect(files.listDir(dir)).toContain("note.txt");
       const st = files.stat(file);
       expect(st.isFile).toBe(true);
+      expect(st.isSymbolicLink).toBe(false);
       expect(st.size).toBeGreaterThan(0);
       files.remove(file);
       expect(files.exists(file)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("lstat and readlink report symbolic links", () => {
+    const dir = mkdtempSync(join(tmpdir(), "atlas-os-link-"));
+    const files = createNodeFileSystemService();
+    try {
+      const target = join(dir, "target.txt");
+      const link = join(dir, "alias.txt");
+      files.writeText(target, "linked");
+      try {
+        symlinkSync("target.txt", link);
+      } catch {
+        // Host may lack symlink permission (e.g. Windows without Developer Mode)
+        return;
+      }
+      const lst = files.lstat(link);
+      expect(lst.isSymbolicLink).toBe(true);
+      expect(files.readlink(link)).toBe("target.txt");
+      const followed = files.stat(link);
+      expect(followed.isSymbolicLink).toBe(false);
+      expect(followed.isFile).toBe(true);
+      expect(files.readText(link)).toBe("linked");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

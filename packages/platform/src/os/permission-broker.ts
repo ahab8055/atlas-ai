@@ -266,6 +266,24 @@ function wrapFiles(
       });
       return runSyncGated(broker, "files.stat", () => inner.stat(path));
     },
+    lstat(path) {
+      broker.authorize({
+        operation: "files.lstat",
+        capability: "filesystem.read",
+        reason: "Lstat path",
+        resource: path,
+      });
+      return runSyncGated(broker, "files.lstat", () => inner.lstat(path));
+    },
+    readlink(path) {
+      broker.authorize({
+        operation: "files.readlink",
+        capability: "filesystem.read",
+        reason: "Read symlink target",
+        resource: path,
+      });
+      return runSyncGated(broker, "files.readlink", () => inner.readlink(path));
+    },
   };
 }
 

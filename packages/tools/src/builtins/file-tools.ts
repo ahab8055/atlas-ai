@@ -290,3 +290,165 @@ export const fileMove = defineTool(
     }
   },
 );
+
+export const fileResolve = defineTool(
+  {
+    name: "file.resolve",
+    description: "Resolve a relative or absolute path within Atlas file roots",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "medium",
+    tags: ["filesystem", "mvp", "navigation"],
+    inputSchema: {
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: { type: "string" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "path"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const resolved = access().resolvePath(String(input.path ?? ""));
+      const message = `Resolved to ${resolved}`;
+      return { ok: true, message, data: { message, path: resolved } };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileList = defineTool(
+  {
+    name: "file.list",
+    description: "List entries in a directory (does not follow nested folders)",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "medium",
+    tags: ["filesystem", "mvp", "navigation"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        includeHidden: { type: "boolean" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "entries"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+        entries: { type: "array" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const dirPath = input.path !== undefined ? String(input.path) : undefined;
+      const entries = access().listDirectory(dirPath, {
+        includeHidden:
+          input.includeHidden === undefined
+            ? undefined
+            : Boolean(input.includeHidden),
+      });
+      const message = `Listed ${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: dirPath ?? "",
+          entries: entries.map((e) => ({
+            path: e.path,
+            name: e.name,
+            isFile: e.isFile,
+            isDirectory: e.isDirectory,
+            isSymbolicLink: e.isSymbolicLink,
+            size: e.size,
+            linkTarget: e.linkTarget,
+          })),
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileWalk = defineTool(
+  {
+    name: "file.walk",
+    description:
+      "Walk a directory tree (symlinks not followed unless followSymlinks is true)",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "medium",
+    tags: ["filesystem", "mvp", "navigation"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        maxDepth: { type: "number" },
+        followSymlinks: { type: "boolean" },
+        includeHidden: { type: "boolean" },
+        limit: { type: "number" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "entries"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+        entries: { type: "array" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const dirPath = input.path !== undefined ? String(input.path) : undefined;
+      const entries = access().walkDirectory(dirPath, {
+        maxDepth:
+          typeof input.maxDepth === "number" ? input.maxDepth : undefined,
+        followSymlinks:
+          input.followSymlinks === undefined
+            ? undefined
+            : Boolean(input.followSymlinks),
+        includeHidden:
+          input.includeHidden === undefined
+            ? undefined
+            : Boolean(input.includeHidden),
+        limit: typeof input.limit === "number" ? input.limit : undefined,
+      });
+      const message = `Walked ${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: dirPath ?? "",
+          entries: entries.map((e) => ({
+            path: e.path,
+            name: e.name,
+            isFile: e.isFile,
+            isDirectory: e.isDirectory,
+            isSymbolicLink: e.isSymbolicLink,
+            size: e.size,
+            linkTarget: e.linkTarget,
+          })),
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);

@@ -21,6 +21,9 @@ import type {
   FileContent,
   FileHit,
   FindFilesQuery,
+  ListDirectoryOptions,
+  DirEntry,
+  WalkDirectoryOptions,
   WriteFileOptions,
 } from "./types.js";
 
@@ -83,7 +86,231 @@ export function createFileAccessService(
     return absolute;
   }
 
+  function toDirEntry(full: string, name: string): DirEntry | undefined {
+    try {
+      const st = files.lstat(full);
+      const entry: DirEntry = {
+        path: full,
+        name,
+        isFile: st.isFile,
+        isDirectory: st.isDirectory,
+        isSymbolicLink: st.isSymbolicLink,
+        size: st.size,
+        mtimeMs: st.mtimeMs,
+      };
+      if (st.isSymbolicLink) {
+        try {
+          entry.linkTarget = files.readlink(full);
+        } catch {
+          // dangling / unreadable link
+        }
+      }
+      return entry;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function isHiddenName(name: string): boolean {
+    return name.startsWith(".");
+  }
+
+  function resolveSymlinkTarget(linkPath: string, linkTarget: string): string {
+    if (path.isAbsolute(linkTarget)) {
+      return path.resolve(linkTarget);
+    }
+    return path.resolve(path.dirname(linkPath), linkTarget);
+  }
+
   return {
+    resolvePath(inputPath: string): string {
+      return resolve(inputPath);
+    },
+
+    listDirectory(
+      inputPath?: string,
+      opts: ListDirectoryOptions = {},
+    ): DirEntry[] {
+      const absolute = inputPath !== undefined ? resolve(inputPath) : roots[0]!;
+      assertAllowed(absolute);
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Directory not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const st = files.lstat(absolute);
+      if (st.isSymbolicLink) {
+        // Listing a symlink path: follow for "is this a dir?" via stat
+        const followed = files.stat(absolute);
+        if (!followed.isDirectory) {
+          throw new PlatformError(
+            "invalid_input",
+            `Not a directory: ${absolute}`,
+            { detail: { path: absolute } },
+          );
+        }
+      } else if (!st.isDirectory) {
+        throw new PlatformError(
+          "invalid_input",
+          `Not a directory: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      const includeHidden = opts.includeHidden === true;
+      const out: DirEntry[] = [];
+      for (const name of files.listDir(absolute)) {
+        if (!includeHidden && isHiddenName(name)) {
+          continue;
+        }
+        const full = join(absolute, name);
+        if (
+          matchesDeny(full, denyPatterns) ||
+          !isPathInsideRoots(full, roots)
+        ) {
+          continue;
+        }
+        const entry = toDirEntry(full, name);
+        if (entry) {
+          out.push(entry);
+        }
+      }
+      return out;
+    },
+
+    walkDirectory(
+      inputPath?: string,
+      opts: WalkDirectoryOptions = {},
+    ): DirEntry[] {
+      const absolute = inputPath !== undefined ? resolve(inputPath) : roots[0]!;
+      assertAllowed(absolute);
+      const walkMaxDepth = opts.maxDepth ?? maxDepth;
+      const followSymlinks = opts.followSymlinks === true;
+      const includeHidden = opts.includeHidden === true;
+      const limit = opts.limit ?? defaultLimit;
+      const out: DirEntry[] = [];
+      const visited = new Set<string>();
+
+      const visit = (dir: string, depth: number): void => {
+        if (out.length >= limit || depth > walkMaxDepth) {
+          return;
+        }
+        if (visited.has(dir)) {
+          return;
+        }
+        visited.add(dir);
+
+        let names: string[];
+        try {
+          names = files.listDir(dir);
+        } catch {
+          return;
+        }
+
+        for (const name of names) {
+          if (out.length >= limit) {
+            return;
+          }
+          if (!includeHidden && isHiddenName(name)) {
+            continue;
+          }
+          const full = join(dir, name);
+          if (
+            matchesDeny(full, denyPatterns) ||
+            !isPathInsideRoots(full, roots)
+          ) {
+            continue;
+          }
+          const entry = toDirEntry(full, name);
+          if (!entry) {
+            continue;
+          }
+          out.push(entry);
+
+          let descend = entry.isDirectory && !entry.isSymbolicLink;
+          if (entry.isSymbolicLink && followSymlinks && entry.linkTarget) {
+            const target = resolveSymlinkTarget(full, entry.linkTarget);
+            if (
+              isPathInsideRoots(target, roots) &&
+              !matchesDeny(target, denyPatterns) &&
+              !visited.has(target)
+            ) {
+              try {
+                const tst = files.stat(target);
+                if (tst.isDirectory) {
+                  visit(target, depth + 1);
+                }
+              } catch {
+                // skip broken
+              }
+            }
+            descend = false;
+          }
+
+          if (descend) {
+            visit(full, depth + 1);
+          }
+        }
+      };
+
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Directory not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      let startDir = absolute;
+      try {
+        const rootLstat = files.lstat(absolute);
+        if (rootLstat.isSymbolicLink && followSymlinks) {
+          const target = resolveSymlinkTarget(
+            absolute,
+            files.readlink(absolute),
+          );
+          assertAllowed(target);
+          startDir = target;
+        } else if (!rootLstat.isDirectory && !rootLstat.isSymbolicLink) {
+          throw new PlatformError(
+            "invalid_input",
+            `Not a directory: ${absolute}`,
+            { detail: { path: absolute } },
+          );
+        } else if (rootLstat.isSymbolicLink && !followSymlinks) {
+          const followed = files.stat(absolute);
+          if (!followed.isDirectory) {
+            throw new PlatformError(
+              "invalid_input",
+              `Not a directory: ${absolute}`,
+              { detail: { path: absolute } },
+            );
+          }
+          // Without followSymlinks, still list through the link path as dir
+        } else if (!rootLstat.isDirectory) {
+          throw new PlatformError(
+            "invalid_input",
+            `Not a directory: ${absolute}`,
+            { detail: { path: absolute } },
+          );
+        }
+      } catch (error) {
+        if (error instanceof PlatformError) {
+          throw error;
+        }
+        throw new PlatformError(
+          "io_error",
+          `Cannot walk directory: ${absolute}`,
+          { detail: { path: absolute }, cause: error },
+        );
+      }
+
+      visit(startDir, 0);
+      return out;
+    },
+
     findFiles(query: FindFilesQuery): FileHit[] {
       const pattern = query.pattern?.trim() ?? "";
       const matcher = patternToRegExp(pattern);

@@ -35,6 +35,31 @@ export interface WriteFileOptions {
   overwrite?: boolean;
 }
 
+export interface DirEntry {
+  path: string;
+  name: string;
+  isFile: boolean;
+  isDirectory: boolean;
+  isSymbolicLink: boolean;
+  size?: number;
+  mtimeMs?: number;
+  /** Present when isSymbolicLink and readlink succeeds. */
+  linkTarget?: string;
+}
+
+export interface ListDirectoryOptions {
+  /** Include names starting with `.` (default false). */
+  includeHidden?: boolean;
+}
+
+export interface WalkDirectoryOptions {
+  maxDepth?: number;
+  /** Follow symlinks into directories/files (default false). */
+  followSymlinks?: boolean;
+  includeHidden?: boolean;
+  limit?: number;
+}
+
 export interface FileAccessService {
   findFiles(query: FindFilesQuery): FileHit[];
   readFile(path: string): FileContent;
@@ -42,4 +67,10 @@ export interface FileAccessService {
   createDirectory(path: string): void;
   deleteFile(path: string): void;
   moveFile(from: string, to: string): void;
+  /** Resolve relative/absolute path within configured roots. */
+  resolvePath(path: string): string;
+  /** List immediate children of a directory (defaults to first root). */
+  listDirectory(path?: string, opts?: ListDirectoryOptions): DirEntry[];
+  /** Depth-capped directory tree walk (defaults to first root). */
+  walkDirectory(path?: string, opts?: WalkDirectoryOptions): DirEntry[];
 }

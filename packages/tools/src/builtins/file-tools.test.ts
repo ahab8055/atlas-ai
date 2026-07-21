@@ -53,6 +53,9 @@ describe("file.* builtin tools", () => {
         "file.mkdir",
         "file.delete",
         "file.move",
+        "file.resolve",
+        "file.list",
+        "file.walk",
       ]),
     );
   });
@@ -74,6 +77,36 @@ describe("file.* builtin tools", () => {
     });
     expect(read.ok).toBe(true);
     expect(read.output?.data?.content).toBe("hello atlas");
+  });
+
+  it("resolves, lists, and walks directories", () => {
+    const resolved = executeTool({
+      name: "file.resolve",
+      input: { path: "src/main.ts" },
+    });
+    expect(resolved.ok).toBe(true);
+    expect(resolved.output?.data?.path).toBe(`${ROOT}/src/main.ts`);
+
+    const listed = executeTool({
+      name: "file.list",
+      input: {},
+    });
+    expect(listed.ok).toBe(true);
+    expect(listed.output?.data?.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "hello.txt" }),
+        expect.objectContaining({ name: "src", isDirectory: true }),
+      ]),
+    );
+
+    const walked = executeTool({
+      name: "file.walk",
+      input: { maxDepth: 4 },
+    });
+    expect(walked.ok).toBe(true);
+    expect(walked.output?.data?.entries).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "main.ts" })]),
+    );
   });
 
   it("writes, moves, and deletes", () => {

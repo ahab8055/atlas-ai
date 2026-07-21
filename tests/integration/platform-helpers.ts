@@ -217,6 +217,8 @@ export function assertOperatingSystemCompliance(os: OperatingSystem): void {
   expect(typeof os.files.remove).toBe("function");
   expect(typeof os.files.listDir).toBe("function");
   expect(typeof os.files.stat).toBe("function");
+  expect(typeof os.files.lstat).toBe("function");
+  expect(typeof os.files.readlink).toBe("function");
 
   expect(typeof os.terminal.execute).toBe("function");
   expect(typeof os.notifications.show).toBe("function");

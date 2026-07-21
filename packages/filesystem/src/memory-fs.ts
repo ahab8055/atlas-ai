@@ -1,10 +1,14 @@
 /**
  * In-memory FileSystemService for unit tests (no node:fs I/O).
+ * Supports optional symlinks for directory-navigation tests (ADR-0075).
  */
 import type { FileStat, FileSystemService } from "@atlas-ai/platform";
 import { PlatformError } from "@atlas-ai/platform";
 
-type Entry = { kind: "file"; content: string } | { kind: "dir" };
+type Entry =
+  | { kind: "file"; content: string }
+  | { kind: "dir" }
+  | { kind: "symlink"; target: string };
 
 function norm(p: string): string {
   const n = p.replace(/\\/g, "/");
@@ -14,12 +18,17 @@ function norm(p: string): string {
   return n || "/";
 }
 
+export interface MemoryFileSystemService extends FileSystemService {
+  /** Create a symlink entry (target may be relative). */
+  symlink(linkPath: string, target: string): void;
+}
+
 /**
  * @param initial - path → file content, or `null` for an empty directory
  */
 export function createMemoryFileSystemService(
   initial: Record<string, string | null> = {},
-): FileSystemService {
+): MemoryFileSystemService {
   const store = new Map<string, Entry>();
 
   const mkdirpInternal = (dirPath: string): void => {
@@ -36,11 +45,37 @@ export function createMemoryFileSystemService(
         : segs.slice(0, i + 1).join("/");
       const nk = norm(dirKey);
       const ex = store.get(nk);
-      if (ex?.kind === "file") {
+      if (ex?.kind === "file" || ex?.kind === "symlink") {
         throw new PlatformError("io_error", `Not a directory: ${nk}`);
       }
       store.set(nk, { kind: "dir" });
     }
+  };
+
+  const resolveFollow = (
+    p: string,
+    seen = new Set<string>(),
+  ): { key: string; entry: Entry } => {
+    const key = norm(p);
+    if (seen.has(key)) {
+      throw new PlatformError("io_error", `Symlink cycle at ${p}`, {
+        detail: { path: p },
+      });
+    }
+    seen.add(key);
+    const e = store.get(key);
+    if (!e) {
+      throw new PlatformError("resource_not_found", `missing ${p}`, {
+        detail: { path: p, errno: "ENOENT" },
+      });
+    }
+    if (e.kind === "symlink") {
+      const next = e.target.startsWith("/")
+        ? e.target
+        : norm(`${key.replace(/\/[^/]+$/, "")}/${e.target}`);
+      return resolveFollow(next, seen);
+    }
+    return { key, entry: e };
   };
 
   for (const [p, content] of Object.entries(initial)) {
@@ -62,16 +97,11 @@ export function createMemoryFileSystemService(
       return store.has(norm(p));
     },
     readText(p: string): string {
-      const e = store.get(norm(p));
-      if (!e) {
-        throw new PlatformError("resource_not_found", `missing ${p}`, {
-          detail: { path: p, errno: "ENOENT" },
-        });
-      }
-      if (e.kind !== "file") {
+      const { entry } = resolveFollow(p);
+      if (entry.kind !== "file") {
         throw new PlatformError("io_error", `Is a directory: ${p}`);
       }
-      return e.content;
+      return entry.content;
     },
     writeText(p: string, data: string): void {
       store.set(norm(p), { kind: "file", content: data });
@@ -116,6 +146,18 @@ export function createMemoryFileSystemService(
       return [...names].sort();
     },
     stat(p: string): FileStat {
+      const { entry } = resolveFollow(p);
+      return {
+        path: p,
+        isFile: entry.kind === "file",
+        isDirectory: entry.kind === "dir",
+        size:
+          entry.kind === "file" ? Buffer.byteLength(entry.content, "utf8") : 0,
+        mtimeMs: 0,
+        isSymbolicLink: false,
+      };
+    },
+    lstat(p: string): FileStat {
       const key = norm(p);
       const e = store.get(key);
       if (!e) {
@@ -123,13 +165,45 @@ export function createMemoryFileSystemService(
           detail: { path: p, errno: "ENOENT" },
         });
       }
+      if (e.kind === "symlink") {
+        return {
+          path: p,
+          isFile: false,
+          isDirectory: false,
+          size: 0,
+          mtimeMs: 0,
+          isSymbolicLink: true,
+        };
+      }
       return {
         path: p,
         isFile: e.kind === "file",
         isDirectory: e.kind === "dir",
         size: e.kind === "file" ? Buffer.byteLength(e.content, "utf8") : 0,
         mtimeMs: 0,
+        isSymbolicLink: false,
       };
+    },
+    readlink(p: string): string {
+      const e = store.get(norm(p));
+      if (!e) {
+        throw new PlatformError("resource_not_found", `missing ${p}`, {
+          detail: { path: p, errno: "ENOENT" },
+        });
+      }
+      if (e.kind !== "symlink") {
+        throw new PlatformError("invalid_input", `Not a symlink: ${p}`, {
+          detail: { path: p },
+        });
+      }
+      return e.target;
+    },
+    symlink(linkPath: string, target: string): void {
+      const parent = linkPath.replace(/[/\\][^/\\]+$/, "");
+      if (parent && parent !== linkPath) {
+        mkdirpInternal(parent);
+      }
+      store.set(norm(linkPath), { kind: "symlink", target });
     },
   };
 }

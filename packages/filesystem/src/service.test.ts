@@ -109,4 +109,62 @@ describe("FileAccessService", () => {
       /already exists/,
     );
   });
+
+  it("resolves relative and absolute paths within roots", () => {
+    const svc = buildService();
+    expect(svc.resolvePath("src/app.ts")).toBe(`${ROOT}/src/app.ts`);
+    expect(svc.resolvePath(`${ROOT}/readme.md`)).toBe(`${ROOT}/readme.md`);
+    expect(() => svc.resolvePath("/etc/passwd")).toThrow(PlatformError);
+  });
+
+  it("lists and walks directories; reports symlinks without following by default", () => {
+    const files = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/src`]: null,
+      [`${ROOT}/src/app.ts`]: "x",
+      [`${ROOT}/.hidden`]: "secret",
+      [`${ROOT}/nested`]: null,
+      [`${ROOT}/nested/deep.txt`]: "d",
+    });
+    files.symlink(`${ROOT}/link-to-src`, "src");
+
+    const svc = createFileAccessService({
+      files,
+      roots: [ROOT],
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    const listed = svc.listDirectory();
+    expect(listed.map((e) => e.name).sort()).toEqual([
+      "link-to-src",
+      "nested",
+      "src",
+    ]);
+    const link = listed.find((e) => e.name === "link-to-src");
+    expect(link?.isSymbolicLink).toBe(true);
+    expect(link?.linkTarget).toBe("src");
+
+    const withHidden = svc.listDirectory(undefined, { includeHidden: true });
+    expect(withHidden.some((e) => e.name === ".hidden")).toBe(true);
+
+    const walked = svc.walkDirectory(undefined, { maxDepth: 8 });
+    expect(walked.some((e) => e.name === "app.ts")).toBe(true);
+    expect(walked.some((e) => e.name === "deep.txt")).toBe(true);
+    expect(walked.filter((e) => e.path.includes("link-to-src/")).length).toBe(
+      0,
+    );
+
+    const followed = svc.walkDirectory(undefined, {
+      followSymlinks: true,
+      maxDepth: 8,
+    });
+    expect(followed.some((e) => e.name === "app.ts")).toBe(true);
+  });
 });

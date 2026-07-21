@@ -23,6 +23,8 @@ export interface FileStat {
   isDirectory: boolean;
   size: number;
   mtimeMs: number;
+  /** True when the path itself is a symbolic link (lstat); always false for `stat`. */
+  isSymbolicLink: boolean;
 }
 
 export interface FileSystemService {
@@ -32,7 +34,12 @@ export interface FileSystemService {
   mkdirp(path: string): void;
   remove(path: string): void;
   listDir(path: string): string[];
+  /** Follows symlinks (isSymbolicLink is always false). */
   stat(path: string): FileStat;
+  /** Does not follow symlinks. */
+  lstat(path: string): FileStat;
+  /** Read symlink target (throws if path is not a symlink). */
+  readlink(path: string): string;
 }
 
 export interface TerminalExecuteOptions {
