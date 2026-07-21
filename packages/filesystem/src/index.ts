@@ -3,8 +3,12 @@ export type {
   FileAccessService,
   FileContent,
   FileHit,
+  FileMetadata,
+  FileMetadataChecksum,
+  FileMetadataOwner,
   FileSearchResult,
   FindFilesQuery,
+  GetFileMetadataOptions,
   ListDirectoryOptions,
   WalkDirectoryOptions,
   WriteFileOptions,
@@ -34,6 +38,9 @@ export {
   patternToRegExp,
   resolveWithinRoots,
 } from "./paths.js";
+
+export { mimeForEntry, mimeFromExtension } from "./mime.js";
+export { modeToPermissions } from "./permissions-format.js";
 
 export {
   createMemoryFileSystemService,

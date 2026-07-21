@@ -479,3 +479,79 @@ export const fileWalk = defineTool(
     }
   },
 );
+
+export const fileMetadata = defineTool(
+  {
+    name: "file.metadata",
+    description:
+      "Retrieve unified metadata for a file or directory (size, dates, MIME, checksum)",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "medium",
+    tags: ["filesystem", "mvp", "metadata"],
+    inputSchema: {
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: { type: "string" },
+        followSymlinks: { type: "boolean" },
+        includeChecksum: { type: "boolean" },
+        maxChecksumBytes: { type: "number" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "metadata"],
+      properties: {
+        message: { type: "string" },
+        metadata: { type: "object" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const filePath = String(input.path ?? "");
+      const metadata = access().getFileMetadata(filePath, {
+        followSymlinks:
+          input.followSymlinks === undefined
+            ? undefined
+            : Boolean(input.followSymlinks),
+        includeChecksum:
+          input.includeChecksum === undefined
+            ? undefined
+            : Boolean(input.includeChecksum),
+        maxChecksumBytes:
+          typeof input.maxChecksumBytes === "number"
+            ? input.maxChecksumBytes
+            : undefined,
+      });
+      const message = `Metadata for ${metadata.path} (${metadata.mimeType})`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          metadata: {
+            path: metadata.path,
+            name: metadata.name,
+            extension: metadata.extension,
+            size: metadata.size,
+            isFile: metadata.isFile,
+            isDirectory: metadata.isDirectory,
+            isSymbolicLink: metadata.isSymbolicLink,
+            createdAtMs: metadata.createdAtMs,
+            modifiedAtMs: metadata.modifiedAtMs,
+            mode: metadata.mode,
+            permissions: metadata.permissions,
+            owner: metadata.owner,
+            mimeType: metadata.mimeType,
+            checksum: metadata.checksum,
+            checksumSkipped: metadata.checksumSkipped,
+          },
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);

@@ -18,14 +18,24 @@ function norm(p: string): string {
   return n || "/";
 }
 
+function baseStat(
+  partial: Omit<FileStat, "birthtimeMs" | "mode" | "uid" | "gid"> &
+    Partial<Pick<FileStat, "birthtimeMs" | "mode" | "uid" | "gid">>,
+): FileStat {
+  return {
+    ...partial,
+    birthtimeMs: partial.birthtimeMs ?? partial.mtimeMs,
+    mode: partial.mode ?? 0o100644,
+    uid: partial.uid ?? 1000,
+    gid: partial.gid ?? 1000,
+  };
+}
+
 export interface MemoryFileSystemService extends FileSystemService {
   /** Create a symlink entry (target may be relative). */
   symlink(linkPath: string, target: string): void;
 }
 
-/**
- * @param initial - path → file content, or `null` for an empty directory
- */
 export function createMemoryFileSystemService(
   initial: Record<string, string | null> = {},
 ): MemoryFileSystemService {
@@ -103,6 +113,13 @@ export function createMemoryFileSystemService(
       }
       return entry.content;
     },
+    readBytes(p: string): Uint8Array {
+      const { entry } = resolveFollow(p);
+      if (entry.kind !== "file") {
+        throw new PlatformError("io_error", `Is a directory: ${p}`);
+      }
+      return new TextEncoder().encode(entry.content);
+    },
     writeText(p: string, data: string): void {
       store.set(norm(p), { kind: "file", content: data });
     },
@@ -147,7 +164,7 @@ export function createMemoryFileSystemService(
     },
     stat(p: string): FileStat {
       const { entry } = resolveFollow(p);
-      return {
+      return baseStat({
         path: p,
         isFile: entry.kind === "file",
         isDirectory: entry.kind === "dir",
@@ -155,7 +172,7 @@ export function createMemoryFileSystemService(
           entry.kind === "file" ? Buffer.byteLength(entry.content, "utf8") : 0,
         mtimeMs: 0,
         isSymbolicLink: false,
-      };
+      });
     },
     lstat(p: string): FileStat {
       const key = norm(p);
@@ -166,23 +183,24 @@ export function createMemoryFileSystemService(
         });
       }
       if (e.kind === "symlink") {
-        return {
+        return baseStat({
           path: p,
           isFile: false,
           isDirectory: false,
           size: 0,
           mtimeMs: 0,
           isSymbolicLink: true,
-        };
+          mode: 0o120777,
+        });
       }
-      return {
+      return baseStat({
         path: p,
         isFile: e.kind === "file",
         isDirectory: e.kind === "dir",
         size: e.kind === "file" ? Buffer.byteLength(e.content, "utf8") : 0,
         mtimeMs: 0,
         isSymbolicLink: false,
-      };
+      });
     },
     readlink(p: string): string {
       const e = store.get(norm(p));

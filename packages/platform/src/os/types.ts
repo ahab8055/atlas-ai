@@ -23,6 +23,12 @@ export interface FileStat {
   isDirectory: boolean;
   size: number;
   mtimeMs: number;
+  /** Creation time when available (may equal mtime on some filesystems). */
+  birthtimeMs: number;
+  /** Raw POSIX mode bits from the OS. */
+  mode: number;
+  uid: number;
+  gid: number;
   /** True when the path itself is a symbolic link (lstat); always false for `stat`. */
   isSymbolicLink: boolean;
 }
@@ -30,6 +36,8 @@ export interface FileStat {
 export interface FileSystemService {
   exists(path: string): boolean;
   readText(path: string): string;
+  /** Raw file bytes (for checksums / binary). */
+  readBytes(path: string): Uint8Array;
   writeText(path: string, data: string, mode?: number): void;
   mkdirp(path: string): void;
   remove(path: string): void;

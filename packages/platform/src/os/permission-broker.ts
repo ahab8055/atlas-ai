@@ -219,6 +219,17 @@ function wrapFiles(
       });
       return runSyncGated(broker, "files.readText", () => inner.readText(path));
     },
+    readBytes(path) {
+      broker.authorize({
+        operation: "files.readBytes",
+        capability: "filesystem.read",
+        reason: "Read file bytes",
+        resource: path,
+      });
+      return runSyncGated(broker, "files.readBytes", () =>
+        inner.readBytes(path),
+      );
+    },
     writeText(path, data, mode) {
       broker.authorize({
         operation: "files.writeText",

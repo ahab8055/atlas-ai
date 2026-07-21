@@ -1,5 +1,5 @@
 /**
- * Node FileSystemService — fuller FS API over node:fs (ADR-0062 / 0068 / 0075).
+ * Node FileSystemService — fuller FS API over node:fs (ADR-0062 / 0068 / 0075 / 0077).
  */
 import {
   existsSync,
@@ -24,6 +24,10 @@ function toFileStat(path: string, s: Stats, isSymbolicLink: boolean): FileStat {
     isDirectory: s.isDirectory(),
     size: s.size,
     mtimeMs: s.mtimeMs,
+    birthtimeMs: s.birthtimeMs,
+    mode: s.mode,
+    uid: s.uid,
+    gid: s.gid,
     isSymbolicLink,
   };
 }
@@ -39,6 +43,16 @@ export function createNodeFileSystemService(): FileSystemService {
       } catch (error) {
         throw translateNativeError(error, {
           operation: "files.readText",
+          path,
+        });
+      }
+    },
+    readBytes(path: string): Uint8Array {
+      try {
+        return new Uint8Array(readFileSync(path));
+      } catch (error) {
+        throw translateNativeError(error, {
+          operation: "files.readBytes",
           path,
         });
       }

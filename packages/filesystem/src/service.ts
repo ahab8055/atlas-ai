@@ -1,6 +1,8 @@
 /**
  * FileAccessService — product FS layer over injected os.files (ADR-0074).
  */
+import { createHash } from "node:crypto";
+import { userInfo } from "node:os";
 import path from "node:path";
 
 import {
@@ -9,6 +11,7 @@ import {
   type PathService,
 } from "@atlas-ai/platform";
 
+import { mimeForEntry } from "./mime.js";
 import {
   DEFAULT_DENY_PATTERNS,
   fileExtension,
@@ -18,12 +21,15 @@ import {
   patternToRegExp,
   resolveWithinRoots,
 } from "./paths.js";
+import { modeToPermissions } from "./permissions-format.js";
 import type {
   FileAccessService,
   FileContent,
   FileHit,
+  FileMetadata,
   FileSearchResult,
   FindFilesQuery,
+  GetFileMetadataOptions,
   ListDirectoryOptions,
   DirEntry,
   WalkDirectoryOptions,
@@ -33,6 +39,7 @@ import type {
 const DEFAULT_MAX_DEPTH = 8;
 const DEFAULT_MAX_READ_BYTES = 256 * 1024;
 const DEFAULT_LIMIT = 50;
+const DEFAULT_MAX_CHECKSUM_BYTES = 16 * 1024 * 1024;
 
 export interface FileAccessServiceOptions {
   files: FileSystemService;
@@ -621,6 +628,90 @@ export function createFileAccessService(
       }
       files.writeText(to, content);
       files.remove(from);
+    },
+
+    getFileMetadata(
+      inputPath: string,
+      opts: GetFileMetadataOptions = {},
+    ): FileMetadata {
+      const absolute = resolve(inputPath);
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Path not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      const followSymlinks = opts.followSymlinks !== false;
+      const includeChecksum = opts.includeChecksum !== false;
+      const maxChecksumBytes =
+        opts.maxChecksumBytes ?? DEFAULT_MAX_CHECKSUM_BYTES;
+
+      const st = followSymlinks ? files.stat(absolute) : files.lstat(absolute);
+      const name = path.basename(absolute);
+      const extension = st.isDirectory ? "" : fileExtension(name);
+
+      let ownerName: string | undefined;
+      try {
+        const getuid = (process as NodeJS.Process & { getuid?: () => number })
+          .getuid;
+        if (typeof getuid === "function" && getuid() === st.uid) {
+          ownerName = userInfo().username;
+        }
+      } catch {
+        // ignore userInfo failures
+      }
+
+      const meta: FileMetadata = {
+        path: absolute,
+        name,
+        extension,
+        size: st.size,
+        isFile: st.isFile,
+        isDirectory: st.isDirectory,
+        isSymbolicLink: st.isSymbolicLink,
+        createdAtMs: st.birthtimeMs,
+        modifiedAtMs: st.mtimeMs,
+        mode: st.mode,
+        permissions: modeToPermissions(st.mode),
+        owner: {
+          uid: st.uid,
+          gid: st.gid,
+          ...(ownerName !== undefined ? { name: ownerName } : {}),
+        },
+        mimeType: mimeForEntry({
+          isDirectory: st.isDirectory,
+          isSymbolicLink: st.isSymbolicLink,
+          extension,
+        }),
+      };
+
+      if (!includeChecksum) {
+        meta.checksumSkipped = "checksum disabled";
+        return meta;
+      }
+      if (!st.isFile || st.isDirectory || st.isSymbolicLink) {
+        meta.checksumSkipped = "not a regular file";
+        return meta;
+      }
+      if (st.size > maxChecksumBytes) {
+        meta.checksumSkipped = `file exceeds maxChecksumBytes (${maxChecksumBytes})`;
+        return meta;
+      }
+
+      try {
+        const bytes = files.readBytes(absolute);
+        meta.checksum = {
+          algorithm: "sha256",
+          hex: createHash("sha256").update(bytes).digest("hex"),
+        };
+      } catch (error) {
+        meta.checksumSkipped =
+          error instanceof Error ? error.message : "checksum failed";
+      }
+
+      return meta;
     },
   };
 }

@@ -67,6 +67,12 @@ describe("OperatingSystem files", () => {
       expect(st.isFile).toBe(true);
       expect(st.isSymbolicLink).toBe(false);
       expect(st.size).toBeGreaterThan(0);
+      expect(typeof st.birthtimeMs).toBe("number");
+      expect(typeof st.mode).toBe("number");
+      expect(typeof st.uid).toBe("number");
+      expect(files.readBytes(file)).toEqual(
+        new TextEncoder().encode("hello atlas"),
+      );
       files.remove(file);
       expect(files.exists(file)).toBe(false);
     } finally {

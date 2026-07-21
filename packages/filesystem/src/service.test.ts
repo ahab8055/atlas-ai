@@ -220,4 +220,36 @@ describe("FileAccessService", () => {
     });
     expect(followed.some((e) => e.name === "app.ts")).toBe(true);
   });
+
+  it("returns unified file metadata with mime and checksum", () => {
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/hello.txt`]: "hello atlas",
+      [`${ROOT}/docs`]: null,
+    });
+
+    const meta = svc.getFileMetadata("hello.txt");
+    expect(meta.name).toBe("hello.txt");
+    expect(meta.extension).toBe(".txt");
+    expect(meta.mimeType).toBe("text/plain");
+    expect(meta.size).toBe(Buffer.byteLength("hello atlas", "utf8"));
+    expect(meta.isFile).toBe(true);
+    expect(meta.permissions).toMatch(/^[rwx-]{9}$/);
+    expect(typeof meta.createdAtMs).toBe("number");
+    expect(typeof meta.modifiedAtMs).toBe("number");
+    expect(meta.owner.uid).toBeDefined();
+    expect(meta.checksum?.algorithm).toBe("sha256");
+    expect(meta.checksum?.hex).toHaveLength(64);
+
+    const dirMeta = svc.getFileMetadata("docs");
+    expect(dirMeta.isDirectory).toBe(true);
+    expect(dirMeta.mimeType).toBe("inode/directory");
+    expect(dirMeta.checksumSkipped).toMatch(/not a regular file/);
+
+    const noHash = svc.getFileMetadata("hello.txt", {
+      includeChecksum: false,
+    });
+    expect(noHash.checksum).toBeUndefined();
+    expect(noHash.checksumSkipped).toBe("checksum disabled");
+  });
 });

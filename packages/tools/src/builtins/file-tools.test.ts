@@ -56,6 +56,7 @@ describe("file.* builtin tools", () => {
         "file.resolve",
         "file.list",
         "file.walk",
+        "file.metadata",
       ]),
     );
   });
@@ -90,6 +91,23 @@ describe("file.* builtin tools", () => {
     });
     expect(read.ok).toBe(true);
     expect(read.output?.data?.content).toBe("hello atlas");
+  });
+
+  it("returns file metadata via FileAccessService", () => {
+    const result = executeTool({
+      name: "file.metadata",
+      input: { path: "hello.txt" },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.output?.data?.metadata).toMatchObject({
+      name: "hello.txt",
+      extension: ".txt",
+      mimeType: "text/plain",
+    });
+    expect(
+      (result.output?.data?.metadata as { checksum?: { hex: string } })
+        ?.checksum?.hex,
+    ).toHaveLength(64);
   });
 
   it("resolves, lists, and walks directories", () => {

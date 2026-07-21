@@ -9,16 +9,17 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [CLI.md](./CLI.md), [ADR-0074](../adr/0074-file-system-access-service.md),
 [ADR-0075](../adr/0075-directory-navigation.md),
 [ADR-0076](../adr/0076-file-search-engine.md),
+[ADR-0077](../adr/0077-file-metadata-service.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
 
 ## Layering
 
-| Layer   | Type                             | Role                                                      |
-| ------- | -------------------------------- | --------------------------------------------------------- |
-| Product | `FileAccessService`              | Search, CRUD, resolve/list/walk; roots + deny             |
-| OS      | `FileSystemService` (`os.files`) | Path CRUD + `lstat`/`readlink` + `PlatformError` + broker |
+| Layer   | Type                             | Role                                                       |
+| ------- | -------------------------------- | ---------------------------------------------------------- |
+| Product | `FileAccessService`              | Search, CRUD, navigate, metadata; roots + deny             |
+| OS      | `FileSystemService` (`os.files`) | Path CRUD + `lstat`/`readBytes` + `PlatformError` + broker |
 
 ```ts
 import {
@@ -94,25 +95,52 @@ unless `followSymlinks: true` (targets must remain inside roots; cycles skipped)
 
 Defaults: max depth **8**, max read **256 KiB**, hit/walk limit **50**.
 
+### Metadata (ADR-0077)
+
+`getFileMetadata(path, opts?)` → `FileMetadata`:
+
+```ts
+{
+  path, name, extension, size,
+  isFile, isDirectory, isSymbolicLink,
+  createdAtMs, modifiedAtMs,
+  mode, permissions,              // e.g. "rw-r--r--"
+  owner: { uid, gid, name? },
+  mimeType,                       // extension map
+  checksum?: { algorithm: "sha256"; hex },
+  checksumSkipped?: string,
+}
+```
+
+Options: `followSymlinks` (default true → `stat`), `includeChecksum`
+(default true for regular files), `maxChecksumBytes` (default 16 MiB).
+
+MIME is extension-based; directories → `inode/directory`; unfollowed symlinks →
+`inode/symlink`. Checksum uses platform `readBytes` (binary-safe).
+
 ---
 
 ## Tools
 
-| Tool           | Capability                    | Maps to           |
-| -------------- | ----------------------------- | ----------------- |
-| `file.search`  | `filesystem.read`             | `findFiles`       |
-| `file.read`    | `filesystem.read`             | `readFile`        |
-| `file.write`   | `filesystem.write`            | `writeFile`       |
-| `file.mkdir`   | `filesystem.write`            | `createDirectory` |
-| `file.delete`  | `filesystem.delete`           | `deleteFile`      |
-| `file.move`    | `filesystem.write` + `delete` | `moveFile`        |
-| `file.resolve` | `filesystem.read`             | `resolvePath`     |
-| `file.list`    | `filesystem.read`             | `listDirectory`   |
-| `file.walk`    | `filesystem.read`             | `walkDirectory`   |
+| Tool            | Capability                    | Maps to           |
+| --------------- | ----------------------------- | ----------------- |
+| `file.search`   | `filesystem.read`             | `findFiles`       |
+| `file.read`     | `filesystem.read`             | `readFile`        |
+| `file.write`    | `filesystem.write`            | `writeFile`       |
+| `file.mkdir`    | `filesystem.write`            | `createDirectory` |
+| `file.delete`   | `filesystem.delete`           | `deleteFile`      |
+| `file.move`     | `filesystem.write` + `delete` | `moveFile`        |
+| `file.resolve`  | `filesystem.read`             | `resolvePath`     |
+| `file.list`     | `filesystem.read`             | `listDirectory`   |
+| `file.walk`     | `filesystem.read`             | `walkDirectory`   |
+| `file.metadata` | `filesystem.read`             | `getFileMetadata` |
 
 `file.search` accepts `query`, `root`, `content`, `limit`, `maxDepth`,
 `includeHidden`, `extensions`, `filesOnly` and returns hit metadata plus
 `truncated` / `scannedEntries` / `durationMs`.
+
+`file.metadata` accepts `path` plus optional `followSymlinks`,
+`includeChecksum`, `maxChecksumBytes`.
 
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.
@@ -135,3 +163,4 @@ pnpm packages:build
 - Migrating all remaining `node:fs` usage in ai/logging/database
 - Directory `moveFile` / native rename
 - FS watchers / Tauri native FS plugins
+- Content-based MIME sniffing / Windows ACL owner resolution

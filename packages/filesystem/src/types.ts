@@ -95,4 +95,45 @@ export interface FileAccessService {
   listDirectory(path?: string, opts?: ListDirectoryOptions): DirEntry[];
   /** Depth-capped directory tree walk (defaults to first root). */
   walkDirectory(path?: string, opts?: WalkDirectoryOptions): DirEntry[];
+  /** Unified file / directory metadata (ADR-0077). */
+  getFileMetadata(path: string, opts?: GetFileMetadataOptions): FileMetadata;
+}
+
+export interface GetFileMetadataOptions {
+  /** Follow symlinks with `stat` (default true). Use false for `lstat`. */
+  followSymlinks?: boolean;
+  /** Compute SHA-256 for regular files under the size cap (default true). */
+  includeChecksum?: boolean;
+  /** Max bytes to hash (default 16 MiB). */
+  maxChecksumBytes?: number;
+}
+
+export interface FileMetadataOwner {
+  uid: number;
+  gid: number;
+  /** Present when uid matches the current process user. */
+  name?: string;
+}
+
+export interface FileMetadataChecksum {
+  algorithm: "sha256";
+  hex: string;
+}
+
+export interface FileMetadata {
+  path: string;
+  name: string;
+  extension: string;
+  size: number;
+  isFile: boolean;
+  isDirectory: boolean;
+  isSymbolicLink: boolean;
+  createdAtMs: number;
+  modifiedAtMs: number;
+  mode: number;
+  permissions: string;
+  owner: FileMetadataOwner;
+  mimeType: string;
+  checksum?: FileMetadataChecksum;
+  checksumSkipped?: string;
 }
