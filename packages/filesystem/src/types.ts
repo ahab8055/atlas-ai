@@ -6,13 +6,18 @@
 export interface FileHit {
   path: string;
   name: string;
-  isDirectory?: boolean;
-  size?: number;
   match?: "name" | "content";
+  isFile: boolean;
+  isDirectory: boolean;
+  isSymbolicLink?: boolean;
+  size?: number;
+  mtimeMs?: number;
+  /** Lowercase extension including leading dot, e.g. `.ts` (empty if none). */
+  extension?: string;
 }
 
 export interface FindFilesQuery {
-  /** Name substring or glob-lite (`*` wildcards). */
+  /** Basename glob (`*` and `?` wildcards). */
   pattern: string;
   /** Search root (must be inside configured roots). Defaults to first root. */
   root?: string;
@@ -20,6 +25,23 @@ export interface FindFilesQuery {
   content?: boolean;
   /** Max hits to return (default 50). */
   limit?: number;
+  /** Max recursion depth (default service maxDepth). */
+  maxDepth?: number;
+  /** Include names starting with `.` (default false). */
+  includeHidden?: boolean;
+  /** Filter by extension, e.g. `[".ts", "md"]` (normalized, case-insensitive). */
+  extensions?: string[];
+  /** When true (default), directories are excluded from hits. */
+  filesOnly?: boolean;
+}
+
+export interface FileSearchResult {
+  hits: FileHit[];
+  /** True when hit `limit` was reached. */
+  truncated: boolean;
+  /** Entries considered during the walk. */
+  scannedEntries: number;
+  durationMs: number;
 }
 
 export interface FileContent {
@@ -61,7 +83,7 @@ export interface WalkDirectoryOptions {
 }
 
 export interface FileAccessService {
-  findFiles(query: FindFilesQuery): FileHit[];
+  findFiles(query: FindFilesQuery): FileSearchResult;
   readFile(path: string): FileContent;
   writeFile(path: string, content: string, opts?: WriteFileOptions): void;
   createDirectory(path: string): void;

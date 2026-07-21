@@ -11,8 +11,10 @@ import {
 
 import {
   DEFAULT_DENY_PATTERNS,
+  fileExtension,
   isPathInsideRoots,
   matchesDeny,
+  normalizeExtensions,
   patternToRegExp,
   resolveWithinRoots,
 } from "./paths.js";
@@ -20,6 +22,7 @@ import type {
   FileAccessService,
   FileContent,
   FileHit,
+  FileSearchResult,
   FindFilesQuery,
   ListDirectoryOptions,
   DirEntry,
@@ -311,10 +314,15 @@ export function createFileAccessService(
       return out;
     },
 
-    findFiles(query: FindFilesQuery): FileHit[] {
+    findFiles(query: FindFilesQuery): FileSearchResult {
+      const started = Date.now();
       const pattern = query.pattern?.trim() ?? "";
       const matcher = patternToRegExp(pattern);
       const limit = query.limit ?? defaultLimit;
+      const searchMaxDepth = query.maxDepth ?? maxDepth;
+      const includeHidden = query.includeHidden === true;
+      const filesOnly = query.filesOnly !== false;
+      const extensions = normalizeExtensions(query.extensions);
       const searchRoot = query.root ? resolve(query.root) : roots[0]!;
       assertAllowed(searchRoot);
 
@@ -327,9 +335,57 @@ export function createFileAccessService(
       }
 
       const hits: FileHit[] = [];
+      let scannedEntries = 0;
+      let truncated = false;
+
+      const extensionOk = (name: string): boolean => {
+        if (!extensions) {
+          return true;
+        }
+        const ext = fileExtension(name);
+        return extensions.includes(ext);
+      };
+
+      const pushHit = (
+        full: string,
+        name: string,
+        meta: {
+          isFile: boolean;
+          isDirectory: boolean;
+          isSymbolicLink: boolean;
+          size?: number;
+          mtimeMs?: number;
+          match: "name" | "content";
+        },
+      ): void => {
+        if (filesOnly && meta.isDirectory) {
+          return;
+        }
+        if (!meta.isDirectory && !extensionOk(name)) {
+          return;
+        }
+        if (meta.isDirectory && extensions) {
+          // Directory hits ignored when extension filter is active
+          return;
+        }
+        hits.push({
+          path: full,
+          name,
+          match: meta.match,
+          isFile: meta.isFile,
+          isDirectory: meta.isDirectory,
+          isSymbolicLink: meta.isSymbolicLink,
+          size: meta.size,
+          mtimeMs: meta.mtimeMs,
+          extension: meta.isDirectory ? undefined : fileExtension(name),
+        });
+        if (hits.length >= limit) {
+          truncated = true;
+        }
+      };
 
       const visit = (dir: string, depth: number): void => {
-        if (hits.length >= limit || depth > maxDepth) {
+        if (truncated || depth > searchMaxDepth) {
           return;
         }
         let names: string[];
@@ -339,8 +395,11 @@ export function createFileAccessService(
           return;
         }
         for (const name of names) {
-          if (hits.length >= limit) {
+          if (truncated) {
             return;
+          }
+          if (!includeHidden && name.startsWith(".")) {
+            continue;
           }
           const full = join(dir, name);
           if (matchesDeny(full, denyPatterns)) {
@@ -350,30 +409,44 @@ export function createFileAccessService(
             continue;
           }
 
+          scannedEntries += 1;
+
           let isDirectory = false;
+          let isFile = false;
+          let isSymbolicLink = false;
           let size: number | undefined;
+          let mtimeMs: number | undefined;
           try {
-            const st = files.stat(full);
+            const st = files.lstat(full);
+            isSymbolicLink = st.isSymbolicLink;
             isDirectory = st.isDirectory;
+            isFile = st.isFile;
             size = st.size;
+            mtimeMs = st.mtimeMs;
+            // Symlink to dir: treat as non-descendable (do not follow)
+            if (isSymbolicLink) {
+              isDirectory = false;
+              // Keep isFile false for bare links unless we want to match link names
+            }
           } catch {
             continue;
           }
 
-          if (matcher.test(name)) {
-            hits.push({
-              path: full,
-              name,
+          const nameMatched = matcher.test(name);
+          if (nameMatched) {
+            pushHit(full, name, {
+              isFile,
               isDirectory,
+              isSymbolicLink,
               size,
+              mtimeMs,
               match: "name",
             });
-            if (hits.length >= limit) {
-              return;
-            }
           } else if (
             query.content &&
-            !isDirectory &&
+            isFile &&
+            !isSymbolicLink &&
+            extensionOk(name) &&
             size !== undefined &&
             size <= maxReadBytes
           ) {
@@ -383,11 +456,12 @@ export function createFileAccessService(
                 matcher.test(text) ||
                 text.toLowerCase().includes(pattern.toLowerCase())
               ) {
-                hits.push({
-                  path: full,
-                  name,
+                pushHit(full, name, {
+                  isFile: true,
                   isDirectory: false,
+                  isSymbolicLink: false,
                   size,
+                  mtimeMs,
                   match: "content",
                 });
               }
@@ -396,29 +470,48 @@ export function createFileAccessService(
             }
           }
 
-          if (isDirectory) {
+          if (isDirectory && !isSymbolicLink && !truncated) {
             visit(full, depth + 1);
           }
         }
       };
 
-      const rootStat = files.stat(searchRoot);
-      if (rootStat.isFile) {
-        const name = path.basename(searchRoot);
-        if (matcher.test(name)) {
-          hits.push({
-            path: searchRoot,
-            name,
-            isDirectory: false,
-            size: rootStat.size,
-            match: "name",
-          });
+      try {
+        const rootLstat = files.lstat(searchRoot);
+        if (
+          rootLstat.isFile ||
+          (rootLstat.isSymbolicLink && !rootLstat.isDirectory)
+        ) {
+          scannedEntries += 1;
+          const name = path.basename(searchRoot);
+          if (matcher.test(name)) {
+            pushHit(searchRoot, name, {
+              isFile: rootLstat.isFile || rootLstat.isSymbolicLink,
+              isDirectory: false,
+              isSymbolicLink: rootLstat.isSymbolicLink,
+              size: rootLstat.size,
+              mtimeMs: rootLstat.mtimeMs,
+              match: "name",
+            });
+          }
+          return {
+            hits,
+            truncated,
+            scannedEntries,
+            durationMs: Date.now() - started,
+          };
         }
-        return hits;
+      } catch {
+        // fall through to directory walk
       }
 
       visit(searchRoot, 0);
-      return hits;
+      return {
+        hits,
+        truncated,
+        scannedEntries,
+        durationMs: Date.now() - started,
+      };
     },
 
     readFile(inputPath: string): FileContent {

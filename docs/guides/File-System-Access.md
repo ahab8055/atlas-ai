@@ -8,6 +8,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [Tool-Registry.md](./Tool-Registry.md), [Security.md](./Security.md),
 [CLI.md](./CLI.md), [ADR-0074](../adr/0074-file-system-access-service.md),
 [ADR-0075](../adr/0075-directory-navigation.md),
+[ADR-0076](../adr/0076-file-search-engine.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -33,7 +34,11 @@ bootstrapFileAccessFromRegistry(getDefaultPlatformServiceRegistry(), {
 
 const files = getDefaultFileAccessService();
 files.writeFile("notes.txt", "hello");
-const hits = files.findFiles({ pattern: "*.txt" });
+const { hits, truncated, scannedEntries, durationMs } = files.findFiles({
+  pattern: "*.ts",
+  extensions: [".ts"],
+  maxDepth: 6,
+});
 const tree = files.walkDirectory(".", { maxDepth: 4 });
 ```
 
@@ -41,14 +46,37 @@ const tree = files.walkDirectory(".", { maxDepth: 4 });
 
 ## API
 
-### CRUD / search (ADR-0074)
+### CRUD (ADR-0074)
 
-- `findFiles({ pattern, root?, content?, limit? })` → `FileHit[]`
 - `readFile(path)` → `{ path, content, size }`
 - `writeFile(path, content, { createDirs?, overwrite? })`
 - `createDirectory(path)`
 - `deleteFile(path)`
 - `moveFile(from, to)` — files only (MVP)
+
+### Search engine (ADR-0076)
+
+`findFiles(query)` → `FileSearchResult`:
+
+```ts
+{
+  pattern: string;          // basename glob: * and ?
+  root?: string;
+  content?: boolean;        // also scan text ≤ maxReadBytes
+  limit?: number;           // default 50
+  maxDepth?: number;        // default 8
+  includeHidden?: boolean;  // default false
+  extensions?: string[];    // e.g. [".ts", "md"]
+  filesOnly?: boolean;      // default true
+}
+```
+
+`FileSearchResult`: `{ hits, truncated, scannedEntries, durationMs }`.
+
+`FileHit`: `{ path, name, match?, isFile, isDirectory, isSymbolicLink?, size?, mtimeMs?, extension? }`.
+
+Search uses `lstat`, does not follow symlink directories, skips hidden names/dirs
+unless `includeHidden`, and stops at `limit` (`truncated: true`).
 
 ### Navigation (ADR-0075)
 
@@ -64,8 +92,7 @@ sensitive deny list throw `PlatformError` (`permission_denied`).
 **Symlinks:** entries are reported via `lstat`. Walk does **not** follow links
 unless `followSymlinks: true` (targets must remain inside roots; cycles skipped).
 
-Defaults: max depth **8**, max read **256 KiB**, hit/walk limit **50**. Hidden
-names (leading `.`) are omitted unless `includeHidden: true`.
+Defaults: max depth **8**, max read **256 KiB**, hit/walk limit **50**.
 
 ---
 
@@ -82,6 +109,10 @@ names (leading `.`) are omitted unless `includeHidden: true`.
 | `file.resolve` | `filesystem.read`             | `resolvePath`     |
 | `file.list`    | `filesystem.read`             | `listDirectory`   |
 | `file.walk`    | `filesystem.read`             | `walkDirectory`   |
+
+`file.search` accepts `query`, `root`, `content`, `limit`, `maxDepth`,
+`includeHidden`, `extensions`, `filesOnly` and returns hit metadata plus
+`truncated` / `scannedEntries` / `durationMs`.
 
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.

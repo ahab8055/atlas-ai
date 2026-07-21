@@ -99,6 +99,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0073](./0073-phase4-platform-integration-tests.md)       | Phase 4 platform integration tests      | Accepted |
 | [0074](./0074-file-system-access-service.md)              | File System Access product layer        | Accepted |
 | [0075](./0075-directory-navigation.md)                    | Directory navigation + symlinks         | Accepted |
+| [0076](./0076-file-search-engine.md)                      | File search engine                      | Accepted |
 
 ## Naming
 

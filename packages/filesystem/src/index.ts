@@ -3,6 +3,7 @@ export type {
   FileAccessService,
   FileContent,
   FileHit,
+  FileSearchResult,
   FindFilesQuery,
   ListDirectoryOptions,
   WalkDirectoryOptions,
@@ -24,9 +25,11 @@ export {
 
 export {
   DEFAULT_DENY_PATTERNS,
+  fileExtension,
   isPathInsideRoots,
   isSensitiveBasename,
   matchesDeny,
+  normalizeExtensions,
   normalizePathSeparators,
   patternToRegExp,
   resolveWithinRoots,

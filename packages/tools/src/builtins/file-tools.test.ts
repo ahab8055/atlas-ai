@@ -70,6 +70,19 @@ describe("file.* builtin tools", () => {
     expect(search.output?.data?.hits).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "hello.txt" })]),
     );
+    expect(typeof search.output?.data?.scannedEntries).toBe("number");
+    expect(typeof search.output?.data?.durationMs).toBe("number");
+
+    const filtered = executeTool({
+      name: "file.search",
+      input: { query: "*", extensions: [".ts"], maxDepth: 4 },
+    });
+    expect(filtered.ok).toBe(true);
+    expect(filtered.output?.data?.hits).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "main.ts", extension: ".ts" }),
+      ]),
+    );
 
     const read = executeTool({
       name: "file.read",

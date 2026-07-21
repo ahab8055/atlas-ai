@@ -104,7 +104,7 @@ export function isPathInsideRoots(
   return false;
 }
 
-/** Convert glob-lite pattern (`*` only) to a case-insensitive RegExp on names. */
+/** Convert glob-lite pattern (`*` and `?`) to a case-insensitive RegExp on names. */
 export function patternToRegExp(pattern: string): RegExp {
   const trimmed = pattern.trim();
   if (!trimmed) {
@@ -115,6 +115,41 @@ export function patternToRegExp(pattern: string): RegExp {
   }
   const escaped = trimmed
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*");
-  return new RegExp(escaped, "i");
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${escaped}$`, "i");
+}
+
+/** Normalize extension filters to lowercase forms with a leading dot. */
+export function normalizeExtensions(
+  extensions: readonly string[] | undefined,
+): string[] | undefined {
+  if (!extensions?.length) {
+    return undefined;
+  }
+  const out: string[] = [];
+  for (const raw of extensions) {
+    const trimmed = raw.trim().toLowerCase();
+    if (!trimmed) {
+      continue;
+    }
+    out.push(trimmed.startsWith(".") ? trimmed : `.${trimmed}`);
+  }
+  return out.length ? out : undefined;
+}
+
+export function fileExtension(name: string): string {
+  const base = name.includes("/")
+    ? name.slice(name.lastIndexOf("/") + 1)
+    : name.includes("\\")
+      ? name.slice(name.lastIndexOf("\\") + 1)
+      : name;
+  if (base.startsWith(".") && !base.slice(1).includes(".")) {
+    return "";
+  }
+  const idx = base.lastIndexOf(".");
+  if (idx <= 0) {
+    return "";
+  }
+  return base.slice(idx).toLowerCase();
 }

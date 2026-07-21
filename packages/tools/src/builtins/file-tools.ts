@@ -29,11 +29,12 @@ function fail(error: unknown): ToolResult {
 export const fileSearch = defineTool(
   {
     name: "file.search",
-    description: "Search local files by name (and optionally content)",
-    version: "1.1.0",
+    description:
+      "Search local files by name (glob * / ?) with optional extension, depth, and content filters",
+    version: "1.2.0",
     permissions: ["filesystem.read"],
     risk: "medium",
-    tags: ["filesystem", "mvp"],
+    tags: ["filesystem", "mvp", "search"],
     inputSchema: {
       type: "object",
       required: ["query"],
@@ -42,6 +43,10 @@ export const fileSearch = defineTool(
         root: { type: "string" },
         content: { type: "boolean" },
         limit: { type: "number" },
+        maxDepth: { type: "number" },
+        includeHidden: { type: "boolean" },
+        extensions: { type: "array", items: { type: "string" } },
+        filesOnly: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -51,34 +56,56 @@ export const fileSearch = defineTool(
         message: { type: "string" },
         query: { type: "string" },
         hits: { type: "array" },
+        truncated: { type: "boolean" },
+        scannedEntries: { type: "number" },
+        durationMs: { type: "number" },
       },
     },
   },
   (input) => {
     try {
       const query = String(input.query ?? "");
-      const hits = access().findFiles({
+      const extensions = Array.isArray(input.extensions)
+        ? input.extensions.map((e) => String(e))
+        : undefined;
+      const result = access().findFiles({
         pattern: query,
         root: input.root !== undefined ? String(input.root) : undefined,
         content: Boolean(input.content),
         limit: typeof input.limit === "number" ? input.limit : undefined,
+        maxDepth:
+          typeof input.maxDepth === "number" ? input.maxDepth : undefined,
+        includeHidden:
+          input.includeHidden === undefined
+            ? undefined
+            : Boolean(input.includeHidden),
+        extensions,
+        filesOnly:
+          input.filesOnly === undefined ? undefined : Boolean(input.filesOnly),
       });
       const message =
-        hits.length === 0
+        result.hits.length === 0
           ? `No files matched "${query}"`
-          : `Found ${hits.length} file(s) matching "${query}"`;
+          : `Found ${result.hits.length} file(s) matching "${query}"${result.truncated ? " (truncated)" : ""}`;
       return {
         ok: true,
         message,
         data: {
           message,
           query,
-          hits: hits.map((h) => ({
+          truncated: result.truncated,
+          scannedEntries: result.scannedEntries,
+          durationMs: result.durationMs,
+          hits: result.hits.map((h) => ({
             path: h.path,
             name: h.name,
             match: h.match,
+            isFile: h.isFile,
             isDirectory: h.isDirectory,
+            isSymbolicLink: h.isSymbolicLink,
             size: h.size,
+            mtimeMs: h.mtimeMs,
+            extension: h.extension,
           })),
         },
       };

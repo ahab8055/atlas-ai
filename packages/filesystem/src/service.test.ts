@@ -63,12 +63,65 @@ describe("FileAccessService", () => {
     const svc = buildService();
 
     const byName = svc.findFiles({ pattern: "*.ts" });
-    expect(byName.map((h) => h.name).sort()).toEqual(["app.ts", "util.ts"]);
-    expect(byName.every((h) => h.match === "name")).toBe(true);
+    expect(byName.hits.map((h) => h.name).sort()).toEqual([
+      "app.ts",
+      "util.ts",
+    ]);
+    expect(byName.hits.every((h) => h.match === "name")).toBe(true);
+    expect(byName.hits.every((h) => h.isFile)).toBe(true);
+    expect(byName.hits.every((h) => h.extension === ".ts")).toBe(true);
+    expect(byName.scannedEntries).toBeGreaterThan(0);
+    expect(typeof byName.durationMs).toBe("number");
 
     const byContent = svc.findFiles({ pattern: "atlas", content: true });
-    expect(byContent.some((h) => h.match === "content")).toBe(true);
-    expect(byContent.some((h) => h.name === "util.ts")).toBe(true);
+    expect(byContent.hits.some((h) => h.match === "content")).toBe(true);
+    expect(byContent.hits.some((h) => h.name === "util.ts")).toBe(true);
+  });
+
+  it("supports extension filters, ? wildcards, hidden, depth, and truncate", () => {
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/a.ts`]: "a",
+      [`${ROOT}/b.md`]: "b",
+      [`${ROOT}/c.tsx`]: "c",
+      [`${ROOT}/note1.txt`]: "x",
+      [`${ROOT}/note2.txt`]: "y",
+      [`${ROOT}/.secret`]: "no",
+      [`${ROOT}/deep`]: null,
+      [`${ROOT}/deep/nested`]: null,
+      [`${ROOT}/deep/nested/far.ts`]: "far",
+    });
+
+    const ext = svc.findFiles({ pattern: "*", extensions: [".ts", "tsx"] });
+    expect(ext.hits.map((h) => h.name).sort()).toEqual([
+      "a.ts",
+      "c.tsx",
+      "far.ts",
+    ]);
+
+    const wild = svc.findFiles({ pattern: "note?.txt" });
+    expect(wild.hits.map((h) => h.name).sort()).toEqual([
+      "note1.txt",
+      "note2.txt",
+    ]);
+
+    const noHidden = svc.findFiles({ pattern: "*" });
+    expect(noHidden.hits.some((h) => h.name === ".secret")).toBe(false);
+
+    const withHidden = svc.findFiles({
+      pattern: "*",
+      includeHidden: true,
+      filesOnly: true,
+    });
+    expect(withHidden.hits.some((h) => h.name === ".secret")).toBe(true);
+
+    const shallow = svc.findFiles({ pattern: "*.ts", maxDepth: 0 });
+    expect(shallow.hits.map((h) => h.name)).toEqual(["a.ts"]);
+    expect(shallow.hits.some((h) => h.name === "far.ts")).toBe(false);
+
+    const limited = svc.findFiles({ pattern: "*", limit: 2 });
+    expect(limited.hits).toHaveLength(2);
+    expect(limited.truncated).toBe(true);
   });
 
   it("rejects path escape outside roots", () => {
