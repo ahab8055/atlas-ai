@@ -59,7 +59,10 @@ registry.listVersions("demo.ping");
 registry.get("demo.ping", "1.0.0");
 ```
 
-MVP builtins self-register on import (`system.info`, `echo`, `application.open`, `file.search`, `code.analyze`, `project.open`, `process.start`).
+MVP builtins self-register on import (`system.info`, `echo`, `application.open`,
+`file.search` / `file.read` / `file.write` / `file.mkdir` / `file.delete` /
+`file.move`, `code.analyze`, `project.open`, `process.start`). File tools are
+backed by `@atlas-ai/filesystem` — see [File-System-Access.md](./File-System-Access.md).
 
 ---
 

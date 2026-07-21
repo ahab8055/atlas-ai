@@ -13,6 +13,7 @@ import {
 import { loadConfig } from "@atlas-ai/config";
 import type { AtlasConfig } from "@atlas-ai/config";
 import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
+import { bootstrapFileAccessFromRegistry } from "@atlas-ai/filesystem";
 import {
   createKnowledgeGraph,
   createSqliteGraphStore,
@@ -35,6 +36,7 @@ import {
   type LongTermMemory,
   type MemoryManager,
 } from "@atlas-ai/memory";
+import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
 import { createProfileManager, type ProfileManager } from "@atlas-ai/profile";
 import { PermissionManager } from "@atlas-ai/security";
 import {
@@ -119,7 +121,13 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     : createMemoryManager();
 
   const permissions = new PermissionManager({
-    grantedCapabilities: ["memory.read", "memory.write"],
+    grantedCapabilities: [
+      "memory.read",
+      "memory.write",
+      "filesystem.read",
+      "filesystem.write",
+      "filesystem.delete",
+    ],
   });
 
   bootstrapPlatformServices({
@@ -130,6 +138,10 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
         ? createPlatformEventPublisher(eventBus)
         : undefined,
     }),
+  });
+
+  bootstrapFileAccessFromRegistry(getDefaultPlatformServiceRegistry(), {
+    roots: [process.cwd()],
   });
 
   const memoryAccessLog = new MemoryAccessLog();

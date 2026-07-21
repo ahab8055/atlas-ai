@@ -21,6 +21,11 @@ describe("tool registry", () => {
         "echo",
         "application.open",
         "file.search",
+        "file.read",
+        "file.write",
+        "file.mkdir",
+        "file.delete",
+        "file.move",
         "code.analyze",
         "project.open",
         "process.start",
@@ -122,7 +127,7 @@ describe("tool registry", () => {
 
   it("exposes metadata listing for discovery", () => {
     const meta = listToolMetadata();
-    expect(meta.length).toBeGreaterThanOrEqual(7);
+    expect(meta.length).toBeGreaterThanOrEqual(12);
     expect(meta.every((m) => m.name && m.version && m.inputSchema)).toBe(true);
   });
 

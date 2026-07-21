@@ -124,6 +124,10 @@ Config-driven behaviour (ADR-0070): `config.platform.forcePlatformId`,
 `PlatformManager` remains the factory (adapter selection + permission wrap).
 The registry is the lookup surface only.
 
+Prefer **`FileAccessService`** (`@atlas-ai/filesystem`) for product search /
+read / write / move — see [File-System-Access.md](./File-System-Access.md) and
+ADR-0074. Use `os.files` directly only for low-level platform plumbing.
+
 ---
 
 ## OperatingSystem facade

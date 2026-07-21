@@ -97,6 +97,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0071](./0071-platform-logging-diagnostics.md)            | Platform logging and diagnostics        | Accepted |
 | [0072](./0072-platform-unit-testing.md)                   | Platform unit testing and coverage      | Accepted |
 | [0073](./0073-phase4-platform-integration-tests.md)       | Phase 4 platform integration tests      | Accepted |
+| [0074](./0074-file-system-access-service.md)              | File System Access product layer        | Accepted |
 
 ## Naming
 

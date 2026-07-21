@@ -2,7 +2,7 @@
 
 Terminal adapter for testing Atlas before the full desktop UI.
 
-Related: [Request-Pipeline.md](./Request-Pipeline.md), [`@atlas-ai/cli`](../../apps/cli/), [`@atlas-ai/core`](../../packages/core/), [ADR-0017](../adr/0017-command-line-interface.md), [Database.md](./Database.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md).
+Related: [Request-Pipeline.md](./Request-Pipeline.md), [`@atlas-ai/cli`](../../apps/cli/), [`@atlas-ai/core`](../../packages/core/), [ADR-0017](../adr/0017-command-line-interface.md), [Database.md](./Database.md), [Event-System.md](./Event-System.md), [Logging.md](./Logging.md), [File-System-Access.md](./File-System-Access.md), [Platform-Abstraction.md](./Platform-Abstraction.md).
 
 ---
 
@@ -68,6 +68,10 @@ ATLAS_CLI_QUIET=1 pnpm atlas status
 ### Database
 
 SQLite initializes automatically (default `.data/atlas.sqlite`). Each command syncs tools and records execution history — see [Database.md](./Database.md) and [Task-History.md](./Task-History.md).
+
+After config load, the CLI bootstraps platform services and
+`bootstrapFileAccessFromRegistry` with `roots: [process.cwd()]` so `file.*`
+tools resolve through `FileAccessService` (see [File-System-Access.md](./File-System-Access.md)).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status

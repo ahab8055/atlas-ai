@@ -80,6 +80,9 @@ importers:
       '@atlas-ai/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@atlas-ai/filesystem':
+        specifier: workspace:*
+        version: link:../../packages/filesystem
       '@atlas-ai/knowledge':
         specifier: workspace:*
         version: link:../../packages/knowledge
@@ -89,6 +92,9 @@ importers:
       '@atlas-ai/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@atlas-ai/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
       '@atlas-ai/profile':
         specifier: workspace:*
         version: link:../../packages/profile
@@ -205,6 +211,19 @@ importers:
         specifier: ~5.8.3
         version: 5.8.3
 
+  packages/filesystem:
+    dependencies:
+      '@atlas-ai/platform':
+        specifier: workspace:*
+        version: link:../platform
+    devDependencies:
+      '@types/node':
+        specifier: '22'
+        version: 22.20.1
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+
   packages/knowledge:
     dependencies:
       '@atlas-ai/database':
@@ -274,6 +293,12 @@ importers:
 
   packages/tools:
     dependencies:
+      '@atlas-ai/filesystem':
+        specifier: workspace:*
+        version: link:../filesystem
+      '@atlas-ai/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@atlas-ai/security':
         specifier: workspace:*
         version: link:../security

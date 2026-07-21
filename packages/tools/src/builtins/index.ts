@@ -1,4 +1,12 @@
 import { defineTool, registerBuiltin } from "./define.js";
+import {
+  fileDelete,
+  fileMkdir,
+  fileMove,
+  fileRead,
+  fileSearch,
+  fileWrite,
+} from "./file-tools.js";
 
 export { defineTool, registerBuiltin } from "./define.js";
 
@@ -89,37 +97,6 @@ const applicationOpen = defineTool(
     const application = String(input.application ?? "unknown");
     const message = `Application Control: would open "${application}" (launcher not wired yet).`;
     return { ok: true, message, data: { message, application } };
-  },
-);
-
-const fileSearch = defineTool(
-  {
-    name: "file.search",
-    description: "Search local files and documents",
-    version: "1.0.0",
-    permissions: ["filesystem.read"],
-    risk: "medium",
-    tags: ["filesystem", "mvp"],
-    inputSchema: {
-      type: "object",
-      required: ["query"],
-      properties: {
-        query: { type: "string" },
-      },
-    },
-    outputSchema: {
-      type: "object",
-      required: ["message"],
-      properties: {
-        message: { type: "string" },
-        query: { type: "string" },
-      },
-    },
-  },
-  (input) => {
-    const query = String(input.query ?? "");
-    const message = `File Search: would search for "${query}" (search tool not wired yet).`;
-    return { ok: true, message, data: { message, query } };
   },
 );
 
@@ -227,6 +204,11 @@ export const BUILTIN_TOOLS = [
   echo,
   applicationOpen,
   fileSearch,
+  fileRead,
+  fileWrite,
+  fileMkdir,
+  fileDelete,
+  fileMove,
   codeAnalyze,
   projectOpen,
   processStart,

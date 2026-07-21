@@ -1,8 +1,8 @@
 {
-  "name": "@atlas-ai/tools",
+  "name": "@atlas-ai/filesystem",
   "version": "0.1.0",
   "private": true,
-  "description": "Atlas AI tool registry: metadata, discovery, versioning",
+  "description": "Atlas AI product File System Access layer (Architecture/26) on os.files",
   "type": "module",
   "exports": {
     ".": {
@@ -20,11 +20,10 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@atlas-ai/filesystem": "workspace:*",
-    "@atlas-ai/platform": "workspace:*",
-    "@atlas-ai/security": "workspace:*"
+    "@atlas-ai/platform": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "22",
     "typescript": "~5.8.3"
   }
 }
