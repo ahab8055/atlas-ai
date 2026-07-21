@@ -2,6 +2,7 @@ export type {
   DirEntry,
   FileAccessService,
   FileContent,
+  FileFormat,
   FileHit,
   FileMetadata,
   FileMetadataChecksum,
@@ -10,6 +11,7 @@ export type {
   FindFilesQuery,
   GetFileMetadataOptions,
   ListDirectoryOptions,
+  ReadFileOptions,
   WalkDirectoryOptions,
   WriteFileOptions,
 } from "./types.js";
@@ -41,6 +43,12 @@ export {
 
 export { mimeForEntry, mimeFromExtension } from "./mime.js";
 export { modeToPermissions } from "./permissions-format.js";
+export { decodeBytes } from "./encoding.js";
+export {
+  formatFromExtension,
+  isBinaryMime,
+  isUnsupportedBinaryFormat,
+} from "./format.js";
 
 export {
   createMemoryFileSystemService,

@@ -11,7 +11,12 @@ import {
   type PathService,
 } from "@atlas-ai/platform";
 
-import { mimeForEntry } from "./mime.js";
+import { mimeForEntry, mimeFromExtension } from "./mime.js";
+import { decodeBytes } from "./encoding.js";
+import { formatFromExtension, isUnsupportedBinaryFormat } from "./format.js";
+import { parseCsvSafe } from "./parsers/csv.js";
+import { parseJsonSafe } from "./parsers/json.js";
+import { parseYamlLite } from "./parsers/yaml-lite.js";
 import {
   DEFAULT_DENY_PATTERNS,
   fileExtension,
@@ -32,6 +37,7 @@ import type {
   GetFileMetadataOptions,
   ListDirectoryOptions,
   DirEntry,
+  ReadFileOptions,
   WalkDirectoryOptions,
   WriteFileOptions,
 } from "./types.js";
@@ -521,7 +527,7 @@ export function createFileAccessService(
       };
     },
 
-    readFile(inputPath: string): FileContent {
+    readFile(inputPath: string, opts: ReadFileOptions = {}): FileContent {
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(
@@ -538,15 +544,97 @@ export function createFileAccessService(
           { detail: { path: absolute } },
         );
       }
-      if (st.size > maxReadBytes) {
+
+      const name = path.basename(absolute);
+      const extension = fileExtension(name);
+      const mimeType = mimeFromExtension(extension);
+      const format = formatFromExtension(extension);
+
+      if (isUnsupportedBinaryFormat(format)) {
         throw new PlatformError(
           "invalid_input",
-          `File exceeds max read size (${maxReadBytes} bytes): ${absolute}`,
+          `Unsupported binary file type (${mimeType}): ${absolute}`,
           { detail: { path: absolute } },
         );
       }
-      const content = files.readText(absolute);
-      return { path: absolute, content, size: st.size };
+
+      const offset = opts.offset ?? 0;
+      const window = opts.maxBytes ?? maxReadBytes;
+      const doParse = opts.parse !== false;
+
+      if (!Number.isFinite(offset) || offset < 0) {
+        throw new PlatformError(
+          "invalid_input",
+          `Invalid read offset: ${offset}`,
+          { detail: { path: absolute } },
+        );
+      }
+      if (!Number.isFinite(window) || window < 0) {
+        throw new PlatformError(
+          "invalid_input",
+          `Invalid maxBytes: ${window}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      const bytes = files.readBytes(absolute, {
+        offset,
+        length: window,
+      });
+      const truncated = st.size > offset + bytes.length;
+      const decoded = decodeBytes(bytes);
+
+      if (decoded.binaryLike) {
+        throw new PlatformError(
+          "invalid_input",
+          `File content appears binary (encoding=${decoded.encoding}): ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      const result: FileContent = {
+        path: absolute,
+        content: decoded.text,
+        size: st.size,
+        format,
+        mimeType,
+        encoding: decoded.encoding,
+        byteOffset: offset,
+        byteLength: bytes.length,
+        truncated,
+      };
+
+      if (doParse && !truncated) {
+        if (format === "json") {
+          const parsed = parseJsonSafe(decoded.text);
+          if (parsed.data !== undefined) {
+            result.data = parsed.data;
+          }
+          if (parsed.parseError) {
+            result.parseError = parsed.parseError;
+          }
+        } else if (format === "yaml") {
+          const parsed = parseYamlLite(decoded.text);
+          if (parsed.data !== undefined) {
+            result.data = parsed.data;
+          }
+          if (parsed.parseError) {
+            result.parseError = parsed.parseError;
+          }
+        } else if (format === "csv") {
+          const parsed = parseCsvSafe(decoded.text);
+          if (parsed.data !== undefined) {
+            result.data = parsed.data;
+          }
+          if (parsed.parseError) {
+            result.parseError = parsed.parseError;
+          }
+        }
+      } else if (doParse && truncated) {
+        result.parseError = "parse skipped: content truncated";
+      }
+
+      return result;
     },
 
     writeFile(

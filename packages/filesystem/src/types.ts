@@ -48,6 +48,34 @@ export interface FileContent {
   path: string;
   content: string;
   size: number;
+  format: FileFormat;
+  mimeType: string;
+  encoding: string;
+  byteOffset: number;
+  byteLength: number;
+  truncated: boolean;
+  data?: unknown;
+  parseError?: string;
+}
+
+export type FileFormat =
+  | "text"
+  | "markdown"
+  | "json"
+  | "yaml"
+  | "csv"
+  | "xml"
+  | "source"
+  | "binary"
+  | "unknown";
+
+export interface ReadFileOptions {
+  /** Byte offset into the file (default 0). */
+  offset?: number;
+  /** Max bytes to read (default service maxReadBytes). */
+  maxBytes?: number;
+  /** Attempt structured parse for JSON/YAML/CSV (default true). */
+  parse?: boolean;
 }
 
 export interface WriteFileOptions {
@@ -84,7 +112,7 @@ export interface WalkDirectoryOptions {
 
 export interface FileAccessService {
   findFiles(query: FindFilesQuery): FileSearchResult;
-  readFile(path: string): FileContent;
+  readFile(path: string, opts?: ReadFileOptions): FileContent;
   writeFile(path: string, content: string, opts?: WriteFileOptions): void;
   createDirectory(path: string): void;
   deleteFile(path: string): void;

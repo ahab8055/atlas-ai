@@ -252,4 +252,54 @@ describe("FileAccessService", () => {
     expect(noHash.checksum).toBeUndefined();
     expect(noHash.checksumSkipped).toBe("checksum disabled");
   });
+
+  it("reads structured content with format, encoding, and parsers", () => {
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/data.json`]: '{"a":1,"b":[true]}',
+      [`${ROOT}/config.yaml`]: "name: atlas\ncount: 2\n",
+      [`${ROOT}/rows.csv`]: "a,b\n1,2\n",
+      [`${ROOT}/note.md`]: "# Title\n\nHello",
+      [`${ROOT}/photo.png`]: "not-really-png",
+    });
+
+    const json = svc.readFile("data.json");
+    expect(json.format).toBe("json");
+    expect(json.encoding).toBe("utf-8");
+    expect(json.data).toEqual({ a: 1, b: [true] });
+    expect(json.truncated).toBe(false);
+
+    const yaml = svc.readFile("config.yaml");
+    expect(yaml.format).toBe("yaml");
+    expect(yaml.data).toEqual({ name: "atlas", count: 2 });
+
+    const csv = svc.readFile("rows.csv");
+    expect(csv.format).toBe("csv");
+    expect(csv.data).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+
+    const md = svc.readFile("note.md");
+    expect(md.format).toBe("markdown");
+    expect(md.content).toContain("# Title");
+    expect(md.data).toBeUndefined();
+
+    expect(() => svc.readFile("photo.png")).toThrow(PlatformError);
+  });
+
+  it("windows large files with offset/maxBytes and truncated flag", () => {
+    const body = "abcdefghijklmnopqrstuvwxyz";
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/big.txt`]: body,
+    });
+    const part = svc.readFile("big.txt", { offset: 10, maxBytes: 5 });
+    expect(part.content).toBe("klmno");
+    expect(part.byteOffset).toBe(10);
+    expect(part.byteLength).toBe(5);
+    expect(part.truncated).toBe(true);
+    expect(part.size).toBe(body.length);
+    expect(part.parseError).toBe("parse skipped: content truncated");
+  });
 });

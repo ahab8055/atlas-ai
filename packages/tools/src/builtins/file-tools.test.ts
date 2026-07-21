@@ -18,6 +18,7 @@ describe("file.* builtin tools", () => {
     const files = createMemoryFileSystemService({
       [ROOT]: null,
       [`${ROOT}/hello.txt`]: "hello atlas",
+      [`${ROOT}/data.json`]: '{"ok":true}',
       [`${ROOT}/src`]: null,
       [`${ROOT}/src/main.ts`]: "const n = 1;",
     });
@@ -91,6 +92,17 @@ describe("file.* builtin tools", () => {
     });
     expect(read.ok).toBe(true);
     expect(read.output?.data?.content).toBe("hello atlas");
+    expect(read.output?.data?.format).toBe("text");
+    expect(read.output?.data?.encoding).toBe("utf-8");
+    expect(read.output?.data?.truncated).toBe(false);
+
+    const json = executeTool({
+      name: "file.read",
+      input: { path: "data.json" },
+    });
+    expect(json.ok).toBe(true);
+    expect(json.output?.data?.format).toBe("json");
+    expect(json.output?.data?.data).toEqual({ ok: true });
   });
 
   it("returns file metadata via FileAccessService", () => {

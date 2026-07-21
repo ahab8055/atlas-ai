@@ -118,16 +118,20 @@ export const fileSearch = defineTool(
 export const fileRead = defineTool(
   {
     name: "file.read",
-    description: "Read a local text file",
-    version: "1.0.0",
+    description:
+      "Read a local file with format detection, encoding, and optional structured parse",
+    version: "1.1.0",
     permissions: ["filesystem.read"],
     risk: "medium",
-    tags: ["filesystem", "mvp"],
+    tags: ["filesystem", "mvp", "reading"],
     inputSchema: {
       type: "object",
       required: ["path"],
       properties: {
         path: { type: "string" },
+        offset: { type: "number" },
+        maxBytes: { type: "number" },
+        parse: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -138,13 +142,26 @@ export const fileRead = defineTool(
         path: { type: "string" },
         content: { type: "string" },
         size: { type: "number" },
+        format: { type: "string" },
+        mimeType: { type: "string" },
+        encoding: { type: "string" },
+        byteOffset: { type: "number" },
+        byteLength: { type: "number" },
+        truncated: { type: "boolean" },
+        data: {},
+        parseError: { type: "string" },
       },
     },
   },
   (input) => {
     try {
-      const result = access().readFile(String(input.path ?? ""));
-      const message = `Read ${result.path} (${result.size} bytes)`;
+      const result = access().readFile(String(input.path ?? ""), {
+        offset: typeof input.offset === "number" ? input.offset : undefined,
+        maxBytes:
+          typeof input.maxBytes === "number" ? input.maxBytes : undefined,
+        parse: input.parse === undefined ? undefined : Boolean(input.parse),
+      });
+      const message = `Read ${result.path} (${result.format}, ${result.byteLength} bytes${result.truncated ? ", truncated" : ""})`;
       return {
         ok: true,
         message,
@@ -153,6 +170,14 @@ export const fileRead = defineTool(
           path: result.path,
           content: result.content,
           size: result.size,
+          format: result.format,
+          mimeType: result.mimeType,
+          encoding: result.encoding,
+          byteOffset: result.byteOffset,
+          byteLength: result.byteLength,
+          truncated: result.truncated,
+          data: result.data,
+          parseError: result.parseError,
         },
       };
     } catch (error) {

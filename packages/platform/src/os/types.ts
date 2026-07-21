@@ -33,11 +33,21 @@ export interface FileStat {
   isSymbolicLink: boolean;
 }
 
+export interface ReadBytesOptions {
+  /** Byte offset into the file (default 0). */
+  offset?: number;
+  /** Max bytes to read; omit to read to EOF from offset. */
+  length?: number;
+}
+
 export interface FileSystemService {
   exists(path: string): boolean;
   readText(path: string): string;
-  /** Raw file bytes (for checksums / binary). */
-  readBytes(path: string): Uint8Array;
+  /**
+   * Raw file bytes (checksums / binary / windowed reads).
+   * Without opts, reads the whole file; with offset/length, reads a window.
+   */
+  readBytes(path: string, opts?: ReadBytesOptions): Uint8Array;
   writeText(path: string, data: string, mode?: number): void;
   mkdirp(path: string): void;
   remove(path: string): void;

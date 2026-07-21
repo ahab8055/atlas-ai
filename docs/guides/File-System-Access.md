@@ -10,16 +10,17 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0075](../adr/0075-directory-navigation.md),
 [ADR-0076](../adr/0076-file-search-engine.md),
 [ADR-0077](../adr/0077-file-metadata-service.md),
+[ADR-0078](../adr/0078-file-reading-engine.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
 
 ## Layering
 
-| Layer   | Type                             | Role                                                       |
-| ------- | -------------------------------- | ---------------------------------------------------------- |
-| Product | `FileAccessService`              | Search, CRUD, navigate, metadata; roots + deny             |
-| OS      | `FileSystemService` (`os.files`) | Path CRUD + `lstat`/`readBytes` + `PlatformError` + broker |
+| Layer   | Type                             | Role                                                      |
+| ------- | -------------------------------- | --------------------------------------------------------- |
+| Product | `FileAccessService`              | Search, CRUD, navigate, metadata, reading; roots + deny   |
+| OS      | `FileSystemService` (`os.files`) | Path CRUD + ranged `readBytes` + `PlatformError` + broker |
 
 ```ts
 import {
@@ -49,11 +50,30 @@ const tree = files.walkDirectory(".", { maxDepth: 4 });
 
 ### CRUD (ADR-0074)
 
-- `readFile(path)` → `{ path, content, size }`
 - `writeFile(path, content, { createDirs?, overwrite? })`
 - `createDirectory(path)`
 - `deleteFile(path)`
 - `moveFile(from, to)` — files only (MVP)
+
+### Reading engine (ADR-0078)
+
+`readFile(path, opts?)` → `FileContent`:
+
+```ts
+{
+  path, content, size,           // size = full file (stat)
+  format, mimeType, encoding,    // utf-8 | utf-16le | utf-16be
+  byteOffset, byteLength, truncated,
+  data?,                         // JSON / YAML / CSV when parse succeeds
+  parseError?,
+}
+```
+
+Options: `offset` (default 0), `maxBytes` (default service maxReadBytes /
+256 KiB), `parse` (default true). Large files use a byte window
+(`truncated: true`); known binary types and binary-like content are rejected.
+JSON / YAML / CSV are parsed safely (no new deps); Markdown / XML / source
+return text + format only.
 
 ### Search engine (ADR-0076)
 
@@ -142,6 +162,9 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 `file.metadata` accepts `path` plus optional `followSymlinks`,
 `includeChecksum`, `maxChecksumBytes`.
 
+`file.read` accepts `path` plus optional `offset`, `maxBytes`, `parse` and
+returns format / encoding / truncation / optional structured `data`.
+
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.
 
@@ -164,3 +187,4 @@ pnpm packages:build
 - Directory `moveFile` / native rename
 - FS watchers / Tauri native FS plugins
 - Content-based MIME sniffing / Windows ACL owner resolution
+- Full YAML 1.2 / XML DOM / Markdown AST / streaming multi-GB without a window

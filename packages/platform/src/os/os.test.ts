@@ -73,6 +73,9 @@ describe("OperatingSystem files", () => {
       expect(files.readBytes(file)).toEqual(
         new TextEncoder().encode("hello atlas"),
       );
+      expect(files.readBytes(file, { offset: 6, length: 5 })).toEqual(
+        new TextEncoder().encode("atlas"),
+      );
       files.remove(file);
       expect(files.exists(file)).toBe(false);
     } finally {

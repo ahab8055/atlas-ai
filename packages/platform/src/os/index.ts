@@ -3,6 +3,7 @@ export type {
   ClipboardService,
   FileStat,
   FileSystemService,
+  ReadBytesOptions,
   NotificationInput,
   NotificationService,
   NotificationUrgency,

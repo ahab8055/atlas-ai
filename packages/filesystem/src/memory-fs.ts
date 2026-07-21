@@ -113,12 +113,28 @@ export function createMemoryFileSystemService(
       }
       return entry.content;
     },
-    readBytes(p: string): Uint8Array {
+    readBytes(
+      p: string,
+      opts?: { offset?: number; length?: number },
+    ): Uint8Array {
       const { entry } = resolveFollow(p);
       if (entry.kind !== "file") {
         throw new PlatformError("io_error", `Is a directory: ${p}`);
       }
-      return new TextEncoder().encode(entry.content);
+      const all = new TextEncoder().encode(entry.content);
+      const offset = opts?.offset ?? 0;
+      if (!Number.isFinite(offset) || offset < 0) {
+        throw new PlatformError("invalid_input", `Invalid offset: ${offset}`);
+      }
+      if (offset >= all.length) {
+        return new Uint8Array(0);
+      }
+      const maxReadable = all.length - offset;
+      const toRead =
+        opts?.length === undefined
+          ? maxReadable
+          : Math.min(opts.length, maxReadable);
+      return all.subarray(offset, offset + toRead);
     },
     writeText(p: string, data: string): void {
       store.set(norm(p), { kind: "file", content: data });
