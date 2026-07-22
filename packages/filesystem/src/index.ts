@@ -67,3 +67,12 @@ export {
   createMemoryFileSystemService,
   type MemoryFileSystemService,
 } from "./memory-fs.js";
+
+export { isDestructiveFsOperation } from "./safe-ops.js";
+export {
+  clearFsConfirmHost,
+  configureFsConfirmHost,
+  withFsConfirmRetry,
+  type FsConfirmHandler,
+  type FsConfirmRequest,
+} from "./confirm-host.js";

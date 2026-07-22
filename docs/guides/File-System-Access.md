@@ -15,6 +15,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0080](../adr/0080-directory-management.md),
 [ADR-0081](../adr/0081-file-management-operations.md),
 [ADR-0082](../adr/0082-file-permission-validation.md),
+[ADR-0083](../adr/0083-safe-file-operations.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -222,8 +223,9 @@ empty directories only. `file.exists` returns existence and type flags.
 hard delete) and returns `mode` / `trashId` / `restorable`. `file.restore`
 takes `trashId`. `file.copy` / `file.rename` support overwrite protection.
 
-CLI bootstraps FileAccess after platform services and grants the filesystem
-capabilities for local use.
+CLI bootstraps FileAccess after platform services and pre-grants
+`filesystem.read` only (plus memory). Write/delete require confirmation
+(ADR-0083).
 
 ---
 
@@ -246,6 +248,23 @@ Order for each public `FileAccessService` method:
 Security logs: **warn** on capability or path deny; **info** when a mutating
 op is allowed. File contents are never logged. The OS Permission Broker remains
 defense-in-depth (ADR-0066).
+
+---
+
+## Safe file operations (ADR-0083)
+
+**Confirmation:** Destructive ops (delete, restore, overwrite/append write,
+overwrite copy/move) block with `approvalId` when the capability is not granted.
+Hosts call `resolveApproval(id, "approved", { sessionGrant: false })` for a
+**one-shot** allow (consumed on the next matching request). Default
+`sessionGrant: true` still exists for non-destructive creates / memory.
+
+CLI wires `configureFsConfirmHost` + TTY `[y/N]` prompt; file tools wrap calls
+in `withFsConfirmRetry` (single retry). Non-TTY fails closed.
+
+**Overwrite backup:** Before replacing an existing path, content is moved to
+Atlas trash. Results may include `backupId` / `backedUp`; restore with
+`restorePath(backupId)`. Targets are validated with `assertAllowed`.
 
 ---
 

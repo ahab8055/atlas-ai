@@ -456,4 +456,93 @@ describe("FileAccessService", () => {
     permissions.grant("filesystem.delete");
     expect(() => svc.readFile("/etc/passwd")).toThrow(PlatformError);
   });
+
+  it("one-shot approve allows destructive overwrite with trash backup", () => {
+    const permissions = new PermissionManager({
+      grantedCapabilities: ["filesystem.read"],
+    });
+    const files = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/a.txt`]: "old",
+      [`${ROOT}/b.txt`]: "keep",
+    });
+    const svc = createFileAccessService({
+      files,
+      roots: [ROOT],
+      permissions,
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    let approvalId: string | undefined;
+    try {
+      svc.writeFile("a.txt", "new", { mode: "overwrite" });
+    } catch (error) {
+      expect(error).toBeInstanceOf(PlatformError);
+      expect((error as PlatformError).code).toBe("permission_denied");
+      approvalId = (error as PlatformError).approvalId;
+    }
+    expect(approvalId).toBeTruthy();
+
+    permissions.resolveApproval(approvalId!, "approved", {
+      sessionGrant: false,
+    });
+
+    const written = svc.writeFile("a.txt", "new", { mode: "overwrite" });
+    expect(written.backedUp).toBe(true);
+    expect(written.backupId).toBeTruthy();
+    expect(svc.readFile("a.txt").content).toBe("new");
+
+    // One-shot consumed — next overwrite blocks again
+    expect(() =>
+      svc.writeFile("a.txt", "newer", { mode: "overwrite" }),
+    ).toThrow(PlatformError);
+
+    // Copy overwrite also backs up destination
+    let copyApproval: string | undefined;
+    try {
+      svc.copyPath("b.txt", "a.txt", { overwrite: true });
+    } catch (error) {
+      copyApproval = (error as PlatformError).approvalId;
+    }
+    expect(copyApproval).toBeTruthy();
+    permissions.resolveApproval(copyApproval!, "approved", {
+      sessionGrant: false,
+    });
+    const copied = svc.copyPath("b.txt", "a.txt", { overwrite: true });
+    expect(copied.overwritten).toBe(true);
+    expect(copied.backupId).toBeTruthy();
+    expect(svc.readFile("a.txt").content).toBe("keep");
+
+    // Restore overwrite backup of prior "new" after clearing target
+    let delApproval: string | undefined;
+    try {
+      svc.deletePath("a.txt", { trash: false });
+    } catch (error) {
+      delApproval = (error as PlatformError).approvalId;
+    }
+    permissions.resolveApproval(delApproval!, "approved", {
+      sessionGrant: false,
+    });
+    svc.deletePath("a.txt", { trash: false });
+
+    let restoreApproval: string | undefined;
+    try {
+      svc.restorePath(copied.backupId!);
+    } catch (error) {
+      restoreApproval = (error as PlatformError).approvalId;
+    }
+    permissions.resolveApproval(restoreApproval!, "approved", {
+      sessionGrant: false,
+    });
+    const restored = svc.restorePath(copied.backupId!);
+    expect(restored.path).toBe(`${ROOT}/a.txt`);
+    expect(svc.readFile("a.txt").content).toBe("new");
+  });
 });

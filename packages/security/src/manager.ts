@@ -42,11 +42,46 @@ export interface PermissionManagerOptions {
   approvalWorkflow?: ApprovalWorkflow;
 }
 
+/** Options for resolveApproval (string note still accepted for compat). */
+export interface ResolveApprovalOptions {
+  /** When true (default), approve also grants the capability for the session. */
+  sessionGrant?: boolean;
+  note?: string;
+}
+
+interface OneShotAllow {
+  capability: PermissionCapability;
+  resource?: string;
+  reason: string;
+  approvalId: string;
+}
+
+function oneShotKey(
+  capability: PermissionCapability,
+  resource?: string,
+  reason?: string,
+): string {
+  return `${capability}\0${resource ?? ""}\0${reason ?? ""}`;
+}
+
+function normalizeResolveOptions(
+  noteOrOptions?: string | ResolveApprovalOptions,
+): ResolveApprovalOptions {
+  if (typeof noteOrOptions === "string") {
+    return { note: noteOrOptions, sessionGrant: true };
+  }
+  return {
+    sessionGrant: noteOrOptions?.sessionGrant !== false,
+    note: noteOrOptions?.note,
+  };
+}
+
 /**
  * Permission checking layer — request, record, approve/deny, block sensitive actions.
  */
 export class PermissionManager {
   private readonly granted = new Set<PermissionCapability>();
+  private readonly oneShots = new Map<string, OneShotAllow>();
   readonly decisions: PermissionDecisionLog;
   readonly approvals: ApprovalWorkflow;
 
@@ -72,11 +107,44 @@ export class PermissionManager {
 
   /**
    * Primary API for actions/tools: request permission, record decision, open approval if needed.
+   * Consumes a matching one-shot allow (from resolveApproval with sessionGrant: false) if present.
    */
   requestPermission(
     request: PermissionRequest,
     options: { additionalGrants?: Iterable<PermissionCapability> } = {},
   ): PermissionCheckResult {
+    const shotKey = oneShotKey(
+      request.capability,
+      request.resource,
+      request.reason,
+    );
+    const oneShot = this.oneShots.get(shotKey);
+    if (oneShot) {
+      this.oneShots.delete(shotKey);
+      const evaluation: PermissionEvaluation = {
+        level: evaluatePermission(request, this.granted).level,
+        decision: "allow",
+        granted: true,
+        requiresUserAction: false,
+        message: `One-shot approval for ${request.capability} (approval ${oneShot.approvalId}).`,
+      };
+      const tier: PermissionTier = "trusted_execution";
+      const decisionId = this.record({
+        request,
+        evaluation,
+        tier,
+        outcome: "allowed",
+        approvalId: oneShot.approvalId,
+      });
+      return {
+        evaluation,
+        tier,
+        tierLabel: PERMISSION_TIER_LABELS[tier],
+        blocked: false,
+        decisionId,
+      };
+    }
+
     const effective = new Set(this.granted);
     for (const capability of options.additionalGrants ?? []) {
       effective.add(capability);
@@ -119,22 +187,54 @@ export class PermissionManager {
   }
 
   /**
-   * Resolve a pending approval. Approving Level-1 grants for trusted later runs;
-   * Level 2/3 session grants also unlock subsequent checks for that capability.
+   * Resolve a pending approval.
+   * Default sessionGrant: true grants the capability for later trusted runs.
+   * sessionGrant: false records a one-shot allow (capability+resource+reason) only.
    */
   resolveApproval(
     approvalId: string,
     status: Exclude<ApprovalStatus, "pending">,
-    note?: string,
+    noteOrOptions?: string | ResolveApprovalOptions,
   ): ApprovalResult | undefined {
+    const opts = normalizeResolveOptions(noteOrOptions);
     const pending = this.approvals.get(approvalId);
-    const result = this.approvals.resolve(approvalId, status, note);
+    const result = this.approvals.resolve(approvalId, status, opts.note);
     if (!result || !pending) {
       return result;
     }
 
     if (status === "approved") {
-      this.grant(pending.request.capability);
+      if (opts.sessionGrant !== false) {
+        this.grant(pending.request.capability);
+      } else {
+        const caps = new Set<PermissionCapability>([
+          pending.request.capability,
+        ]);
+        const reason = pending.request.reason;
+        if (
+          reason === "restorePath" ||
+          reason === "renamePath" ||
+          reason.startsWith("movePath")
+        ) {
+          caps.add("filesystem.write");
+          caps.add("filesystem.delete");
+        }
+        for (const capability of caps) {
+          this.oneShots.set(
+            oneShotKey(
+              capability,
+              pending.request.resource,
+              pending.request.reason,
+            ),
+            {
+              capability,
+              resource: pending.request.resource,
+              reason: pending.request.reason,
+              approvalId,
+            },
+          );
+        }
+      }
     }
 
     const outcome: PermissionDecisionOutcome =
@@ -153,7 +253,7 @@ export class PermissionManager {
           : tierForLevel(pending.evaluation.level),
       outcome,
       approvalId,
-      note,
+      note: opts.note,
     });
 
     return result;
@@ -161,6 +261,14 @@ export class PermissionManager {
 
   /** Convenience: whether a capability would be blocked right now. */
   wouldBlock(request: PermissionRequest): boolean {
+    const shotKey = oneShotKey(
+      request.capability,
+      request.resource,
+      request.reason,
+    );
+    if (this.oneShots.has(shotKey)) {
+      return false;
+    }
     return isActionBlocked(evaluatePermission(request, this.granted));
   }
 

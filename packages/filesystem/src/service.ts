@@ -158,6 +158,7 @@ export function createFileAccessService(
     operation: string,
     resource: string,
     privileged: boolean,
+    destructive = false,
   ): void {
     if (!permissions) {
       return;
@@ -174,6 +175,7 @@ export function createFileAccessService(
           operation,
           capability: cap,
           path: resource,
+          destructive,
           decisionId: check.decisionId,
           approvalId: check.approval?.id,
         });
@@ -194,6 +196,7 @@ export function createFileAccessService(
           operation,
           capability: caps.join(","),
           path: resource,
+          destructive,
         },
       );
     }
@@ -230,10 +233,64 @@ export function createFileAccessService(
     }
   }
 
-  function ensureDestClear(to: string, overwrite: boolean): boolean {
-    if (!files.exists(to)) {
-      return false;
+  interface TrashManifest {
+    originalPath: string;
+    kind: "file" | "directory";
+    deletedAtMs: number;
+    payloadName: string;
+  }
+
+  /**
+   * Soft-move path into Atlas trash; returns trashId for restorePath.
+   * Target must pass assertAllowed (not only inside roots).
+   */
+  function backupToTrash(absolute: string): string {
+    assertAllowed(absolute);
+    if (isUnderAtlasMeta(absolute)) {
+      throw new PlatformError(
+        "invalid_input",
+        `Cannot backup Atlas metadata path: ${absolute}`,
+        { detail: { path: absolute } },
+      );
     }
+    if (!files.exists(absolute)) {
+      throw new PlatformError(
+        "resource_not_found",
+        `Path not found: ${absolute}`,
+        { detail: { path: absolute } },
+      );
+    }
+    const st = files.stat(absolute);
+    const kind: "file" | "directory" = st.isDirectory ? "directory" : "file";
+    const trashId = `${Date.now()}-${randomBytes(4).toString("hex")}`;
+    const entryDir = path.join(trashBase(), trashId);
+    const payloadDir = path.join(entryDir, "payload");
+    assertInsideRoots(entryDir);
+    files.mkdirp(payloadDir);
+    const payloadName = path.basename(absolute);
+    const payloadPath = path.join(payloadDir, payloadName);
+    files.rename(absolute, payloadPath);
+    const manifest: TrashManifest = {
+      originalPath: absolute,
+      kind,
+      deletedAtMs: Date.now(),
+      payloadName,
+    };
+    files.writeText(
+      path.join(entryDir, "manifest.json"),
+      `${JSON.stringify(manifest)}\n`,
+    );
+    return trashId;
+  }
+
+  function ensureDestClear(
+    to: string,
+    overwrite: boolean,
+  ): { overwritten: boolean; backupId?: string } {
+    if (!files.exists(to)) {
+      return { overwritten: false };
+    }
+    assertAllowed(to);
     const toStat = files.stat(to);
     if (!overwrite) {
       throw new PlatformError(
@@ -252,8 +309,8 @@ export function createFileAccessService(
         );
       }
     }
-    files.remove(to);
-    return true;
+    const backupId = backupToTrash(to);
+    return { overwritten: true, backupId };
   }
 
   function ensureParent(to: string, createDirs: boolean): void {
@@ -297,13 +354,6 @@ export function createFileAccessService(
       }
       // skip symlinks in MVP copy
     }
-  }
-
-  interface TrashManifest {
-    originalPath: string;
-    kind: "file" | "directory";
-    deletedAtMs: number;
-    payloadName: string;
   }
 
   function toDirEntry(full: string, name: string): DirEntry | undefined {
@@ -861,7 +911,6 @@ export function createFileAccessService(
       content: string,
       opts: WriteFileOptions = {},
     ): WriteFileResult {
-      authorize("filesystem.write", "writeFile", inputPath, true);
       const absolute = resolve(inputPath);
       const createDirs = opts.createDirs !== false;
       const encoding: WriteEncoding = opts.encoding ?? "utf-8";
@@ -889,6 +938,24 @@ export function createFileAccessService(
         }
       }
 
+      const destructive =
+        existed && (mode === "overwrite" || mode === "append");
+      const operation = destructive
+        ? mode === "append"
+          ? "writeFile.append"
+          : "writeFile.overwrite"
+        : "writeFile.create";
+      authorize("filesystem.write", operation, absolute, true, destructive);
+
+      let backupId: string | undefined;
+      let priorBytes: Uint8Array | undefined;
+      if (destructive) {
+        if (mode === "append") {
+          priorBytes = files.readBytes(absolute);
+        }
+        backupId = backupToTrash(absolute);
+      }
+
       const parent = parentDir(absolute);
       if (parent && parent !== absolute && !files.exists(parent)) {
         if (!createDirs) {
@@ -907,10 +974,8 @@ export function createFileAccessService(
       });
 
       if (mode === "append") {
-        if (useAtomic) {
-          const existing = existed
-            ? files.readBytes(absolute)
-            : new Uint8Array(0);
+        const existing = priorBytes ?? new Uint8Array(0);
+        if (useAtomic || backupId !== undefined) {
           if (existing.length > DEFAULT_MAX_ATOMIC_APPEND_BYTES) {
             throw new PlatformError(
               "invalid_input",
@@ -921,7 +986,11 @@ export function createFileAccessService(
           const merged = new Uint8Array(existing.length + payload.length);
           merged.set(existing, 0);
           merged.set(payload, existing.length);
-          writeAtomic(files, absolute, merged);
+          if (useAtomic) {
+            writeAtomic(files, absolute, merged);
+          } else {
+            files.writeBytes(absolute, merged);
+          }
         } else {
           files.appendBytes(absolute, payload);
         }
@@ -932,6 +1001,7 @@ export function createFileAccessService(
           mode,
           atomic: useAtomic,
           created: !existed,
+          ...(backupId !== undefined ? { backupId, backedUp: true } : {}),
         };
       }
 
@@ -948,6 +1018,7 @@ export function createFileAccessService(
         mode,
         atomic: useAtomic,
         created: !existed,
+        ...(backupId !== undefined ? { backupId, backedUp: true } : {}),
       };
     },
 
@@ -991,7 +1062,7 @@ export function createFileAccessService(
     },
 
     deleteDirectory(inputPath: string): void {
-      authorize("filesystem.delete", "deleteDirectory", inputPath, true);
+      authorize("filesystem.delete", "deleteDirectory", inputPath, true, true);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(
@@ -1023,7 +1094,7 @@ export function createFileAccessService(
       inputPath: string,
       opts: DeletePathOptions = {},
     ): DeletePathResult {
-      authorize("filesystem.delete", "deletePath", inputPath, true);
+      authorize("filesystem.delete", "deletePath", inputPath, true, true);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(
@@ -1065,24 +1136,7 @@ export function createFileAccessService(
         };
       }
 
-      const trashId = `${Date.now()}-${randomBytes(4).toString("hex")}`;
-      const entryDir = path.join(trashBase(), trashId);
-      const payloadDir = path.join(entryDir, "payload");
-      assertInsideRoots(entryDir);
-      files.mkdirp(payloadDir);
-      const payloadName = path.basename(absolute);
-      const payloadPath = path.join(payloadDir, payloadName);
-      files.rename(absolute, payloadPath);
-      const manifest: TrashManifest = {
-        originalPath: absolute,
-        kind,
-        deletedAtMs: Date.now(),
-        payloadName,
-      };
-      files.writeText(
-        path.join(entryDir, "manifest.json"),
-        `${JSON.stringify(manifest)}\n`,
-      );
+      const trashId = backupToTrash(absolute);
       return {
         path: absolute,
         kind,
@@ -1097,6 +1151,7 @@ export function createFileAccessService(
         ["filesystem.write", "filesystem.delete"],
         "restorePath",
         trashId,
+        true,
         true,
       );
       const id = trashId.trim();
@@ -1160,17 +1215,20 @@ export function createFileAccessService(
       toInput: string,
       opts: CopyPathOptions = {},
     ): CopyPathResult {
-      authorize(
-        "filesystem.write",
-        "copyPath",
-        `${fromInput}→${toInput}`,
-        true,
-      );
       const from = resolve(fromInput);
       const to = resolve(toInput);
       const createDirs = opts.createDirs !== false;
       const overwrite = opts.overwrite === true;
       const recursive = opts.recursive !== false;
+      const destExists = files.exists(to);
+      const destructive = destExists && overwrite;
+      authorize(
+        "filesystem.write",
+        destructive ? "copyPath.overwrite" : "copyPath",
+        `${from}→${to}`,
+        true,
+        destructive,
+      );
 
       if (!files.exists(from)) {
         throw new PlatformError(
@@ -1193,7 +1251,7 @@ export function createFileAccessService(
         );
       }
 
-      const overwritten = ensureDestClear(to, overwrite);
+      const cleared = ensureDestClear(to, overwrite);
       ensureParent(to, createDirs);
 
       if (kind === "file") {
@@ -1203,12 +1261,23 @@ export function createFileAccessService(
           to,
           kind,
           bytesCopied: fromStat.size,
-          overwritten,
+          overwritten: cleared.overwritten,
+          ...(cleared.backupId !== undefined
+            ? { backupId: cleared.backupId, backedUp: true }
+            : {}),
         };
       }
 
       copyTree(from, to);
-      return { from, to, kind, overwritten };
+      return {
+        from,
+        to,
+        kind,
+        overwritten: cleared.overwritten,
+        ...(cleared.backupId !== undefined
+          ? { backupId: cleared.backupId, backedUp: true }
+          : {}),
+      };
     },
 
     movePath(
@@ -1216,16 +1285,19 @@ export function createFileAccessService(
       toInput: string,
       opts: MovePathOptions = {},
     ): MovePathResult {
-      authorize(
-        ["filesystem.write", "filesystem.delete"],
-        "movePath",
-        `${fromInput}→${toInput}`,
-        true,
-      );
       const from = resolve(fromInput);
       const to = resolve(toInput);
       const createDirs = opts.createDirs !== false;
       const overwrite = opts.overwrite === true;
+      const destExists = files.exists(to);
+      const destructive = destExists && overwrite;
+      authorize(
+        ["filesystem.write", "filesystem.delete"],
+        destructive ? "movePath.overwrite" : "movePath",
+        `${from}→${to}`,
+        true,
+        destructive,
+      );
 
       if (!files.exists(from)) {
         throw new PlatformError(
@@ -1245,10 +1317,17 @@ export function createFileAccessService(
       }
 
       rejectSelfNest(from, to, kind);
-      ensureDestClear(to, overwrite);
+      const cleared = ensureDestClear(to, overwrite);
       ensureParent(to, createDirs);
       files.rename(from, to);
-      return { from, to, kind };
+      return {
+        from,
+        to,
+        kind,
+        ...(cleared.backupId !== undefined
+          ? { backupId: cleared.backupId, backedUp: true }
+          : {}),
+      };
     },
 
     renamePath(

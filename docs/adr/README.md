@@ -106,6 +106,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0080](./0080-directory-management.md)                    | Directory management                    | Accepted |
 | [0081](./0081-file-management-operations.md)              | File management operations              | Accepted |
 | [0082](./0082-file-permission-validation.md)              | File permission validation              | Accepted |
+| [0083](./0083-safe-file-operations.md)                    | Safe file operations                    | Accepted |
 
 ## Naming
 

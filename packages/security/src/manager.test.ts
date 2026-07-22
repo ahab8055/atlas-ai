@@ -112,6 +112,32 @@ describe("PermissionManager", () => {
     expect(second.blocked).toBe(false);
     expect(second.tier).toBe("trusted_execution");
   });
+
+  it("one-shot approve allows matching request once without session grant", () => {
+    const manager = new PermissionManager();
+    const req = {
+      capability: "filesystem.delete" as const,
+      reason: "deletePath",
+      resource: "/workspace/a.txt",
+    };
+
+    const first = manager.requestPermission(req);
+    expect(first.blocked).toBe(true);
+    manager.resolveApproval(first.approval!.id, "approved", {
+      sessionGrant: false,
+    });
+    expect(manager.getGrantedCapabilities().has("filesystem.delete")).toBe(
+      false,
+    );
+
+    const second = manager.requestPermission(req);
+    expect(second.blocked).toBe(false);
+    expect(second.evaluation.message).toContain("One-shot");
+
+    const third = manager.requestPermission(req);
+    expect(third.blocked).toBe(true);
+    expect(third.approval).toBeDefined();
+  });
 });
 
 describe("ApprovalWorkflow", () => {

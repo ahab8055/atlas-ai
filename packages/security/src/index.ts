@@ -40,6 +40,7 @@ export { PermissionDecisionLog } from "./audit.js";
 export type {
   PermissionCheckResult,
   PermissionManagerOptions,
+  ResolveApprovalOptions,
 } from "./manager.js";
 export {
   PermissionManager,

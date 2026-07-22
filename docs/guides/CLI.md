@@ -72,6 +72,8 @@ SQLite initializes automatically (default `.data/atlas.sqlite`). Each command sy
 After config load, the CLI bootstraps platform services and
 `bootstrapFileAccessFromRegistry` with `roots: [process.cwd()]` so `file.*`
 tools resolve through `FileAccessService` (see [File-System-Access.md](./File-System-Access.md)).
+Only `filesystem.read` is pre-granted; write/delete prompt on a TTY via
+one-shot approvals ([ADR-0083](../adr/0083-safe-file-operations.md)).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status

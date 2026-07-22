@@ -110,6 +110,9 @@ export interface WriteFileResult {
   mode: WriteMode;
   atomic: boolean;
   created: boolean;
+  /** Present when prior content was moved to Atlas trash before overwrite. */
+  backupId?: string;
+  backedUp?: boolean;
 }
 
 export interface DirEntry {
@@ -159,6 +162,8 @@ export interface MovePathResult {
   from: string;
   to: string;
   kind: "file" | "directory";
+  backupId?: string;
+  backedUp?: boolean;
 }
 
 export interface CopyPathOptions {
@@ -174,6 +179,8 @@ export interface CopyPathResult {
   kind: "file" | "directory";
   bytesCopied?: number;
   overwritten: boolean;
+  backupId?: string;
+  backedUp?: boolean;
 }
 
 export interface DeletePathOptions {

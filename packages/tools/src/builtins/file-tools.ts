@@ -1,8 +1,9 @@
 /**
- * Real file.* tools backed by FileAccessService (ADR-0074).
+ * Real file.* tools backed by FileAccessService (ADR-0074 / 0083).
  */
 import {
   getDefaultFileAccessService,
+  withFsConfirmRetry,
   type FileAccessService,
 } from "@atlas-ai/filesystem";
 import { isPlatformError } from "@atlas-ai/platform";
@@ -14,15 +15,23 @@ function access(): FileAccessService {
   return getDefaultFileAccessService();
 }
 
+function callFs<T>(fn: (fs: FileAccessService) => T): T {
+  return withFsConfirmRetry(() => fn(access()));
+}
+
 function fail(error: unknown): ToolResult {
   const message =
     error instanceof Error ? error.message : "File operation failed";
   const code = isPlatformError(error) ? error.code : "unknown";
+  const approvalId = isPlatformError(error) ? error.approvalId : undefined;
   return {
     ok: false,
     message,
     error: message,
-    data: { code },
+    data: {
+      code,
+      ...(approvalId !== undefined ? { approvalId } : {}),
+    },
   };
 }
 
@@ -68,21 +77,25 @@ export const fileSearch = defineTool(
       const extensions = Array.isArray(input.extensions)
         ? input.extensions.map((e) => String(e))
         : undefined;
-      const result = access().findFiles({
-        pattern: query,
-        root: input.root !== undefined ? String(input.root) : undefined,
-        content: Boolean(input.content),
-        limit: typeof input.limit === "number" ? input.limit : undefined,
-        maxDepth:
-          typeof input.maxDepth === "number" ? input.maxDepth : undefined,
-        includeHidden:
-          input.includeHidden === undefined
-            ? undefined
-            : Boolean(input.includeHidden),
-        extensions,
-        filesOnly:
-          input.filesOnly === undefined ? undefined : Boolean(input.filesOnly),
-      });
+      const result = callFs((fs) =>
+        fs.findFiles({
+          pattern: query,
+          root: input.root !== undefined ? String(input.root) : undefined,
+          content: Boolean(input.content),
+          limit: typeof input.limit === "number" ? input.limit : undefined,
+          maxDepth:
+            typeof input.maxDepth === "number" ? input.maxDepth : undefined,
+          includeHidden:
+            input.includeHidden === undefined
+              ? undefined
+              : Boolean(input.includeHidden),
+          extensions,
+          filesOnly:
+            input.filesOnly === undefined
+              ? undefined
+              : Boolean(input.filesOnly),
+        }),
+      );
       const message =
         result.hits.length === 0
           ? `No files matched "${query}"`
@@ -155,12 +168,14 @@ export const fileRead = defineTool(
   },
   (input) => {
     try {
-      const result = access().readFile(String(input.path ?? ""), {
-        offset: typeof input.offset === "number" ? input.offset : undefined,
-        maxBytes:
-          typeof input.maxBytes === "number" ? input.maxBytes : undefined,
-        parse: input.parse === undefined ? undefined : Boolean(input.parse),
-      });
+      const result = callFs((fs) =>
+        fs.readFile(String(input.path ?? ""), {
+          offset: typeof input.offset === "number" ? input.offset : undefined,
+          maxBytes:
+            typeof input.maxBytes === "number" ? input.maxBytes : undefined,
+          parse: input.parse === undefined ? undefined : Boolean(input.parse),
+        }),
+      );
       const message = `Read ${result.path} (${result.format}, ${result.byteLength} bytes${result.truncated ? ", truncated" : ""})`;
       return {
         ok: true,
@@ -239,18 +254,23 @@ export const fileWrite = defineTool(
         encodingRaw === "utf-16be"
           ? encodingRaw
           : undefined;
-      const result = access().writeFile(filePath, String(input.content ?? ""), {
-        createDirs:
-          input.createDirs === undefined
-            ? undefined
-            : Boolean(input.createDirs),
-        mode,
-        overwrite:
-          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
-        encoding,
-        atomic: input.atomic === undefined ? undefined : Boolean(input.atomic),
-        bom: input.bom === undefined ? undefined : Boolean(input.bom),
-      });
+      const result = callFs((fs) =>
+        fs.writeFile(filePath, String(input.content ?? ""), {
+          createDirs:
+            input.createDirs === undefined
+              ? undefined
+              : Boolean(input.createDirs),
+          mode,
+          overwrite:
+            input.overwrite === undefined
+              ? undefined
+              : Boolean(input.overwrite),
+          encoding,
+          atomic:
+            input.atomic === undefined ? undefined : Boolean(input.atomic),
+          bom: input.bom === undefined ? undefined : Boolean(input.bom),
+        }),
+      );
       const message = `Wrote ${result.path} (${result.mode}, ${result.bytesWritten} bytes)`;
       return {
         ok: true,
@@ -300,10 +320,14 @@ export const fileMkdir = defineTool(
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      const result = access().createDirectory(filePath, {
-        recursive:
-          input.recursive === undefined ? undefined : Boolean(input.recursive),
-      });
+      const result = callFs((fs) =>
+        fs.createDirectory(filePath, {
+          recursive:
+            input.recursive === undefined
+              ? undefined
+              : Boolean(input.recursive),
+        }),
+      );
       const message = result.created
         ? `Created directory ${result.path}`
         : `Directory already exists ${result.path}`;
@@ -356,11 +380,15 @@ export const fileDelete = defineTool(
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      const result = access().deletePath(filePath, {
-        trash: input.trash === undefined ? undefined : Boolean(input.trash),
-        recursive:
-          input.recursive === undefined ? undefined : Boolean(input.recursive),
-      });
+      const result = callFs((fs) =>
+        fs.deletePath(filePath, {
+          trash: input.trash === undefined ? undefined : Boolean(input.trash),
+          recursive:
+            input.recursive === undefined
+              ? undefined
+              : Boolean(input.recursive),
+        }),
+      );
       const message =
         result.mode === "trash"
           ? `Trashed ${result.kind} ${result.path} (id=${result.trashId})`
@@ -416,14 +444,18 @@ export const fileMove = defineTool(
     try {
       const from = String(input.from ?? "");
       const to = String(input.to ?? "");
-      const result = access().movePath(from, to, {
-        createDirs:
-          input.createDirs === undefined
-            ? undefined
-            : Boolean(input.createDirs),
-        overwrite:
-          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
-      });
+      const result = callFs((fs) =>
+        fs.movePath(from, to, {
+          createDirs:
+            input.createDirs === undefined
+              ? undefined
+              : Boolean(input.createDirs),
+          overwrite:
+            input.overwrite === undefined
+              ? undefined
+              : Boolean(input.overwrite),
+        }),
+      );
       const message = `Moved ${result.kind} ${result.from} → ${result.to}`;
       return {
         ok: true,
@@ -477,16 +509,22 @@ export const fileCopy = defineTool(
     try {
       const from = String(input.from ?? "");
       const to = String(input.to ?? "");
-      const result = access().copyPath(from, to, {
-        createDirs:
-          input.createDirs === undefined
-            ? undefined
-            : Boolean(input.createDirs),
-        overwrite:
-          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
-        recursive:
-          input.recursive === undefined ? undefined : Boolean(input.recursive),
-      });
+      const result = callFs((fs) =>
+        fs.copyPath(from, to, {
+          createDirs:
+            input.createDirs === undefined
+              ? undefined
+              : Boolean(input.createDirs),
+          overwrite:
+            input.overwrite === undefined
+              ? undefined
+              : Boolean(input.overwrite),
+          recursive:
+            input.recursive === undefined
+              ? undefined
+              : Boolean(input.recursive),
+        }),
+      );
       const message = `Copied ${result.kind} ${result.from} → ${result.to}`;
       return {
         ok: true,
@@ -539,14 +577,18 @@ export const fileRename = defineTool(
     try {
       const from = String(input.from ?? "");
       const to = String(input.to ?? "");
-      const result = access().renamePath(from, to, {
-        createDirs:
-          input.createDirs === undefined
-            ? undefined
-            : Boolean(input.createDirs),
-        overwrite:
-          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
-      });
+      const result = callFs((fs) =>
+        fs.renamePath(from, to, {
+          createDirs:
+            input.createDirs === undefined
+              ? undefined
+              : Boolean(input.createDirs),
+          overwrite:
+            input.overwrite === undefined
+              ? undefined
+              : Boolean(input.overwrite),
+        }),
+      );
       const message = `Renamed ${result.kind} ${result.from} → ${result.to}`;
       return {
         ok: true,
@@ -593,7 +635,7 @@ export const fileRestore = defineTool(
   (input) => {
     try {
       const trashId = String(input.trashId ?? "");
-      const result = access().restorePath(trashId);
+      const result = callFs((fs) => fs.restorePath(trashId));
       const message = `Restored ${result.kind} ${result.path}`;
       return {
         ok: true,
@@ -638,7 +680,7 @@ export const fileRmdir = defineTool(
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      access().deleteDirectory(filePath);
+      callFs((fs) => fs.deleteDirectory(filePath));
       const message = `Removed empty directory ${filePath}`;
       return { ok: true, message, data: { message, path: filePath } };
     } catch (error) {
@@ -678,8 +720,8 @@ export const fileExists = defineTool(
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      const absolute = access().resolvePath(filePath);
-      const info = access().pathExists(filePath);
+      const absolute = callFs((fs) => fs.resolvePath(filePath));
+      const info = callFs((fs) => fs.pathExists(filePath));
       const message = info.exists
         ? `${absolute} exists (${info.isDirectory ? "directory" : "file"})`
         : `${absolute} does not exist`;
@@ -726,7 +768,7 @@ export const fileResolve = defineTool(
   },
   (input) => {
     try {
-      const resolved = access().resolvePath(String(input.path ?? ""));
+      const resolved = callFs((fs) => fs.resolvePath(String(input.path ?? "")));
       const message = `Resolved to ${resolved}`;
       return { ok: true, message, data: { message, path: resolved } };
     } catch (error) {
@@ -763,12 +805,14 @@ export const fileList = defineTool(
   (input) => {
     try {
       const dirPath = input.path !== undefined ? String(input.path) : undefined;
-      const entries = access().listDirectory(dirPath, {
-        includeHidden:
-          input.includeHidden === undefined
-            ? undefined
-            : Boolean(input.includeHidden),
-      });
+      const entries = callFs((fs) =>
+        fs.listDirectory(dirPath, {
+          includeHidden:
+            input.includeHidden === undefined
+              ? undefined
+              : Boolean(input.includeHidden),
+        }),
+      );
       const message = `Listed ${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;
       return {
         ok: true,
@@ -825,19 +869,21 @@ export const fileWalk = defineTool(
   (input) => {
     try {
       const dirPath = input.path !== undefined ? String(input.path) : undefined;
-      const entries = access().walkDirectory(dirPath, {
-        maxDepth:
-          typeof input.maxDepth === "number" ? input.maxDepth : undefined,
-        followSymlinks:
-          input.followSymlinks === undefined
-            ? undefined
-            : Boolean(input.followSymlinks),
-        includeHidden:
-          input.includeHidden === undefined
-            ? undefined
-            : Boolean(input.includeHidden),
-        limit: typeof input.limit === "number" ? input.limit : undefined,
-      });
+      const entries = callFs((fs) =>
+        fs.walkDirectory(dirPath, {
+          maxDepth:
+            typeof input.maxDepth === "number" ? input.maxDepth : undefined,
+          followSymlinks:
+            input.followSymlinks === undefined
+              ? undefined
+              : Boolean(input.followSymlinks),
+          includeHidden:
+            input.includeHidden === undefined
+              ? undefined
+              : Boolean(input.includeHidden),
+          limit: typeof input.limit === "number" ? input.limit : undefined,
+        }),
+      );
       const message = `Walked ${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;
       return {
         ok: true,
@@ -893,20 +939,22 @@ export const fileMetadata = defineTool(
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      const metadata = access().getFileMetadata(filePath, {
-        followSymlinks:
-          input.followSymlinks === undefined
-            ? undefined
-            : Boolean(input.followSymlinks),
-        includeChecksum:
-          input.includeChecksum === undefined
-            ? undefined
-            : Boolean(input.includeChecksum),
-        maxChecksumBytes:
-          typeof input.maxChecksumBytes === "number"
-            ? input.maxChecksumBytes
-            : undefined,
-      });
+      const metadata = callFs((fs) =>
+        fs.getFileMetadata(filePath, {
+          followSymlinks:
+            input.followSymlinks === undefined
+              ? undefined
+              : Boolean(input.followSymlinks),
+          includeChecksum:
+            input.includeChecksum === undefined
+              ? undefined
+              : Boolean(input.includeChecksum),
+          maxChecksumBytes:
+            typeof input.maxChecksumBytes === "number"
+              ? input.maxChecksumBytes
+              : undefined,
+        }),
+      );
       const message = `Metadata for ${metadata.path} (${metadata.mimeType})`;
       return {
         ok: true,

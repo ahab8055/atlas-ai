@@ -50,6 +50,7 @@ import {
   displayResponse,
   shouldPrintDebugMeta,
 } from "./display.js";
+import { installCliFsConfirmHost } from "./fs-confirm.js";
 import { createCliMemoryDek } from "./memory-dek.js";
 import type { CliOptions } from "./options.js";
 import {
@@ -121,13 +122,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     : createMemoryManager();
 
   const permissions = new PermissionManager({
-    grantedCapabilities: [
-      "memory.read",
-      "memory.write",
-      "filesystem.read",
-      "filesystem.write",
-      "filesystem.delete",
-    ],
+    grantedCapabilities: ["memory.read", "memory.write", "filesystem.read"],
   });
 
   bootstrapPlatformServices({
@@ -145,6 +140,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     permissions,
     logger: logger.child("filesystem"),
   });
+  installCliFsConfirmHost(permissions);
 
   const memoryAccessLog = new MemoryAccessLog();
   const memoryAnalytics = createMemoryAnalyticsMonitor();
