@@ -16,6 +16,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0081](../adr/0081-file-management-operations.md),
 [ADR-0082](../adr/0082-file-permission-validation.md),
 [ADR-0083](../adr/0083-safe-file-operations.md),
+[ADR-0084](../adr/0084-file-watcher-service.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -268,6 +269,26 @@ Atlas trash. Results may include `backupId` / `backedUp`; restore with
 
 ---
 
+## File watcher (ADR-0084)
+
+`FileWatcherService` monitors directories via platform `os.files.watch`
+(Node `fs.watch`). Bootstrap with
+`bootstrapFileWatcherFromRegistry(registry, { onFileEvent, roots, permissions })`
+— does **not** auto-watch; call `watchDirectory(path?, { recursive?, debounceMs?, ignoreGlobs? })`.
+
+Normalized events (optional publisher → EventBus via
+`createFileSystemEventPublisher`):
+
+| Event                                         | Meaning                                          |
+| --------------------------------------------- | ------------------------------------------------ |
+| `FileCreated` / `FileUpdated` / `FileDeleted` | Path change after re-stat                        |
+| `FileRenamed`                                 | Best-effort delete+create pair under same parent |
+| `FolderChanged`                               | Parent folder affected by create/delete/rename   |
+
+Requires `filesystem.read`. Paths must stay inside configured roots / deny list.
+
+---
+
 ## Commands
 
 ```bash
@@ -284,7 +305,7 @@ pnpm packages:build
 - Migrating all remaining `node:fs` usage in ai/logging/database
 - Cross-volume rename fallbacks (`EXDEV`) / OS Trash / Recycle Bin
 - Trash TTL / auto-purge
-- FS watchers / Tauri native FS plugins
+- Tauri native FS plugins / chokidar
 - Changing `deleteDirectory` empty-only semantics
 - Content-based MIME sniffing / Windows ACL owner resolution
 - Full YAML 1.2 / XML DOM / Markdown AST / streaming multi-GB without a window

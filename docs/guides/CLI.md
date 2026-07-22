@@ -74,6 +74,8 @@ After config load, the CLI bootstraps platform services and
 tools resolve through `FileAccessService` (see [File-System-Access.md](./File-System-Access.md)).
 Only `filesystem.read` is pre-granted; write/delete prompt on a TTY via
 one-shot approvals ([ADR-0083](../adr/0083-safe-file-operations.md)).
+`bootstrapFileWatcherFromRegistry` wires EventBus publishing for FS change
+events; watches start only via `watchDirectory` ([ADR-0084](../adr/0084-file-watcher-service.md)).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status

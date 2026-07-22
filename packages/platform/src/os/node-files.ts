@@ -16,12 +16,21 @@ import {
   renameSync,
   rmSync,
   statSync,
+  watch as fsWatch,
   writeFileSync,
   type Stats,
 } from "node:fs";
+import path from "node:path";
 
 import { translateNativeError } from "./translate-error.js";
-import type { FileStat, FileSystemService, ReadBytesOptions } from "./types.js";
+import type {
+  FileStat,
+  FileSystemService,
+  FileWatchEvent,
+  FileWatchHandle,
+  FileWatchOptions,
+  ReadBytesOptions,
+} from "./types.js";
 
 function toFileStat(path: string, s: Stats, isSymbolicLink: boolean): FileStat {
   return {
@@ -207,6 +216,43 @@ export function createNodeFileSystemService(): FileSystemService {
         throw translateNativeError(error, {
           operation: "files.readlink",
           path,
+        });
+      }
+    },
+    watch(
+      watchPath: string,
+      listener: (event: FileWatchEvent) => void,
+      options?: FileWatchOptions,
+    ): FileWatchHandle {
+      try {
+        const recursive = options?.recursive !== false;
+        const watcher = fsWatch(
+          watchPath,
+          { recursive },
+          (eventType, filename) => {
+            const type =
+              eventType === "change" || eventType === "rename"
+                ? eventType
+                : "rename";
+            const full =
+              filename != null && filename !== ""
+                ? path.resolve(watchPath, filename.toString())
+                : path.resolve(watchPath);
+            listener({ type, path: full });
+          },
+        );
+        watcher.on("error", () => {
+          // Avoid uncaught EMFILE / watcher errors after close or under load.
+        });
+        return {
+          close() {
+            watcher.close();
+          },
+        };
+      } catch (error) {
+        throw translateNativeError(error, {
+          operation: "files.watch",
+          path: watchPath,
         });
       }
     },

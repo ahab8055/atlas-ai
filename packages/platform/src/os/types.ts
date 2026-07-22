@@ -40,6 +40,24 @@ export interface ReadBytesOptions {
   length?: number;
 }
 
+/** Native watch event types from Node `fs.watch`. */
+export type FileWatchEventType = "change" | "rename";
+
+export interface FileWatchEvent {
+  type: FileWatchEventType;
+  /** Absolute path of the changed entry when known. */
+  path: string;
+}
+
+export interface FileWatchOptions {
+  /** Watch subdirectories (default true when the OS supports it). */
+  recursive?: boolean;
+}
+
+export interface FileWatchHandle {
+  close(): void;
+}
+
 export interface FileSystemService {
   exists(path: string): boolean;
   readText(path: string): string;
@@ -69,6 +87,15 @@ export interface FileSystemService {
   lstat(path: string): FileStat;
   /** Read symlink target (throws if path is not a symlink). */
   readlink(path: string): string;
+  /**
+   * Watch a path for create/modify/rename/delete signals (ADR-0084).
+   * Listener receives coarse OS events; product layer normalizes them.
+   */
+  watch(
+    path: string,
+    listener: (event: FileWatchEvent) => void,
+    options?: FileWatchOptions,
+  ): FileWatchHandle;
 }
 
 export interface TerminalExecuteOptions {

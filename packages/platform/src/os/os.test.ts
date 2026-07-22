@@ -121,6 +121,28 @@ describe("OperatingSystem files", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("watch returns a closable handle", () => {
+    const dir = mkdtempSync(join(tmpdir(), "atlas-os-watch-"));
+    const files = createNodeFileSystemService();
+    let handle: ReturnType<typeof files.watch> | undefined;
+    try {
+      handle = files.watch(dir, () => {}, { recursive: false });
+      expect(typeof handle.close).toBe("function");
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("EMFILE") ||
+          (error as NodeJS.ErrnoException).code === "EMFILE")
+      ) {
+        return;
+      }
+      throw error;
+    } finally {
+      handle?.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("OperatingSystem system info", () => {

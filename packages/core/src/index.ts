@@ -13,19 +13,26 @@ export {
   EventBus,
   ORCHESTRATION_EVENTS,
   PLATFORM_EVENTS,
+  FILE_SYSTEM_EVENTS,
   assertAtlasEvent,
   createPlatformEventPublisher,
+  createFileSystemEventPublisher,
   getDefaultEventBus,
   isCoreEventType,
   isPlatformEventType,
+  isFileSystemEventType,
   publishCoreEvent,
   publishPlatformEvent,
+  publishFileSystemEvent,
   setDefaultEventBus,
 } from "./events/index.js";
 export type {
   PlatformEventPayloadMap,
   PlatformEventPublisher,
   PlatformEventType,
+  FileSystemEventPayloadMap,
+  FileSystemEventPublisher,
+  FileSystemEventType,
 } from "./events/index.js";
 
 export {

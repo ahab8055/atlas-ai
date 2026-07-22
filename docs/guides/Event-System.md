@@ -109,6 +109,37 @@ Subscribers use event type strings only — no darwin/linux/win32 imports.
 
 ---
 
+## Filesystem change events
+
+Published by `@atlas-ai/filesystem` when the host passes
+`onFileEvent: createFileSystemEventPublisher(bus)` into
+`bootstrapFileWatcherFromRegistry`. Source: `atlas.filesystem`.
+
+| Event                                         | When                       |
+| --------------------------------------------- | -------------------------- |
+| `FileCreated` / `FileUpdated` / `FileDeleted` | Watched path change        |
+| `FileRenamed`                                 | Correlated delete + create |
+| `FolderChanged`                               | Parent directory affected  |
+
+Constant: `FILE_SYSTEM_EVENTS`. Start watches with `watchDirectory` (not
+automatic on bootstrap).
+
+```ts
+import { EventBus, createFileSystemEventPublisher } from "@atlas-ai/core";
+import { bootstrapFileWatcherFromRegistry } from "@atlas-ai/filesystem";
+import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
+
+const bus = new EventBus();
+bootstrapFileWatcherFromRegistry(getDefaultPlatformServiceRegistry(), {
+  onFileEvent: createFileSystemEventPublisher(bus),
+});
+bus.subscribe("FileCreated", (event) => {
+  console.log(event.payload.path);
+});
+```
+
+---
+
 ## Publish / subscribe
 
 ```ts
@@ -153,6 +184,7 @@ Typed helper for core events: `publishCoreEvent(bus, "PlanCreated", payload, { t
 | In-process bus     | Done (`EventBus`)                      |
 | Core events        | Done (pipeline emits)                  |
 | Platform events    | Done (publisher → bus at bootstrap)    |
+| Filesystem events  | Done (watcher publisher → bus)         |
 | In-memory history  | Done (`getHistory`, limit default 200) |
 | SQLite event store | Later (Architecture/17)                |
 | Distributed bus    | Later (NATS/Kafka)                     |

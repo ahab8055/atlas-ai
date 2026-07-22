@@ -34,3 +34,15 @@ export type {
   PlatformEventPublisher,
   PlatformEventType,
 } from "./platform.js";
+
+export {
+  FILE_SYSTEM_EVENTS,
+  createFileSystemEventPublisher,
+  isFileSystemEventType,
+  publishFileSystemEvent,
+} from "./filesystem.js";
+export type {
+  FileSystemEventPayloadMap,
+  FileSystemEventPublisher,
+  FileSystemEventType,
+} from "./filesystem.js";

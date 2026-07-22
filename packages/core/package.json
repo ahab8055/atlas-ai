@@ -22,6 +22,7 @@
   "dependencies": {
     "@atlas-ai/logging": "workspace:*",
     "@atlas-ai/memory": "workspace:*",
+    "@atlas-ai/filesystem": "workspace:*",
     "@atlas-ai/platform": "workspace:*",
     "@atlas-ai/security": "workspace:*",
     "@atlas-ai/tools": "workspace:*"

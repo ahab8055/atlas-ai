@@ -1,17 +1,24 @@
 /**
- * Default FileAccessService singleton + registry bootstrap.
+ * Default FileAccessService + FileWatcherService singletons + registry bootstrap.
  */
 import type { Logger } from "@atlas-ai/logging";
 import type { PlatformServiceRegistry } from "@atlas-ai/platform";
 import type { PermissionManager } from "@atlas-ai/security";
 
+import type { FileSystemEventPublisher } from "./events.js";
 import {
   createFileAccessService,
   type FileAccessServiceOptions,
 } from "./service.js";
 import type { FileAccessService } from "./types.js";
+import {
+  createFileWatcherService,
+  type FileWatcherService,
+  type FileWatcherServiceOptions,
+} from "./watcher.js";
 
 let defaultService: FileAccessService | undefined;
+let defaultWatcher: FileWatcherService | undefined;
 
 export function getDefaultFileAccessService(): FileAccessService {
   if (!defaultService) {
@@ -28,6 +35,26 @@ export function setDefaultFileAccessService(service: FileAccessService): void {
 
 export function __resetDefaultFileAccessServiceForTests(): void {
   defaultService = undefined;
+}
+
+export function getDefaultFileWatcherService(): FileWatcherService {
+  if (!defaultWatcher) {
+    throw new Error(
+      "FileWatcherService is not bootstrapped; call bootstrapFileWatcherFromRegistry or setDefaultFileWatcherService",
+    );
+  }
+  return defaultWatcher;
+}
+
+export function setDefaultFileWatcherService(
+  service: FileWatcherService,
+): void {
+  defaultWatcher = service;
+}
+
+export function __resetDefaultFileWatcherServiceForTests(): void {
+  defaultWatcher?.stopAll();
+  defaultWatcher = undefined;
 }
 
 export type BootstrapFileAccessOptions = Omit<
@@ -59,5 +86,37 @@ export function bootstrapFileAccessFromRegistry(
     logger: options.logger,
   });
   setDefaultFileAccessService(service);
+  return service;
+}
+
+export type BootstrapFileWatcherOptions = Omit<
+  FileWatcherServiceOptions,
+  "files" | "paths"
+> & {
+  permissions?: PermissionManager;
+  logger?: Logger;
+  onFileEvent?: FileSystemEventPublisher;
+};
+
+/**
+ * Resolve os.files / os.paths and set the default FileWatcherService.
+ * Does not start watching — call watchDirectory explicitly.
+ */
+export function bootstrapFileWatcherFromRegistry(
+  registry: PlatformServiceRegistry,
+  options: BootstrapFileWatcherOptions = {},
+): FileWatcherService {
+  const files = registry.resolve("os.files");
+  const paths = registry.resolve("os.paths");
+  const service = createFileWatcherService({
+    files,
+    paths,
+    roots: options.roots ?? [paths.cwd()],
+    denyPatterns: options.denyPatterns,
+    permissions: options.permissions,
+    logger: options.logger,
+    onFileEvent: options.onFileEvent,
+  });
+  setDefaultFileWatcherService(service);
   return service;
 }

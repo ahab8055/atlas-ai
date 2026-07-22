@@ -2,6 +2,7 @@ import {
   ContextManager,
   EventBus,
   bootstrapPlatformServices,
+  createFileSystemEventPublisher,
   createKnowledgeProvider,
   createMemoryProvider,
   createPlatformEventPublisher,
@@ -13,7 +14,10 @@ import {
 import { loadConfig } from "@atlas-ai/config";
 import type { AtlasConfig } from "@atlas-ai/config";
 import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
-import { bootstrapFileAccessFromRegistry } from "@atlas-ai/filesystem";
+import {
+  bootstrapFileAccessFromRegistry,
+  bootstrapFileWatcherFromRegistry,
+} from "@atlas-ai/filesystem";
 import {
   createKnowledgeGraph,
   createSqliteGraphStore,
@@ -139,6 +143,12 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     roots: [process.cwd()],
     permissions,
     logger: logger.child("filesystem"),
+  });
+  bootstrapFileWatcherFromRegistry(getDefaultPlatformServiceRegistry(), {
+    roots: [process.cwd()],
+    permissions,
+    logger: logger.child("filesystem"),
+    onFileEvent: createFileSystemEventPublisher(eventBus),
   });
   installCliFsConfirmHost(permissions);
 

@@ -337,6 +337,17 @@ function wrapFiles(
       });
       return runSyncGated(broker, "files.readlink", () => inner.readlink(path));
     },
+    watch(path, listener, options) {
+      broker.authorize({
+        operation: "files.watch",
+        capability: "filesystem.read",
+        reason: "Watch directory for changes",
+        resource: path,
+      });
+      return runSyncGated(broker, "files.watch", () =>
+        inner.watch(path, listener, options),
+      );
+    },
   };
 }
 

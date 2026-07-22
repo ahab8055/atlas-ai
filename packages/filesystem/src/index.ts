@@ -36,10 +36,15 @@ export {
 
 export {
   __resetDefaultFileAccessServiceForTests,
+  __resetDefaultFileWatcherServiceForTests,
   bootstrapFileAccessFromRegistry,
+  bootstrapFileWatcherFromRegistry,
   getDefaultFileAccessService,
+  getDefaultFileWatcherService,
   setDefaultFileAccessService,
+  setDefaultFileWatcherService,
   type BootstrapFileAccessOptions,
+  type BootstrapFileWatcherOptions,
 } from "./defaults.js";
 
 export {
@@ -76,3 +81,21 @@ export {
   type FsConfirmHandler,
   type FsConfirmRequest,
 } from "./confirm-host.js";
+
+export {
+  FILE_SYSTEM_EVENTS,
+  emitFileSystemEvent,
+  isFileSystemEventType,
+  type FileSystemEventBase,
+  type FileSystemEventPayloadMap,
+  type FileSystemEventPublisher,
+  type FileSystemEventType,
+} from "./events.js";
+
+export {
+  createFileWatcherService,
+  type FileWatcherService,
+  type FileWatcherServiceOptions,
+  type WatchDirectoryOptions,
+  type WatchHandle,
+} from "./watcher.js";

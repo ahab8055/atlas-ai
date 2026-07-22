@@ -179,6 +179,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@atlas-ai/filesystem':
+        specifier: workspace:*
+        version: link:../filesystem
       '@atlas-ai/logging':
         specifier: workspace:*
         version: link:../logging

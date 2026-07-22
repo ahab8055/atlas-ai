@@ -3,7 +3,13 @@
  * Supports optional symlinks for directory-navigation tests (ADR-0075).
  * File bodies stored as bytes so writeBytes / UTF-16 round-trips work.
  */
-import type { FileStat, FileSystemService } from "@atlas-ai/platform";
+import type {
+  FileStat,
+  FileSystemService,
+  FileWatchEvent,
+  FileWatchHandle,
+  FileWatchOptions,
+} from "@atlas-ai/platform";
 import { PlatformError } from "@atlas-ai/platform";
 
 type Entry =
@@ -45,12 +51,23 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 export interface MemoryFileSystemService extends FileSystemService {
   /** Create a symlink entry (target may be relative). */
   symlink(linkPath: string, target: string): void;
+  /** Emit a watch event to all matching listeners (tests). */
+  emitWatchEvent(event: FileWatchEvent): void;
 }
 
 export function createMemoryFileSystemService(
   initial: Record<string, string | null> = {},
 ): MemoryFileSystemService {
   const store = new Map<string, Entry>();
+  const watchers = new Map<
+    number,
+    {
+      root: string;
+      recursive: boolean;
+      listener: (event: FileWatchEvent) => void;
+    }
+  >();
+  let nextWatchId = 1;
 
   const mkdirpInternal = (dirPath: string): void => {
     const key = norm(dirPath);
@@ -328,6 +345,44 @@ export function createMemoryFileSystemService(
         mkdirpInternal(parent);
       }
       store.set(norm(linkPath), { kind: "symlink", target });
+    },
+    watch(
+      watchPath: string,
+      listener: (event: FileWatchEvent) => void,
+      options?: FileWatchOptions,
+    ): FileWatchHandle {
+      const id = nextWatchId++;
+      const root = norm(watchPath);
+      watchers.set(id, {
+        root,
+        recursive: options?.recursive !== false,
+        listener,
+      });
+      return {
+        close() {
+          watchers.delete(id);
+        },
+      };
+    },
+    emitWatchEvent(event: FileWatchEvent): void {
+      const target = norm(event.path);
+      for (const w of watchers.values()) {
+        const root = w.root;
+        const prefix = root.endsWith("/") ? root : `${root}/`;
+        if (target !== root && !target.startsWith(prefix)) {
+          continue;
+        }
+        if (!w.recursive) {
+          const parent =
+            target === root
+              ? root
+              : target.slice(0, target.lastIndexOf("/")) || "/";
+          if (target !== root && parent !== root) {
+            continue;
+          }
+        }
+        w.listener({ ...event, path: target });
+      }
     },
   };
 }
