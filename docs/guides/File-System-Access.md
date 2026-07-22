@@ -12,16 +12,17 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0077](../adr/0077-file-metadata-service.md),
 [ADR-0078](../adr/0078-file-reading-engine.md),
 [ADR-0079](../adr/0079-file-writing-engine.md),
+[ADR-0080](../adr/0080-directory-management.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
 
 ## Layering
 
-| Layer   | Type                             | Role                                                 |
-| ------- | -------------------------------- | ---------------------------------------------------- |
-| Product | `FileAccessService`              | Search, CRUD, navigate, metadata, read/write engines |
-| OS      | `FileSystemService` (`os.files`) | Path CRUD + ranged bytes + rename + `PlatformError`  |
+| Layer   | Type                             | Role                                                      |
+| ------- | -------------------------------- | --------------------------------------------------------- |
+| Product | `FileAccessService`              | Search, CRUD, navigate, metadata, read/write, directories |
+| OS      | `FileSystemService` (`os.files`) | Path CRUD + ranged bytes + rename + `PlatformError`       |
 
 ```ts
 import {
@@ -51,9 +52,17 @@ const tree = files.walkDirectory(".", { maxDepth: 4 });
 
 ### CRUD (ADR-0074)
 
-- `createDirectory(path)`
-- `deleteFile(path)`
-- `moveFile(from, to)` — files only (MVP)
+- `deleteFile(path)` — files or recursive directory remove
+- `moveFile(from, to)` — alias of `movePath` (prefer `movePath`)
+
+### Directory management (ADR-0080)
+
+- `createDirectory(path, { recursive? })` → `{ path, created }`
+- `directoryExists(path)` → boolean
+- `pathExists(path)` → `{ exists, isFile, isDirectory }`
+- `movePath(from, to, { createDirs?, overwrite? })` → `{ from, to, kind }`
+  via platform `rename` (files and directories; same-volume)
+- `deleteDirectory(path)` — **empty directories only**
 
 ### Writing engine (ADR-0079)
 
@@ -167,7 +176,9 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 | `file.write`    | `filesystem.write`            | `writeFile`       |
 | `file.mkdir`    | `filesystem.write`            | `createDirectory` |
 | `file.delete`   | `filesystem.delete`           | `deleteFile`      |
-| `file.move`     | `filesystem.write` + `delete` | `moveFile`        |
+| `file.move`     | `filesystem.write` + `delete` | `movePath`        |
+| `file.rmdir`    | `filesystem.delete`           | `deleteDirectory` |
+| `file.exists`   | `filesystem.read`             | `pathExists`      |
 | `file.resolve`  | `filesystem.read`             | `resolvePath`     |
 | `file.list`     | `filesystem.read`             | `listDirectory`   |
 | `file.walk`     | `filesystem.read`             | `walkDirectory`   |
@@ -185,6 +196,9 @@ returns format / encoding / truncation / optional structured `data`.
 
 `file.write` accepts `path`, `content`, plus optional `mode`, `overwrite`,
 `encoding`, `atomic`, `bom`, `createDirs` and returns write result fields.
+
+`file.move` moves files or directories (`kind` in output). `file.rmdir` removes
+empty directories only. `file.exists` returns existence and type flags.
 
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.
@@ -205,9 +219,8 @@ pnpm packages:build
 
 - Persistent file index / hybrid search (Architecture/24)
 - Migrating all remaining `node:fs` usage in ai/logging/database
-- Directory `moveFile` / native rename (writing engine uses rename for atomic
-  replace only)
+- Cross-volume rename fallbacks (`EXDEV`) / trash / soft-delete
 - FS watchers / Tauri native FS plugins
-- Cross-volume atomic rename fallbacks / fsync durability beyond rename
+- Changing `deleteFile` recursive semantics on directories
 - Content-based MIME sniffing / Windows ACL owner resolution
 - Full YAML 1.2 / XML DOM / Markdown AST / streaming multi-GB without a window

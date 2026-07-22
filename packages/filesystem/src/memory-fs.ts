@@ -177,6 +177,28 @@ export function createMemoryFileSystemService(
           detail: { path: from, errno: "ENOENT" },
         });
       }
+      if (entry.kind === "dir") {
+        const prefix = `${fromKey}/`;
+        const moves: Array<{ oldKey: string; newKey: string; value: Entry }> = [
+          { oldKey: fromKey, newKey: toKey, value: entry },
+        ];
+        for (const [k, v] of store.entries()) {
+          if (k.startsWith(prefix)) {
+            moves.push({
+              oldKey: k,
+              newKey: `${toKey}/${k.slice(prefix.length)}`,
+              value: v,
+            });
+          }
+        }
+        for (const m of moves) {
+          store.delete(m.oldKey);
+        }
+        for (const m of moves) {
+          store.set(m.newKey, m.value);
+        }
+        return;
+      }
       store.delete(fromKey);
       store.set(toKey, entry);
     },

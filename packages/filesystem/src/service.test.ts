@@ -341,4 +341,39 @@ describe("FileAccessService", () => {
       PlatformError,
     );
   });
+
+  it("manages directories: create, exists, move, empty delete", () => {
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/src`]: null,
+      [`${ROOT}/src/app.ts`]: "export const x = 1;",
+    });
+
+    expect(svc.directoryExists("src")).toBe(true);
+    expect(svc.directoryExists("missing")).toBe(false);
+    expect(svc.pathExists("src/app.ts")).toEqual({
+      exists: true,
+      isFile: true,
+      isDirectory: false,
+    });
+
+    const mkdir = svc.createDirectory("docs");
+    expect(mkdir.created).toBe(true);
+    expect(svc.createDirectory("docs").created).toBe(false);
+
+    const moved = svc.movePath("src", "lib");
+    expect(moved.kind).toBe("directory");
+    expect(svc.directoryExists("src")).toBe(false);
+    expect(svc.directoryExists("lib")).toBe(true);
+    expect(svc.readFile("lib/app.ts").content).toContain("export const x");
+
+    expect(() => svc.deleteDirectory("lib")).toThrow(PlatformError);
+    svc.deleteFile("lib/app.ts");
+    svc.deleteDirectory("lib");
+    expect(svc.directoryExists("lib")).toBe(false);
+
+    expect(() => svc.movePath("docs", `${ROOT}/docs/nested`)).toThrow(
+      PlatformError,
+    );
+  });
 });

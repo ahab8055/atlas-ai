@@ -37,6 +37,11 @@ import type {
   GetFileMetadataOptions,
   ListDirectoryOptions,
   DirEntry,
+  CreateDirectoryOptions,
+  CreateDirectoryResult,
+  MovePathOptions,
+  MovePathResult,
+  PathExistsResult,
   ReadFileOptions,
   WalkDirectoryOptions,
   WriteEncoding,
@@ -756,9 +761,38 @@ export function createFileAccessService(
       };
     },
 
-    createDirectory(inputPath: string): void {
+    createDirectory(
+      inputPath: string,
+      opts: CreateDirectoryOptions = {},
+    ): CreateDirectoryResult {
       const absolute = resolve(inputPath);
+      const recursive = opts.recursive !== false;
+
+      if (files.exists(absolute)) {
+        const st = files.stat(absolute);
+        if (st.isDirectory) {
+          return { path: absolute, created: false };
+        }
+        throw new PlatformError(
+          "invalid_input",
+          `Path exists and is not a directory: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      if (!recursive) {
+        const parent = parentDir(absolute);
+        if (parent && parent !== absolute && !files.exists(parent)) {
+          throw new PlatformError(
+            "invalid_input",
+            `Parent directory does not exist: ${parent}`,
+            { detail: { path: parent } },
+          );
+        }
+      }
+
       files.mkdirp(absolute);
+      return { path: absolute, created: true };
     },
 
     deleteFile(inputPath: string): void {
@@ -773,9 +807,73 @@ export function createFileAccessService(
       files.remove(absolute);
     },
 
-    moveFile(fromInput: string, toInput: string): void {
+    deleteDirectory(inputPath: string): void {
+      const absolute = resolve(inputPath);
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Path not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const st = files.stat(absolute);
+      if (!st.isDirectory) {
+        throw new PlatformError(
+          "invalid_input",
+          `Not a directory: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const children = files.listDir(absolute);
+      if (children.length > 0) {
+        throw new PlatformError(
+          "invalid_input",
+          `Directory is not empty: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      files.remove(absolute);
+    },
+
+    directoryExists(inputPath: string): boolean {
+      try {
+        const absolute = resolve(inputPath);
+        if (!files.exists(absolute)) {
+          return false;
+        }
+        return files.stat(absolute).isDirectory;
+      } catch {
+        return false;
+      }
+    },
+
+    pathExists(inputPath: string): PathExistsResult {
+      try {
+        const absolute = resolve(inputPath);
+        if (!files.exists(absolute)) {
+          return { exists: false, isFile: false, isDirectory: false };
+        }
+        const st = files.stat(absolute);
+        return {
+          exists: true,
+          isFile: st.isFile,
+          isDirectory: st.isDirectory,
+        };
+      } catch {
+        return { exists: false, isFile: false, isDirectory: false };
+      }
+    },
+
+    movePath(
+      fromInput: string,
+      toInput: string,
+      opts: MovePathOptions = {},
+    ): MovePathResult {
       const from = resolve(fromInput);
       const to = resolve(toInput);
+      const createDirs = opts.createDirs !== false;
+      const overwrite = opts.overwrite === true;
+
       if (!files.exists(from)) {
         throw new PlatformError(
           "resource_not_found",
@@ -783,21 +881,75 @@ export function createFileAccessService(
           { detail: { path: from } },
         );
       }
-      const st = files.stat(from);
-      if (st.isDirectory) {
-        throw new PlatformError(
-          "not_implemented",
-          "Moving directories is not supported in MVP FileAccessService",
-          { detail: { path: from } },
-        );
+
+      const fromStat = files.stat(from);
+      const kind: "file" | "directory" = fromStat.isDirectory
+        ? "directory"
+        : "file";
+
+      if (from === to) {
+        return { from, to, kind };
       }
-      const content = files.readText(from);
+
+      if (kind === "directory") {
+        const fromPrefix = from.endsWith(path.sep)
+          ? from
+          : `${from}${path.sep}`;
+        if (to === from || to.startsWith(fromPrefix)) {
+          throw new PlatformError(
+            "invalid_input",
+            `Cannot move a directory into itself: ${from} → ${to}`,
+            { detail: { path: from } },
+          );
+        }
+      }
+
+      if (files.exists(to)) {
+        const toStat = files.stat(to);
+        if (!overwrite) {
+          throw new PlatformError(
+            "invalid_input",
+            `Destination already exists: ${to}`,
+            { detail: { path: to } },
+          );
+        }
+        if (toStat.isDirectory) {
+          const children = files.listDir(to);
+          if (children.length > 0) {
+            throw new PlatformError(
+              "invalid_input",
+              `Destination directory is not empty: ${to}`,
+              { detail: { path: to } },
+            );
+          }
+          files.remove(to);
+        } else {
+          files.remove(to);
+        }
+      }
+
       const parent = parentDir(to);
-      if (parent && !files.exists(parent)) {
+      if (parent && parent !== to && !files.exists(parent)) {
+        if (!createDirs) {
+          throw new PlatformError(
+            "invalid_input",
+            `Parent directory does not exist: ${parent}`,
+            { detail: { path: parent } },
+          );
+        }
         files.mkdirp(parent);
       }
-      files.writeText(to, content);
-      files.remove(from);
+
+      files.rename(from, to);
+      return { from, to, kind };
+    },
+
+    moveFile(
+      fromInput: string,
+      toInput: string,
+      opts?: MovePathOptions,
+    ): MovePathResult {
+      return this.movePath(fromInput, toInput, opts);
     },
 
     getFileMetadata(

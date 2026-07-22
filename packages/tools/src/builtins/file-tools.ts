@@ -274,16 +274,17 @@ export const fileWrite = defineTool(
 export const fileMkdir = defineTool(
   {
     name: "file.mkdir",
-    description: "Create a directory (including parents)",
-    version: "1.0.0",
+    description: "Create a directory (including parents by default)",
+    version: "1.1.0",
     permissions: ["filesystem.write"],
     risk: "high",
-    tags: ["filesystem", "mvp"],
+    tags: ["filesystem", "mvp", "directory"],
     inputSchema: {
       type: "object",
       required: ["path"],
       properties: {
         path: { type: "string" },
+        recursive: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -292,15 +293,29 @@ export const fileMkdir = defineTool(
       properties: {
         message: { type: "string" },
         path: { type: "string" },
+        created: { type: "boolean" },
       },
     },
   },
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      access().createDirectory(filePath);
-      const message = `Created directory ${filePath}`;
-      return { ok: true, message, data: { message, path: filePath } };
+      const result = access().createDirectory(filePath, {
+        recursive:
+          input.recursive === undefined ? undefined : Boolean(input.recursive),
+      });
+      const message = result.created
+        ? `Created directory ${result.path}`
+        : `Directory already exists ${result.path}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: result.path,
+          created: result.created,
+        },
+      };
     } catch (error) {
       return fail(error);
     }
@@ -346,17 +361,19 @@ export const fileDelete = defineTool(
 export const fileMove = defineTool(
   {
     name: "file.move",
-    description: "Move or rename a local file",
-    version: "1.0.0",
+    description: "Move or rename a local file or directory",
+    version: "1.1.0",
     permissions: ["filesystem.write", "filesystem.delete"],
     risk: "high",
-    tags: ["filesystem", "mvp"],
+    tags: ["filesystem", "mvp", "directory"],
     inputSchema: {
       type: "object",
       required: ["from", "to"],
       properties: {
         from: { type: "string" },
         to: { type: "string" },
+        createDirs: { type: "boolean" },
+        overwrite: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -366,6 +383,7 @@ export const fileMove = defineTool(
         message: { type: "string" },
         from: { type: "string" },
         to: { type: "string" },
+        kind: { type: "string" },
       },
     },
   },
@@ -373,9 +391,114 @@ export const fileMove = defineTool(
     try {
       const from = String(input.from ?? "");
       const to = String(input.to ?? "");
-      access().moveFile(from, to);
-      const message = `Moved ${from} → ${to}`;
-      return { ok: true, message, data: { message, from, to } };
+      const result = access().movePath(from, to, {
+        createDirs:
+          input.createDirs === undefined
+            ? undefined
+            : Boolean(input.createDirs),
+        overwrite:
+          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
+      });
+      const message = `Moved ${result.kind} ${result.from} → ${result.to}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          from: result.from,
+          to: result.to,
+          kind: result.kind,
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileRmdir = defineTool(
+  {
+    name: "file.rmdir",
+    description: "Delete an empty directory",
+    version: "1.0.0",
+    permissions: ["filesystem.delete"],
+    risk: "high",
+    tags: ["filesystem", "mvp", "directory"],
+    inputSchema: {
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: { type: "string" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "path"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const filePath = String(input.path ?? "");
+      access().deleteDirectory(filePath);
+      const message = `Removed empty directory ${filePath}`;
+      return { ok: true, message, data: { message, path: filePath } };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileExists = defineTool(
+  {
+    name: "file.exists",
+    description:
+      "Check whether a path exists and whether it is a file or directory",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "low",
+    tags: ["filesystem", "mvp", "directory"],
+    inputSchema: {
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: { type: "string" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "path", "exists"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+        exists: { type: "boolean" },
+        isFile: { type: "boolean" },
+        isDirectory: { type: "boolean" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const filePath = String(input.path ?? "");
+      const absolute = access().resolvePath(filePath);
+      const info = access().pathExists(filePath);
+      const message = info.exists
+        ? `${absolute} exists (${info.isDirectory ? "directory" : "file"})`
+        : `${absolute} does not exist`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: absolute,
+          exists: info.exists,
+          isFile: info.isFile,
+          isDirectory: info.isDirectory,
+        },
+      };
     } catch (error) {
       return fail(error);
     }

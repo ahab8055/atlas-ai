@@ -137,6 +137,36 @@ export interface WalkDirectoryOptions {
   limit?: number;
 }
 
+export interface CreateDirectoryOptions {
+  /** Create parents when missing (default true). */
+  recursive?: boolean;
+}
+
+export interface CreateDirectoryResult {
+  path: string;
+  /** False when the path already existed as a directory. */
+  created: boolean;
+}
+
+export interface MovePathOptions {
+  /** Create parent of destination (default true). */
+  createDirs?: boolean;
+  /** Allow replacing an existing file or empty directory (default false). */
+  overwrite?: boolean;
+}
+
+export interface MovePathResult {
+  from: string;
+  to: string;
+  kind: "file" | "directory";
+}
+
+export interface PathExistsResult {
+  exists: boolean;
+  isFile: boolean;
+  isDirectory: boolean;
+}
+
 export interface FileAccessService {
   findFiles(query: FindFilesQuery): FileSearchResult;
   readFile(path: string, opts?: ReadFileOptions): FileContent;
@@ -145,9 +175,21 @@ export interface FileAccessService {
     content: string,
     opts?: WriteFileOptions,
   ): WriteFileResult;
-  createDirectory(path: string): void;
+  createDirectory(
+    path: string,
+    opts?: CreateDirectoryOptions,
+  ): CreateDirectoryResult;
   deleteFile(path: string): void;
-  moveFile(from: string, to: string): void;
+  /** Empty-directory delete only (ADR-0080). */
+  deleteDirectory(path: string): void;
+  /** Move/rename file or directory via platform rename. */
+  movePath(from: string, to: string, opts?: MovePathOptions): MovePathResult;
+  /** @deprecated Prefer `movePath`. */
+  moveFile(from: string, to: string, opts?: MovePathOptions): MovePathResult;
+  /** True when path exists and is a directory. */
+  directoryExists(path: string): boolean;
+  /** Existence + type flags (does not throw when missing). */
+  pathExists(path: string): PathExistsResult;
   /** Resolve relative/absolute path within configured roots. */
   resolvePath(path: string): string;
   /** List immediate children of a directory (defaults to first root). */

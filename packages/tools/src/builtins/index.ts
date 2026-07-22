@@ -1,12 +1,14 @@
 import { defineTool, registerBuiltin } from "./define.js";
 import {
   fileDelete,
+  fileExists,
   fileList,
   fileMetadata,
   fileMkdir,
   fileMove,
   fileRead,
   fileResolve,
+  fileRmdir,
   fileSearch,
   fileWalk,
   fileWrite,
@@ -213,6 +215,8 @@ export const BUILTIN_TOOLS = [
   fileMkdir,
   fileDelete,
   fileMove,
+  fileRmdir,
+  fileExists,
   fileResolve,
   fileList,
   fileWalk,

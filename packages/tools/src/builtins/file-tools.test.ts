@@ -54,6 +54,8 @@ describe("file.* builtin tools", () => {
         "file.mkdir",
         "file.delete",
         "file.move",
+        "file.rmdir",
+        "file.exists",
         "file.resolve",
         "file.list",
         "file.walk",
@@ -175,19 +177,27 @@ describe("file.* builtin tools", () => {
     expect(appended.ok).toBe(true);
     expect(appended.output?.data?.mode).toBe("append");
 
-    expect(
-      executeTool({
-        name: "file.mkdir",
-        input: { path: "nested/dir" },
-      }).ok,
-    ).toBe(true);
+    const mkdir = executeTool({
+      name: "file.mkdir",
+      input: { path: "nested/dir" },
+    });
+    expect(mkdir.ok).toBe(true);
+    expect(mkdir.output?.data?.created).toBe(true);
 
-    expect(
-      executeTool({
-        name: "file.move",
-        input: { from: "out.txt", to: "nested/dir/out.txt" },
-      }).ok,
-    ).toBe(true);
+    const exists = executeTool({
+      name: "file.exists",
+      input: { path: "nested/dir" },
+    });
+    expect(exists.ok).toBe(true);
+    expect(exists.output?.data?.exists).toBe(true);
+    expect(exists.output?.data?.isDirectory).toBe(true);
+
+    const moved = executeTool({
+      name: "file.move",
+      input: { from: "out.txt", to: "nested/dir/out.txt" },
+    });
+    expect(moved.ok).toBe(true);
+    expect(moved.output?.data?.kind).toBe("file");
 
     expect(
       executeTool({
@@ -195,6 +205,12 @@ describe("file.* builtin tools", () => {
         input: { path: "nested/dir/out.txt" },
       }).ok,
     ).toBe(true);
+
+    const rmdir = executeTool({
+      name: "file.rmdir",
+      input: { path: "nested/dir" },
+    });
+    expect(rmdir.ok).toBe(true);
   });
 
   it("returns failed when FileAccess is not bootstrapped", () => {
