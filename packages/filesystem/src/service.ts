@@ -1,7 +1,7 @@
 /**
  * FileAccessService — product FS layer over injected os.files (ADR-0074).
  */
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { userInfo } from "node:os";
 import path from "node:path";
 
@@ -39,10 +39,15 @@ import type {
   DirEntry,
   CreateDirectoryOptions,
   CreateDirectoryResult,
+  CopyPathOptions,
+  CopyPathResult,
+  DeletePathOptions,
+  DeletePathResult,
   MovePathOptions,
   MovePathResult,
   PathExistsResult,
   ReadFileOptions,
+  RestorePathResult,
   WalkDirectoryOptions,
   WriteEncoding,
   WriteFileOptions,
@@ -130,6 +135,107 @@ export function createFileAccessService(
     const absolute = resolveWithinRoots(input, roots, join);
     assertAllowed(absolute);
     return absolute;
+  }
+
+  function trashBase(): string {
+    return path.join(roots[0]!, ".atlas", "trash");
+  }
+
+  function atlasMetaRoot(): string {
+    return path.join(roots[0]!, ".atlas");
+  }
+
+  function isUnderAtlasMeta(absolutePath: string): boolean {
+    const meta = atlasMetaRoot();
+    const prefix = meta.endsWith(path.sep) ? meta : `${meta}${path.sep}`;
+    return absolutePath === meta || absolutePath.startsWith(prefix);
+  }
+
+  /** Inside roots, skip deny (for trash internals). */
+  function assertInsideRoots(absolutePath: string): void {
+    if (!isPathInsideRoots(absolutePath, roots)) {
+      throw new PlatformError(
+        "permission_denied",
+        `Path is outside allowed roots: ${absolutePath}`,
+        { detail: { path: absolutePath } },
+      );
+    }
+  }
+
+  function ensureDestClear(to: string, overwrite: boolean): boolean {
+    if (!files.exists(to)) {
+      return false;
+    }
+    const toStat = files.stat(to);
+    if (!overwrite) {
+      throw new PlatformError(
+        "invalid_input",
+        `Destination already exists: ${to}`,
+        { detail: { path: to } },
+      );
+    }
+    if (toStat.isDirectory) {
+      const children = files.listDir(to);
+      if (children.length > 0) {
+        throw new PlatformError(
+          "invalid_input",
+          `Destination directory is not empty: ${to}`,
+          { detail: { path: to } },
+        );
+      }
+    }
+    files.remove(to);
+    return true;
+  }
+
+  function ensureParent(to: string, createDirs: boolean): void {
+    const parent = parentDir(to);
+    if (parent && parent !== to && !files.exists(parent)) {
+      if (!createDirs) {
+        throw new PlatformError(
+          "invalid_input",
+          `Parent directory does not exist: ${parent}`,
+          { detail: { path: parent } },
+        );
+      }
+      files.mkdirp(parent);
+    }
+  }
+
+  function rejectSelfNest(from: string, to: string, kind: string): void {
+    if (kind !== "directory") {
+      return;
+    }
+    const fromPrefix = from.endsWith(path.sep) ? from : `${from}${path.sep}`;
+    if (to === from || to.startsWith(fromPrefix)) {
+      throw new PlatformError(
+        "invalid_input",
+        `Cannot place a directory inside itself: ${from} → ${to}`,
+        { detail: { path: from } },
+      );
+    }
+  }
+
+  function copyTree(from: string, to: string): void {
+    files.mkdirp(to);
+    for (const name of files.listDir(from)) {
+      const src = path.join(from, name);
+      const dest = path.join(to, name);
+      const st = files.lstat(src);
+      if (st.isDirectory && !st.isSymbolicLink) {
+        copyTree(src, dest);
+      } else if (st.isFile && !st.isSymbolicLink) {
+        files.copyFile(src, dest);
+      }
+      // skip symlinks in MVP copy
+    }
+  }
+
+  interface TrashManifest {
+    originalPath: string;
+    kind: "file" | "directory";
+    deletedAtMs: number;
+    payloadName: string;
   }
 
   function toDirEntry(full: string, name: string): DirEntry | undefined {
@@ -795,16 +901,8 @@ export function createFileAccessService(
       return { path: absolute, created: true };
     },
 
-    deleteFile(inputPath: string): void {
-      const absolute = resolve(inputPath);
-      if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
-          `Path not found: ${absolute}`,
-          { detail: { path: absolute } },
-        );
-      }
-      files.remove(absolute);
+    deleteFile(inputPath: string): DeletePathResult {
+      return this.deletePath(inputPath, { trash: false, recursive: true });
     },
 
     deleteDirectory(inputPath: string): void {
@@ -835,33 +933,183 @@ export function createFileAccessService(
       files.remove(absolute);
     },
 
-    directoryExists(inputPath: string): boolean {
-      try {
-        const absolute = resolve(inputPath);
-        if (!files.exists(absolute)) {
-          return false;
-        }
-        return files.stat(absolute).isDirectory;
-      } catch {
-        return false;
+    deletePath(
+      inputPath: string,
+      opts: DeletePathOptions = {},
+    ): DeletePathResult {
+      const absolute = resolve(inputPath);
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Path not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
       }
+      if (isUnderAtlasMeta(absolute)) {
+        throw new PlatformError(
+          "invalid_input",
+          `Cannot delete Atlas metadata path: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const st = files.stat(absolute);
+      const kind: "file" | "directory" = st.isDirectory ? "directory" : "file";
+      const useTrash = opts.trash !== false;
+      const recursive = opts.recursive !== false;
+
+      if (kind === "directory" && !useTrash && !recursive) {
+        const children = files.listDir(absolute);
+        if (children.length > 0) {
+          throw new PlatformError(
+            "invalid_input",
+            `Directory is not empty: ${absolute}`,
+            { detail: { path: absolute } },
+          );
+        }
+      }
+
+      if (!useTrash) {
+        files.remove(absolute);
+        return {
+          path: absolute,
+          kind,
+          mode: "hard",
+          restorable: false,
+        };
+      }
+
+      const trashId = `${Date.now()}-${randomBytes(4).toString("hex")}`;
+      const entryDir = path.join(trashBase(), trashId);
+      const payloadDir = path.join(entryDir, "payload");
+      assertInsideRoots(entryDir);
+      files.mkdirp(payloadDir);
+      const payloadName = path.basename(absolute);
+      const payloadPath = path.join(payloadDir, payloadName);
+      files.rename(absolute, payloadPath);
+      const manifest: TrashManifest = {
+        originalPath: absolute,
+        kind,
+        deletedAtMs: Date.now(),
+        payloadName,
+      };
+      files.writeText(
+        path.join(entryDir, "manifest.json"),
+        `${JSON.stringify(manifest)}\n`,
+      );
+      return {
+        path: absolute,
+        kind,
+        mode: "trash",
+        trashId,
+        restorable: true,
+      };
     },
 
-    pathExists(inputPath: string): PathExistsResult {
-      try {
-        const absolute = resolve(inputPath);
-        if (!files.exists(absolute)) {
-          return { exists: false, isFile: false, isDirectory: false };
-        }
-        const st = files.stat(absolute);
-        return {
-          exists: true,
-          isFile: st.isFile,
-          isDirectory: st.isDirectory,
-        };
-      } catch {
-        return { exists: false, isFile: false, isDirectory: false };
+    restorePath(trashId: string): RestorePathResult {
+      const id = trashId.trim();
+      if (!id || id.includes("/") || id.includes("\\") || id.includes("..")) {
+        throw new PlatformError(
+          "invalid_input",
+          `Invalid trash id: ${trashId}`,
+        );
       }
+      const entryDir = path.join(trashBase(), id);
+      assertInsideRoots(entryDir);
+      const manifestPath = path.join(entryDir, "manifest.json");
+      if (!files.exists(manifestPath)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Trash entry not found: ${id}`,
+          { detail: { path: entryDir } },
+        );
+      }
+      let manifest: TrashManifest;
+      try {
+        manifest = JSON.parse(files.readText(manifestPath)) as TrashManifest;
+      } catch (error) {
+        throw new PlatformError(
+          "invalid_input",
+          `Corrupt trash manifest: ${id}`,
+          {
+            detail: { path: manifestPath },
+            cause: error,
+          },
+        );
+      }
+      assertAllowed(manifest.originalPath);
+      if (files.exists(manifest.originalPath)) {
+        throw new PlatformError(
+          "invalid_input",
+          `Restore target already exists: ${manifest.originalPath}`,
+          { detail: { path: manifest.originalPath } },
+        );
+      }
+      const payloadPath = path.join(entryDir, "payload", manifest.payloadName);
+      if (!files.exists(payloadPath)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Trash payload missing: ${id}`,
+          { detail: { path: payloadPath } },
+        );
+      }
+      ensureParent(manifest.originalPath, true);
+      files.rename(payloadPath, manifest.originalPath);
+      files.remove(entryDir);
+      return {
+        trashId: id,
+        path: manifest.originalPath,
+        kind: manifest.kind,
+      };
+    },
+
+    copyPath(
+      fromInput: string,
+      toInput: string,
+      opts: CopyPathOptions = {},
+    ): CopyPathResult {
+      const from = resolve(fromInput);
+      const to = resolve(toInput);
+      const createDirs = opts.createDirs !== false;
+      const overwrite = opts.overwrite === true;
+      const recursive = opts.recursive !== false;
+
+      if (!files.exists(from)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Source not found: ${from}`,
+          { detail: { path: from } },
+        );
+      }
+      const fromStat = files.stat(from);
+      const kind: "file" | "directory" = fromStat.isDirectory
+        ? "directory"
+        : "file";
+      rejectSelfNest(from, to, kind);
+
+      if (kind === "directory" && !recursive) {
+        throw new PlatformError(
+          "invalid_input",
+          `Directory copy requires recursive: true: ${from}`,
+          { detail: { path: from } },
+        );
+      }
+
+      const overwritten = ensureDestClear(to, overwrite);
+      ensureParent(to, createDirs);
+
+      if (kind === "file") {
+        files.copyFile(from, to);
+        return {
+          from,
+          to,
+          kind,
+          bytesCopied: fromStat.size,
+          overwritten,
+        };
+      }
+
+      copyTree(from, to);
+      return { from, to, kind, overwritten };
     },
 
     movePath(
@@ -891,57 +1139,19 @@ export function createFileAccessService(
         return { from, to, kind };
       }
 
-      if (kind === "directory") {
-        const fromPrefix = from.endsWith(path.sep)
-          ? from
-          : `${from}${path.sep}`;
-        if (to === from || to.startsWith(fromPrefix)) {
-          throw new PlatformError(
-            "invalid_input",
-            `Cannot move a directory into itself: ${from} → ${to}`,
-            { detail: { path: from } },
-          );
-        }
-      }
-
-      if (files.exists(to)) {
-        const toStat = files.stat(to);
-        if (!overwrite) {
-          throw new PlatformError(
-            "invalid_input",
-            `Destination already exists: ${to}`,
-            { detail: { path: to } },
-          );
-        }
-        if (toStat.isDirectory) {
-          const children = files.listDir(to);
-          if (children.length > 0) {
-            throw new PlatformError(
-              "invalid_input",
-              `Destination directory is not empty: ${to}`,
-              { detail: { path: to } },
-            );
-          }
-          files.remove(to);
-        } else {
-          files.remove(to);
-        }
-      }
-
-      const parent = parentDir(to);
-      if (parent && parent !== to && !files.exists(parent)) {
-        if (!createDirs) {
-          throw new PlatformError(
-            "invalid_input",
-            `Parent directory does not exist: ${parent}`,
-            { detail: { path: parent } },
-          );
-        }
-        files.mkdirp(parent);
-      }
-
+      rejectSelfNest(from, to, kind);
+      ensureDestClear(to, overwrite);
+      ensureParent(to, createDirs);
       files.rename(from, to);
       return { from, to, kind };
+    },
+
+    renamePath(
+      fromInput: string,
+      toInput: string,
+      opts?: MovePathOptions,
+    ): MovePathResult {
+      return this.movePath(fromInput, toInput, opts);
     },
 
     moveFile(
@@ -950,6 +1160,35 @@ export function createFileAccessService(
       opts?: MovePathOptions,
     ): MovePathResult {
       return this.movePath(fromInput, toInput, opts);
+    },
+
+    directoryExists(inputPath: string): boolean {
+      try {
+        const absolute = resolve(inputPath);
+        if (!files.exists(absolute)) {
+          return false;
+        }
+        return files.stat(absolute).isDirectory;
+      } catch {
+        return false;
+      }
+    },
+
+    pathExists(inputPath: string): PathExistsResult {
+      try {
+        const absolute = resolve(inputPath);
+        if (!files.exists(absolute)) {
+          return { exists: false, isFile: false, isDirectory: false };
+        }
+        const st = files.stat(absolute);
+        return {
+          exists: true,
+          isFile: st.isFile,
+          isDirectory: st.isDirectory,
+        };
+      } catch {
+        return { exists: false, isFile: false, isDirectory: false };
+      }
     },
 
     getFileMetadata(

@@ -54,6 +54,9 @@ describe("file.* builtin tools", () => {
         "file.mkdir",
         "file.delete",
         "file.move",
+        "file.copy",
+        "file.rename",
+        "file.restore",
         "file.rmdir",
         "file.exists",
         "file.resolve",
@@ -199,10 +202,38 @@ describe("file.* builtin tools", () => {
     expect(moved.ok).toBe(true);
     expect(moved.output?.data?.kind).toBe("file");
 
+    const copied = executeTool({
+      name: "file.copy",
+      input: { from: "nested/dir/out.txt", to: "nested/dir/out2.txt" },
+    });
+    expect(copied.ok).toBe(true);
+    expect(copied.output?.data?.kind).toBe("file");
+
+    const deleted = executeTool({
+      name: "file.delete",
+      input: { path: "nested/dir/out2.txt" },
+    });
+    expect(deleted.ok).toBe(true);
+    expect(deleted.output?.data?.mode).toBe("trash");
+    expect(deleted.output?.data?.trashId).toBeTruthy();
+
+    const restored = executeTool({
+      name: "file.restore",
+      input: { trashId: deleted.output?.data?.trashId },
+    });
+    expect(restored.ok).toBe(true);
+
     expect(
       executeTool({
         name: "file.delete",
-        input: { path: "nested/dir/out.txt" },
+        input: { path: "nested/dir/out2.txt", trash: false },
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      executeTool({
+        name: "file.delete",
+        input: { path: "nested/dir/out.txt", trash: false },
       }).ok,
     ).toBe(true);
 

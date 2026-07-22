@@ -13,6 +13,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0078](../adr/0078-file-reading-engine.md),
 [ADR-0079](../adr/0079-file-writing-engine.md),
 [ADR-0080](../adr/0080-directory-management.md),
+[ADR-0081](../adr/0081-file-management-operations.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -52,8 +53,17 @@ const tree = files.walkDirectory(".", { maxDepth: 4 });
 
 ### CRUD (ADR-0074)
 
-- `deleteFile(path)` — files or recursive directory remove
+- `deleteFile(path)` — hard delete alias of `deletePath({ trash: false })`
 - `moveFile(from, to)` — alias of `movePath` (prefer `movePath`)
+
+### File management (ADR-0081)
+
+- `copyPath(from, to, { createDirs?, overwrite?, recursive? })` → `CopyPathResult`
+- `movePath` / `renamePath` — via platform `rename` (overwrite default false)
+- `deletePath(path, { trash?, recursive? })` → `DeletePathResult`
+  - `trash` default **true** → `{roots[0]}/.atlas/trash/{trashId}/`
+  - `trash: false` → hard remove
+- `restorePath(trashId)` → `RestorePathResult`
 
 ### Directory management (ADR-0080)
 
@@ -175,8 +185,11 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 | `file.read`     | `filesystem.read`             | `readFile`        |
 | `file.write`    | `filesystem.write`            | `writeFile`       |
 | `file.mkdir`    | `filesystem.write`            | `createDirectory` |
-| `file.delete`   | `filesystem.delete`           | `deleteFile`      |
+| `file.delete`   | `filesystem.delete`           | `deletePath`      |
 | `file.move`     | `filesystem.write` + `delete` | `movePath`        |
+| `file.copy`     | `filesystem.write`            | `copyPath`        |
+| `file.rename`   | `filesystem.write` + `delete` | `renamePath`      |
+| `file.restore`  | `filesystem.write` + `delete` | `restorePath`     |
 | `file.rmdir`    | `filesystem.delete`           | `deleteDirectory` |
 | `file.exists`   | `filesystem.read`             | `pathExists`      |
 | `file.resolve`  | `filesystem.read`             | `resolvePath`     |
@@ -200,6 +213,10 @@ returns format / encoding / truncation / optional structured `data`.
 `file.move` moves files or directories (`kind` in output). `file.rmdir` removes
 empty directories only. `file.exists` returns existence and type flags.
 
+`file.delete` soft-deletes to Atlas trash by default (`trash: false` for
+hard delete) and returns `mode` / `trashId` / `restorable`. `file.restore`
+takes `trashId`. `file.copy` / `file.rename` support overwrite protection.
+
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.
 
@@ -219,8 +236,9 @@ pnpm packages:build
 
 - Persistent file index / hybrid search (Architecture/24)
 - Migrating all remaining `node:fs` usage in ai/logging/database
-- Cross-volume rename fallbacks (`EXDEV`) / trash / soft-delete
+- Cross-volume rename fallbacks (`EXDEV`) / OS Trash / Recycle Bin
+- Trash TTL / auto-purge
 - FS watchers / Tauri native FS plugins
-- Changing `deleteFile` recursive semantics on directories
+- Changing `deleteDirectory` empty-only semantics
 - Content-based MIME sniffing / Windows ACL owner resolution
 - Full YAML 1.2 / XML DOM / Markdown AST / streaming multi-GB without a window

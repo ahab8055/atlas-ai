@@ -325,8 +325,9 @@ export const fileMkdir = defineTool(
 export const fileDelete = defineTool(
   {
     name: "file.delete",
-    description: "Delete a local file or directory",
-    version: "1.0.0",
+    description:
+      "Delete a local file or directory (soft-delete to Atlas trash by default)",
+    version: "1.1.0",
     permissions: ["filesystem.delete"],
     risk: "critical",
     tags: ["filesystem", "mvp"],
@@ -335,6 +336,8 @@ export const fileDelete = defineTool(
       required: ["path"],
       properties: {
         path: { type: "string" },
+        trash: { type: "boolean" },
+        recursive: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -343,15 +346,37 @@ export const fileDelete = defineTool(
       properties: {
         message: { type: "string" },
         path: { type: "string" },
+        kind: { type: "string" },
+        mode: { type: "string" },
+        trashId: { type: "string" },
+        restorable: { type: "boolean" },
       },
     },
   },
   (input) => {
     try {
       const filePath = String(input.path ?? "");
-      access().deleteFile(filePath);
-      const message = `Deleted ${filePath}`;
-      return { ok: true, message, data: { message, path: filePath } };
+      const result = access().deletePath(filePath, {
+        trash: input.trash === undefined ? undefined : Boolean(input.trash),
+        recursive:
+          input.recursive === undefined ? undefined : Boolean(input.recursive),
+      });
+      const message =
+        result.mode === "trash"
+          ? `Trashed ${result.kind} ${result.path} (id=${result.trashId})`
+          : `Hard-deleted ${result.kind} ${result.path}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: result.path,
+          kind: result.kind,
+          mode: result.mode,
+          trashId: result.trashId,
+          restorable: result.restorable,
+        },
+      };
     } catch (error) {
       return fail(error);
     }
@@ -407,6 +432,176 @@ export const fileMove = defineTool(
           message,
           from: result.from,
           to: result.to,
+          kind: result.kind,
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileCopy = defineTool(
+  {
+    name: "file.copy",
+    description: "Copy a local file or directory",
+    version: "1.0.0",
+    permissions: ["filesystem.write"],
+    risk: "high",
+    tags: ["filesystem", "mvp"],
+    inputSchema: {
+      type: "object",
+      required: ["from", "to"],
+      properties: {
+        from: { type: "string" },
+        to: { type: "string" },
+        createDirs: { type: "boolean" },
+        overwrite: { type: "boolean" },
+        recursive: { type: "boolean" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "from", "to"],
+      properties: {
+        message: { type: "string" },
+        from: { type: "string" },
+        to: { type: "string" },
+        kind: { type: "string" },
+        bytesCopied: { type: "number" },
+        overwritten: { type: "boolean" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const from = String(input.from ?? "");
+      const to = String(input.to ?? "");
+      const result = access().copyPath(from, to, {
+        createDirs:
+          input.createDirs === undefined
+            ? undefined
+            : Boolean(input.createDirs),
+        overwrite:
+          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
+        recursive:
+          input.recursive === undefined ? undefined : Boolean(input.recursive),
+      });
+      const message = `Copied ${result.kind} ${result.from} → ${result.to}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          from: result.from,
+          to: result.to,
+          kind: result.kind,
+          bytesCopied: result.bytesCopied,
+          overwritten: result.overwritten,
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileRename = defineTool(
+  {
+    name: "file.rename",
+    description: "Rename or move a local file or directory",
+    version: "1.0.0",
+    permissions: ["filesystem.write", "filesystem.delete"],
+    risk: "high",
+    tags: ["filesystem", "mvp"],
+    inputSchema: {
+      type: "object",
+      required: ["from", "to"],
+      properties: {
+        from: { type: "string" },
+        to: { type: "string" },
+        createDirs: { type: "boolean" },
+        overwrite: { type: "boolean" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "from", "to"],
+      properties: {
+        message: { type: "string" },
+        from: { type: "string" },
+        to: { type: "string" },
+        kind: { type: "string" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const from = String(input.from ?? "");
+      const to = String(input.to ?? "");
+      const result = access().renamePath(from, to, {
+        createDirs:
+          input.createDirs === undefined
+            ? undefined
+            : Boolean(input.createDirs),
+        overwrite:
+          input.overwrite === undefined ? undefined : Boolean(input.overwrite),
+      });
+      const message = `Renamed ${result.kind} ${result.from} → ${result.to}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          from: result.from,
+          to: result.to,
+          kind: result.kind,
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileRestore = defineTool(
+  {
+    name: "file.restore",
+    description: "Restore a soft-deleted path from Atlas trash by trash id",
+    version: "1.0.0",
+    permissions: ["filesystem.write", "filesystem.delete"],
+    risk: "high",
+    tags: ["filesystem", "mvp"],
+    inputSchema: {
+      type: "object",
+      required: ["trashId"],
+      properties: {
+        trashId: { type: "string" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "path", "trashId"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+        trashId: { type: "string" },
+        kind: { type: "string" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const trashId = String(input.trashId ?? "");
+      const result = access().restorePath(trashId);
+      const message = `Restored ${result.kind} ${result.path}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: result.path,
+          trashId: result.trashId,
           kind: result.kind,
         },
       };

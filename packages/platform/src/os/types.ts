@@ -55,6 +55,11 @@ export interface FileSystemService {
   appendBytes(path: string, data: Uint8Array): void;
   /** Rename/move a path (same-volume atomic replace on POSIX). */
   rename(from: string, to: string): void;
+  /**
+   * Copy a file (not directories). Fails if destination already exists
+   * (caller removes first when overwriting).
+   */
+  copyFile(from: string, to: string): void;
   mkdirp(path: string): void;
   remove(path: string): void;
   listDir(path: string): string[];

@@ -4,6 +4,7 @@
 import {
   appendFileSync,
   closeSync,
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -133,6 +134,16 @@ export function createNodeFileSystemService(): FileSystemService {
       } catch (error) {
         throw translateNativeError(error, {
           operation: "files.rename",
+          path: from,
+        });
+      }
+    },
+    copyFile(from: string, to: string): void {
+      try {
+        copyFileSync(from, to);
+      } catch (error) {
+        throw translateNativeError(error, {
+          operation: "files.copyFile",
           path: from,
         });
       }

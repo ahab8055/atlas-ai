@@ -87,6 +87,9 @@ describe("OperatingSystem files", () => {
       files.rename(bytesPath, renamed);
       expect(files.exists(bytesPath)).toBe(false);
       expect(files.readBytes(renamed)).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+      const copied = join(dir, "copied.bin");
+      files.copyFile(renamed, copied);
+      expect(files.readBytes(copied)).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
       files.remove(file);
       expect(files.exists(file)).toBe(false);
     } finally {

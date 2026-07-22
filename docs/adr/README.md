@@ -104,6 +104,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0078](./0078-file-reading-engine.md)                     | File reading engine                     | Accepted |
 | [0079](./0079-file-writing-engine.md)                     | File writing engine                     | Accepted |
 | [0080](./0080-directory-management.md)                    | Directory management                    | Accepted |
+| [0081](./0081-file-management-operations.md)              | File management operations              | Accepted |
 
 ## Naming
 

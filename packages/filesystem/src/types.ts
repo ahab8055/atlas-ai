@@ -161,6 +161,42 @@ export interface MovePathResult {
   kind: "file" | "directory";
 }
 
+export interface CopyPathOptions {
+  createDirs?: boolean;
+  overwrite?: boolean;
+  /** Recurse into directories (default true). */
+  recursive?: boolean;
+}
+
+export interface CopyPathResult {
+  from: string;
+  to: string;
+  kind: "file" | "directory";
+  bytesCopied?: number;
+  overwritten: boolean;
+}
+
+export interface DeletePathOptions {
+  /** Soft-delete into Atlas trash (default true). */
+  trash?: boolean;
+  /** When hard-deleting a directory, allow non-empty (default true). */
+  recursive?: boolean;
+}
+
+export interface DeletePathResult {
+  path: string;
+  kind: "file" | "directory";
+  mode: "trash" | "hard";
+  trashId?: string;
+  restorable: boolean;
+}
+
+export interface RestorePathResult {
+  trashId: string;
+  path: string;
+  kind: "file" | "directory";
+}
+
 export interface PathExistsResult {
   exists: boolean;
   isFile: boolean;
@@ -179,11 +215,17 @@ export interface FileAccessService {
     path: string,
     opts?: CreateDirectoryOptions,
   ): CreateDirectoryResult;
-  deleteFile(path: string): void;
+  /** Hard delete (no trash). Prefer `deletePath` for soft-delete. */
+  deleteFile(path: string): DeletePathResult;
   /** Empty-directory delete only (ADR-0080). */
   deleteDirectory(path: string): void;
+  deletePath(path: string, opts?: DeletePathOptions): DeletePathResult;
+  restorePath(trashId: string): RestorePathResult;
+  copyPath(from: string, to: string, opts?: CopyPathOptions): CopyPathResult;
   /** Move/rename file or directory via platform rename. */
   movePath(from: string, to: string, opts?: MovePathOptions): MovePathResult;
+  /** Alias of `movePath`. */
+  renamePath(from: string, to: string, opts?: MovePathOptions): MovePathResult;
   /** @deprecated Prefer `movePath`. */
   moveFile(from: string, to: string, opts?: MovePathOptions): MovePathResult;
   /** True when path exists and is a directory. */

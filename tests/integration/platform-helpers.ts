@@ -223,6 +223,7 @@ export function assertOperatingSystemCompliance(os: OperatingSystem): void {
   expect(typeof os.files.writeBytes).toBe("function");
   expect(typeof os.files.appendBytes).toBe("function");
   expect(typeof os.files.rename).toBe("function");
+  expect(typeof os.files.copyFile).toBe("function");
 
   expect(typeof os.terminal.execute).toBe("function");
   expect(typeof os.notifications.show).toBe("function");

@@ -61,8 +61,8 @@ registry.get("demo.ping", "1.0.0");
 
 MVP builtins self-register on import (`system.info`, `echo`, `application.open`,
 `file.search` / `file.read` / `file.write` / `file.mkdir` / `file.delete` /
-`file.move` / `file.rmdir` / `file.exists` / `file.resolve` / `file.list` /
-`file.walk` / `file.metadata`,
+`file.move` / `file.copy` / `file.rename` / `file.restore` / `file.rmdir` /
+`file.exists` / `file.resolve` / `file.list` / `file.walk` / `file.metadata`,
 `code.analyze`,
 `project.open`, `process.start`). File tools are backed by `@atlas-ai/filesystem`
 — see [File-System-Access.md](./File-System-Access.md).

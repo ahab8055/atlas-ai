@@ -26,6 +26,9 @@ describe("tool registry", () => {
         "file.mkdir",
         "file.delete",
         "file.move",
+        "file.copy",
+        "file.rename",
+        "file.restore",
         "file.rmdir",
         "file.exists",
         "file.resolve",
@@ -133,7 +136,7 @@ describe("tool registry", () => {
 
   it("exposes metadata listing for discovery", () => {
     const meta = listToolMetadata();
-    expect(meta.length).toBeGreaterThanOrEqual(18);
+    expect(meta.length).toBeGreaterThanOrEqual(21);
     expect(meta.every((m) => m.name && m.version && m.inputSchema)).toBe(true);
   });
 

@@ -202,6 +202,34 @@ export function createMemoryFileSystemService(
       store.delete(fromKey);
       store.set(toKey, entry);
     },
+    copyFile(from: string, to: string): void {
+      const fromKey = norm(from);
+      const toKey = norm(to);
+      if (store.has(toKey)) {
+        throw new PlatformError(
+          "invalid_input",
+          `Destination already exists: ${to}`,
+          { detail: { path: to } },
+        );
+      }
+      const entry = store.get(fromKey);
+      if (!entry) {
+        throw new PlatformError("resource_not_found", `missing ${from}`, {
+          detail: { path: from, errno: "ENOENT" },
+        });
+      }
+      if (entry.kind !== "file") {
+        throw new PlatformError(
+          "invalid_input",
+          `copyFile requires a file: ${from}`,
+          { detail: { path: from } },
+        );
+      }
+      store.set(toKey, {
+        kind: "file",
+        bytes: new Uint8Array(entry.bytes),
+      });
+    },
     mkdirp(p: string): void {
       mkdirpInternal(p);
     },

@@ -272,6 +272,17 @@ function wrapFiles(
       });
       return runSyncGated(broker, "files.rename", () => inner.rename(from, to));
     },
+    copyFile(from, to) {
+      broker.authorize({
+        operation: "files.copyFile",
+        capability: "filesystem.write",
+        reason: "Copy file",
+        resource: to,
+      });
+      return runSyncGated(broker, "files.copyFile", () =>
+        inner.copyFile(from, to),
+      );
+    },
     mkdirp(path) {
       broker.authorize({
         operation: "files.mkdirp",

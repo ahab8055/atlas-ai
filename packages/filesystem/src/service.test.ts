@@ -376,4 +376,43 @@ describe("FileAccessService", () => {
       PlatformError,
     );
   });
+
+  it("copies, trashes, and restores files", () => {
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/a.txt`]: "alpha",
+      [`${ROOT}/src`]: null,
+      [`${ROOT}/src/b.txt`]: "beta",
+    });
+
+    const copied = svc.copyPath("a.txt", "a-copy.txt");
+    expect(copied.kind).toBe("file");
+    expect(copied.overwritten).toBe(false);
+    expect(svc.readFile("a-copy.txt").content).toBe("alpha");
+
+    const dirCopy = svc.copyPath("src", "src2");
+    expect(dirCopy.kind).toBe("directory");
+    expect(svc.readFile("src2/b.txt").content).toBe("beta");
+
+    expect(() => svc.copyPath("a.txt", "a-copy.txt")).toThrow(PlatformError);
+
+    const trashed = svc.deletePath("a.txt");
+    expect(trashed.mode).toBe("trash");
+    expect(trashed.restorable).toBe(true);
+    expect(trashed.trashId).toBeTruthy();
+    expect(svc.pathExists("a.txt").exists).toBe(false);
+
+    const restored = svc.restorePath(trashed.trashId!);
+    expect(restored.path).toBe(`${ROOT}/a.txt`);
+    expect(svc.readFile("a.txt").content).toBe("alpha");
+
+    const hard = svc.deletePath("a-copy.txt", { trash: false });
+    expect(hard.mode).toBe("hard");
+    expect(hard.restorable).toBe(false);
+    expect(svc.pathExists("a-copy.txt").exists).toBe(false);
+
+    const renamed = svc.renamePath("src2", "src3");
+    expect(renamed.kind).toBe("directory");
+    expect(svc.directoryExists("src3")).toBe(true);
+  });
 });

@@ -161,17 +161,17 @@ try {
 true`). Unauthorized calls throw `PlatformError` with code `permission_denied`
 and optional `approvalId`. Every check is logged on `PermissionManager`.
 
-| OS methods                                                    | Capability            |
-| ------------------------------------------------------------- | --------------------- |
-| `applications.*`                                              | `application.control` |
-| `terminal.execute`                                            | `terminal.execute`    |
-| `files` exists/read/readBytes(range)/list/stat/lstat/readlink | `filesystem.read`     |
-| `files` writeText/writeBytes/appendBytes/rename/mkdirp        | `filesystem.write`    |
-| `files` remove                                                | `filesystem.delete`   |
-| `clipboard.readText`                                          | `clipboard.read`      |
-| `clipboard.writeText`                                         | `clipboard.write`     |
-| `notifications.show`                                          | `notifications.show`  |
-| `system.*`                                                    | `system.info` (L0)    |
+| OS methods                                                      | Capability            |
+| --------------------------------------------------------------- | --------------------- |
+| `applications.*`                                                | `application.control` |
+| `terminal.execute`                                              | `terminal.execute`    |
+| `files` exists/read/readBytes(range)/list/stat/lstat/readlink   | `filesystem.read`     |
+| `files` writeText/writeBytes/appendBytes/rename/copyFile/mkdirp | `filesystem.write`    |
+| `files` remove                                                  | `filesystem.delete`   |
+| `clipboard.readText`                                            | `clipboard.read`      |
+| `clipboard.writeText`                                           | `clipboard.write`     |
+| `notifications.show`                                            | `notifications.show`  |
+| `system.*`                                                      | `system.info` (L0)    |
 
 `paths.*` and `env.*` are not gated (bootstrap/infra).
 
