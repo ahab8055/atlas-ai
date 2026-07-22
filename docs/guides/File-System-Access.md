@@ -14,6 +14,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0079](../adr/0079-file-writing-engine.md),
 [ADR-0080](../adr/0080-directory-management.md),
 [ADR-0081](../adr/0081-file-management-operations.md),
+[ADR-0082](../adr/0082-file-permission-validation.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -23,7 +24,9 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 | Layer   | Type                             | Role                                                      |
 | ------- | -------------------------------- | --------------------------------------------------------- |
 | Product | `FileAccessService`              | Search, CRUD, navigate, metadata, read/write, directories |
-| OS      | `FileSystemService` (`os.files`) | Path CRUD + ranged bytes + rename + `PlatformError`       |
+| Caps    | `PermissionManager` (optional)   | Capability gate before each public method (ADR-0082)      |
+| Path    | `assertAllowed`                  | Roots + sensitive deny list                               |
+| OS      | `FileSystemService` (`os.files`) | Path CRUD; broker wraps when platform enforces (ADR-0066) |
 
 ```ts
 import {
@@ -35,6 +38,8 @@ import { getDefaultPlatformServiceRegistry } from "@atlas-ai/platform";
 
 bootstrapFileAccessFromRegistry(getDefaultPlatformServiceRegistry(), {
   roots: [process.cwd()],
+  permissions, // same PermissionManager as CLI / broker
+  logger: logger.child("filesystem"),
 });
 
 const files = getDefaultFileAccessService();
@@ -219,6 +224,28 @@ takes `trashId`. `file.copy` / `file.rename` support overwrite protection.
 
 CLI bootstraps FileAccess after platform services and grants the filesystem
 capabilities for local use.
+
+---
+
+## Permission validation (ADR-0082)
+
+Order for each public `FileAccessService` method:
+
+1. **Capability** — `PermissionManager.requestPermission` when `permissions` is
+   injected (skipped in memory-FS unit tests without a manager).
+2. **Path sandbox** — roots + deny patterns → `PlatformError` `permission_denied`.
+3. **IO** — injected `os.files` (broker still checks caps on brokered hosts).
+
+| Methods                                     | Capability                               |
+| ------------------------------------------- | ---------------------------------------- |
+| find/read/list/walk/resolve/exists/metadata | `filesystem.read`                        |
+| write/mkdir/copy                            | `filesystem.write`                       |
+| delete (file/dir/path)                      | `filesystem.delete`                      |
+| move / rename / restore                     | `filesystem.write` + `filesystem.delete` |
+
+Security logs: **warn** on capability or path deny; **info** when a mutating
+op is allowed. File contents are never logged. The OS Permission Broker remains
+defense-in-depth (ADR-0066).
 
 ---
 

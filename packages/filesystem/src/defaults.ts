@@ -1,7 +1,9 @@
 /**
  * Default FileAccessService singleton + registry bootstrap.
  */
+import type { Logger } from "@atlas-ai/logging";
 import type { PlatformServiceRegistry } from "@atlas-ai/platform";
+import type { PermissionManager } from "@atlas-ai/security";
 
 import {
   createFileAccessService,
@@ -31,7 +33,10 @@ export function __resetDefaultFileAccessServiceForTests(): void {
 export type BootstrapFileAccessOptions = Omit<
   FileAccessServiceOptions,
   "files" | "paths"
->;
+> & {
+  permissions?: PermissionManager;
+  logger?: Logger;
+};
 
 /**
  * Resolve os.files / os.paths from the platform registry and set the default.
@@ -50,6 +55,8 @@ export function bootstrapFileAccessFromRegistry(
     maxReadBytes: options.maxReadBytes,
     denyPatterns: options.denyPatterns,
     defaultLimit: options.defaultLimit,
+    permissions: options.permissions,
+    logger: options.logger,
   });
   setDefaultFileAccessService(service);
   return service;

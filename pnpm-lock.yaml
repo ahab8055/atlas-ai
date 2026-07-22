@@ -213,9 +213,15 @@ importers:
 
   packages/filesystem:
     dependencies:
+      '@atlas-ai/logging':
+        specifier: workspace:*
+        version: link:../logging
       '@atlas-ai/platform':
         specifier: workspace:*
         version: link:../platform
+      '@atlas-ai/security':
+        specifier: workspace:*
+        version: link:../security
     devDependencies:
       '@types/node':
         specifier: '22'

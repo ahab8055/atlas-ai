@@ -22,7 +22,7 @@ Practical guides for contributing to Atlas AI.
 | [Phase2-Local-AI-Integration-Testing.md](./Phase2-Local-AI-Integration-Testing.md) | Cross-package Phase 2 Local AI Vitest                        |
 | [Phase3-Memory-Integration-Testing.md](./Phase3-Memory-Integration-Testing.md)     | Cross-package Phase 3 Memory & Personal Context Vitest       |
 | [Phase4-Platform-Integration-Testing.md](./Phase4-Platform-Integration-Testing.md) | Cross-package Phase 4 Platform Abstraction Vitest            |
-| [File-System-Access.md](./File-System-Access.md)                                   | Product FS: search, CRUD, navigate, copy/move/trash/restore  |
+| [File-System-Access.md](./File-System-Access.md)                                   | Product FS: CRUD, caps gate, copy/move/trash/restore         |
 | [Platform-Abstraction.md](./Platform-Abstraction.md)                               | Host OS interfaces + PlatformManager (Win/macOS/Linux)       |
 | [Local-AI-Runtime.md](./Local-AI-Runtime.md)                                       | Local inference providers + AI facade                        |
 | [Model-Registry.md](./Model-Registry.md)                                           | Installed model catalog + SQLite persist                     |

@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { PlatformError } from "@atlas-ai/platform";
+import { PermissionManager } from "@atlas-ai/security";
 
 import {
   __resetDefaultFileAccessServiceForTests,
@@ -414,5 +415,45 @@ describe("FileAccessService", () => {
     const renamed = svc.renamePath("src2", "src3");
     expect(renamed.kind).toBe("directory");
     expect(svc.directoryExists("src3")).toBe(true);
+  });
+
+  it("blocks write/copy when PermissionManager lacks filesystem.write", () => {
+    const permissions = new PermissionManager({
+      grantedCapabilities: ["filesystem.read"],
+    });
+    const files = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/a.txt`]: "hi",
+    });
+    const svc = createFileAccessService({
+      files,
+      roots: [ROOT],
+      permissions,
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    expect(() => svc.writeFile("b.txt", "x")).toThrow(PlatformError);
+    try {
+      svc.writeFile("b.txt", "x");
+    } catch (error) {
+      expect((error as PlatformError).code).toBe("permission_denied");
+    }
+
+    expect(() => svc.copyPath("a.txt", "c.txt")).toThrow(PlatformError);
+
+    // Read still allowed
+    expect(svc.readFile("a.txt").content).toBe("hi");
+
+    // Path outside roots denied even with write grant
+    permissions.grant("filesystem.write");
+    permissions.grant("filesystem.delete");
+    expect(() => svc.readFile("/etc/passwd")).toThrow(PlatformError);
   });
 });

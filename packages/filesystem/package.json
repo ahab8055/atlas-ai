@@ -20,7 +20,9 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@atlas-ai/platform": "workspace:*"
+    "@atlas-ai/logging": "workspace:*",
+    "@atlas-ai/platform": "workspace:*",
+    "@atlas-ai/security": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "22",

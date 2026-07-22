@@ -1,15 +1,21 @@
 /**
- * FileAccessService — product FS layer over injected os.files (ADR-0074).
+ * FileAccessService — product FS layer over injected os.files (ADR-0074 / 0082).
  */
 import { createHash, randomBytes } from "node:crypto";
 import { userInfo } from "node:os";
 import path from "node:path";
 
+import type { Logger } from "@atlas-ai/logging";
 import {
   PlatformError,
+  platformSecurityLog,
   type FileSystemService,
   type PathService,
 } from "@atlas-ai/platform";
+import type {
+  PermissionCapability,
+  PermissionManager,
+} from "@atlas-ai/security";
 
 import { mimeForEntry, mimeFromExtension } from "./mime.js";
 import { decodeBytes, encodeBytes } from "./encoding.js";
@@ -71,6 +77,10 @@ export interface FileAccessServiceOptions {
   denyPatterns?: RegExp[];
   /** Max search hits (overridable per findFiles call). */
   defaultLimit?: number;
+  /** Capability checks via PermissionManager (ADR-0082). */
+  permissions?: PermissionManager;
+  /** Optional security/application logger. */
+  logger?: Logger;
 }
 
 function parentDir(filePath: string): string {
@@ -102,6 +112,8 @@ export function createFileAccessService(
   options: FileAccessServiceOptions,
 ): FileAccessService {
   const files = options.files;
+  const permissions = options.permissions;
+  const logger = options.logger;
   const join =
     options.paths?.join.bind(options.paths) ??
     ((...parts: string[]) => path.join(...parts));
@@ -116,6 +128,11 @@ export function createFileAccessService(
 
   function assertAllowed(absolutePath: string): void {
     if (!isPathInsideRoots(absolutePath, roots)) {
+      platformSecurityLog(logger, "warn", "FileAccess path denied", {
+        operation: "assertAllowed",
+        reason: "outside_roots",
+        path: absolutePath,
+      });
       throw new PlatformError(
         "permission_denied",
         `Path is outside allowed roots: ${absolutePath}`,
@@ -123,10 +140,61 @@ export function createFileAccessService(
       );
     }
     if (matchesDeny(absolutePath, denyPatterns)) {
+      platformSecurityLog(logger, "warn", "FileAccess path denied", {
+        operation: "assertAllowed",
+        reason: "deny_list",
+        path: absolutePath,
+      });
       throw new PlatformError(
         "permission_denied",
         `Access to sensitive path is denied: ${absolutePath}`,
         { detail: { path: absolutePath } },
+      );
+    }
+  }
+
+  function authorize(
+    capability: PermissionCapability | readonly PermissionCapability[],
+    operation: string,
+    resource: string,
+    privileged: boolean,
+  ): void {
+    if (!permissions) {
+      return;
+    }
+    const caps = Array.isArray(capability) ? capability : [capability];
+    for (const cap of caps) {
+      const check = permissions.requestPermission({
+        capability: cap,
+        reason: operation,
+        resource,
+      });
+      if (check.blocked) {
+        platformSecurityLog(logger, "warn", "FileAccess permission denied", {
+          operation,
+          capability: cap,
+          path: resource,
+          decisionId: check.decisionId,
+          approvalId: check.approval?.id,
+        });
+        throw new PlatformError(
+          "permission_denied",
+          check.evaluation.message ||
+            `Permission denied for ${cap} (${operation})`,
+          { approvalId: check.approval?.id, detail: { path: resource } },
+        );
+      }
+    }
+    if (privileged) {
+      platformSecurityLog(
+        logger,
+        "info",
+        "FileAccess privileged operation allowed",
+        {
+          operation,
+          capability: caps.join(","),
+          path: resource,
+        },
       );
     }
   }
@@ -276,6 +344,7 @@ export function createFileAccessService(
 
   return {
     resolvePath(inputPath: string): string {
+      authorize("filesystem.read", "resolvePath", inputPath, false);
       return resolve(inputPath);
     },
 
@@ -283,6 +352,12 @@ export function createFileAccessService(
       inputPath?: string,
       opts: ListDirectoryOptions = {},
     ): DirEntry[] {
+      authorize(
+        "filesystem.read",
+        "listDirectory",
+        inputPath ?? roots[0]!,
+        false,
+      );
       const absolute = inputPath !== undefined ? resolve(inputPath) : roots[0]!;
       assertAllowed(absolute);
       if (!files.exists(absolute)) {
@@ -336,6 +411,12 @@ export function createFileAccessService(
       inputPath?: string,
       opts: WalkDirectoryOptions = {},
     ): DirEntry[] {
+      authorize(
+        "filesystem.read",
+        "walkDirectory",
+        inputPath ?? roots[0]!,
+        false,
+      );
       const absolute = inputPath !== undefined ? resolve(inputPath) : roots[0]!;
       assertAllowed(absolute);
       const walkMaxDepth = opts.maxDepth ?? maxDepth;
@@ -464,6 +545,7 @@ export function createFileAccessService(
     },
 
     findFiles(query: FindFilesQuery): FileSearchResult {
+      authorize("filesystem.read", "findFiles", query.root ?? roots[0]!, false);
       const started = Date.now();
       const pattern = query.pattern?.trim() ?? "";
       const matcher = patternToRegExp(pattern);
@@ -664,6 +746,7 @@ export function createFileAccessService(
     },
 
     readFile(inputPath: string, opts: ReadFileOptions = {}): FileContent {
+      authorize("filesystem.read", "readFile", inputPath, false);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(
@@ -778,6 +861,7 @@ export function createFileAccessService(
       content: string,
       opts: WriteFileOptions = {},
     ): WriteFileResult {
+      authorize("filesystem.write", "writeFile", inputPath, true);
       const absolute = resolve(inputPath);
       const createDirs = opts.createDirs !== false;
       const encoding: WriteEncoding = opts.encoding ?? "utf-8";
@@ -871,6 +955,7 @@ export function createFileAccessService(
       inputPath: string,
       opts: CreateDirectoryOptions = {},
     ): CreateDirectoryResult {
+      authorize("filesystem.write", "createDirectory", inputPath, true);
       const absolute = resolve(inputPath);
       const recursive = opts.recursive !== false;
 
@@ -906,6 +991,7 @@ export function createFileAccessService(
     },
 
     deleteDirectory(inputPath: string): void {
+      authorize("filesystem.delete", "deleteDirectory", inputPath, true);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(
@@ -937,6 +1023,7 @@ export function createFileAccessService(
       inputPath: string,
       opts: DeletePathOptions = {},
     ): DeletePathResult {
+      authorize("filesystem.delete", "deletePath", inputPath, true);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(
@@ -1006,6 +1093,12 @@ export function createFileAccessService(
     },
 
     restorePath(trashId: string): RestorePathResult {
+      authorize(
+        ["filesystem.write", "filesystem.delete"],
+        "restorePath",
+        trashId,
+        true,
+      );
       const id = trashId.trim();
       if (!id || id.includes("/") || id.includes("\\") || id.includes("..")) {
         throw new PlatformError(
@@ -1067,6 +1160,12 @@ export function createFileAccessService(
       toInput: string,
       opts: CopyPathOptions = {},
     ): CopyPathResult {
+      authorize(
+        "filesystem.write",
+        "copyPath",
+        `${fromInput}→${toInput}`,
+        true,
+      );
       const from = resolve(fromInput);
       const to = resolve(toInput);
       const createDirs = opts.createDirs !== false;
@@ -1117,6 +1216,12 @@ export function createFileAccessService(
       toInput: string,
       opts: MovePathOptions = {},
     ): MovePathResult {
+      authorize(
+        ["filesystem.write", "filesystem.delete"],
+        "movePath",
+        `${fromInput}→${toInput}`,
+        true,
+      );
       const from = resolve(fromInput);
       const to = resolve(toInput);
       const createDirs = opts.createDirs !== false;
@@ -1163,6 +1268,7 @@ export function createFileAccessService(
     },
 
     directoryExists(inputPath: string): boolean {
+      authorize("filesystem.read", "directoryExists", inputPath, false);
       try {
         const absolute = resolve(inputPath);
         if (!files.exists(absolute)) {
@@ -1175,6 +1281,7 @@ export function createFileAccessService(
     },
 
     pathExists(inputPath: string): PathExistsResult {
+      authorize("filesystem.read", "pathExists", inputPath, false);
       try {
         const absolute = resolve(inputPath);
         if (!files.exists(absolute)) {
@@ -1195,6 +1302,7 @@ export function createFileAccessService(
       inputPath: string,
       opts: GetFileMetadataOptions = {},
     ): FileMetadata {
+      authorize("filesystem.read", "getFileMetadata", inputPath, false);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
         throw new PlatformError(

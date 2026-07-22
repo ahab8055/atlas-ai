@@ -142,6 +142,8 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
 
   bootstrapFileAccessFromRegistry(getDefaultPlatformServiceRegistry(), {
     roots: [process.cwd()],
+    permissions,
+    logger: logger.child("filesystem"),
   });
 
   const memoryAccessLog = new MemoryAccessLog();

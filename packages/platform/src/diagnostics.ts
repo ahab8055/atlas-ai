@@ -26,7 +26,7 @@ export function platformLog(
 /** Security-category permission diagnostics. */
 export function platformSecurityLog(
   logger: Logger | undefined,
-  level: "debug" | "warn",
+  level: "debug" | "info" | "warn",
   message: string,
   context?: Record<string, unknown>,
 ): void {
