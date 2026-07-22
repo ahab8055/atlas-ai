@@ -76,11 +76,15 @@ Only `filesystem.read` is pre-granted; write/delete prompt on a TTY via
 one-shot approvals ([ADR-0083](../adr/0083-safe-file-operations.md)).
 `bootstrapFileWatcherFromRegistry` wires EventBus publishing for FS change
 events; watches start only via `watchDirectory` ([ADR-0084](../adr/0084-file-watcher-service.md)).
+When the database is enabled, successful `file.read` / `file.write` update the
+recent-files MRU ([ADR-0085](../adr/0085-recent-files-index.md)).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status
 pnpm atlas history
 pnpm atlas history --status blocked --limit 5
+pnpm atlas recent
+pnpm atlas recent --sort frequent --limit 10
 
 # Long-term memory (requires DB; classify does not)
 pnpm atlas memory classify "I like dark mode interfaces."

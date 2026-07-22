@@ -17,6 +17,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0082](../adr/0082-file-permission-validation.md),
 [ADR-0083](../adr/0083-safe-file-operations.md),
 [ADR-0084](../adr/0084-file-watcher-service.md),
+[ADR-0085](../adr/0085-recent-files-index.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -289,6 +290,23 @@ Requires `filesystem.read`. Paths must stay inside configured roots / deny list.
 
 ---
 
+## Recent files index (ADR-0085)
+
+SQLite MRU of paths touched by successful **read/write** (not list/search/
+watcher). CLI binds `FileAccessService.onAccess` / `onPathGone` to
+`database.recentFiles` when DB is enabled; tools call `listRecentFiles` via
+the filesystem query façade.
+
+| Surface        | Role                                                     |
+| -------------- | -------------------------------------------------------- |
+| `recent_files` | `last_accessed_at`, `access_count`, `last_action`        |
+| `file.recent`  | Tool: `limit`, `sort` (`recent`\|`frequent`), filters    |
+| `atlas recent` | CLI list (requires DB; `--sort`, `--prefix`, `--action`) |
+
+This is **not** Architecture/24 content indexing.
+
+---
+
 ## Commands
 
 ```bash
@@ -302,6 +320,7 @@ pnpm packages:build
 ## Out of scope (this slice)
 
 - Persistent file index / hybrid search (Architecture/24)
+- Driving MRU from watcher FileCreated/Updated
 - Migrating all remaining `node:fs` usage in ai/logging/database
 - Cross-volume rename fallbacks (`EXDEV`) / OS Trash / Recycle Bin
 - Trash TTL / auto-purge

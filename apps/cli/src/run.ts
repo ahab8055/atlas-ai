@@ -17,6 +17,7 @@ import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
 import {
   bootstrapFileAccessFromRegistry,
   bootstrapFileWatcherFromRegistry,
+  setRecentFilesStore,
 } from "@atlas-ai/filesystem";
 import {
   createKnowledgeGraph,
@@ -143,7 +144,34 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     roots: [process.cwd()],
     permissions,
     logger: logger.child("filesystem"),
+    ...(database
+      ? {
+          onAccess: (event) => {
+            database.recentFiles.touch({
+              path: event.path,
+              action: event.action,
+              at: event.at,
+            });
+          },
+          onPathGone: (gonePath) => {
+            database.recentFiles.remove(gonePath);
+          },
+        }
+      : {}),
   });
+  if (database) {
+    setRecentFilesStore({
+      list: (options) =>
+        database.recentFiles.list(options).map((row) => ({
+          path: row.path,
+          lastAction: row.lastAction,
+          lastAccessedAt: row.lastAccessedAt,
+          accessCount: row.accessCount,
+        })),
+    });
+  } else {
+    setRecentFilesStore(undefined);
+  }
   bootstrapFileWatcherFromRegistry(getDefaultPlatformServiceRegistry(), {
     roots: [process.cwd()],
     permissions,

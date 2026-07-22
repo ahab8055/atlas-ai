@@ -3,6 +3,7 @@
  */
 import {
   getDefaultFileAccessService,
+  listRecentFiles,
   withFsConfirmRetry,
   type FileAccessService,
 } from "@atlas-ai/filesystem";
@@ -978,6 +979,74 @@ export const fileMetadata = defineTool(
             checksum: metadata.checksum,
             checksumSkipped: metadata.checksumSkipped,
           },
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileRecent = defineTool(
+  {
+    name: "file.recent",
+    description:
+      "List recently accessed files (MRU) with timestamps and access frequency",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "low",
+    tags: ["filesystem", "mvp", "recent"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "number" },
+        sort: { type: "string", description: "recent | frequent" },
+        pathPrefix: { type: "string" },
+        action: { type: "string", description: "read | write" },
+        since: { type: "string", description: "ISO timestamp lower bound" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "files"],
+      properties: {
+        message: { type: "string" },
+        files: { type: "array" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const sortRaw = input.sort !== undefined ? String(input.sort) : "recent";
+      const sort =
+        sortRaw === "frequent" ? ("frequent" as const) : ("recent" as const);
+      const actionRaw =
+        input.action !== undefined ? String(input.action) : undefined;
+      const action =
+        actionRaw === "read" || actionRaw === "write" ? actionRaw : undefined;
+      const files = listRecentFiles({
+        limit: typeof input.limit === "number" ? input.limit : undefined,
+        sort,
+        pathPrefix:
+          input.pathPrefix !== undefined ? String(input.pathPrefix) : undefined,
+        action,
+        since: input.since !== undefined ? String(input.since) : undefined,
+      });
+      const message =
+        files.length === 0
+          ? "No recent files recorded"
+          : `Found ${files.length} recent file(s)`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          files: files.map((f) => ({
+            path: f.path,
+            lastAction: f.lastAction,
+            lastAccessedAt: f.lastAccessedAt,
+            accessCount: f.accessCount,
+          })),
         },
       };
     } catch (error) {

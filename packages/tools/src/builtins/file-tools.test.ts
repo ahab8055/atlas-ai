@@ -4,9 +4,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   __resetDefaultFileAccessServiceForTests,
+  __resetRecentFilesStoreForTests,
   createFileAccessService,
   createMemoryFileSystemService,
   setDefaultFileAccessService,
+  setRecentFilesStore,
 } from "@atlas-ai/filesystem";
 
 import { executeTool, getDefaultToolRegistry } from "../index.js";
@@ -40,6 +42,7 @@ describe("file.* builtin tools", () => {
 
   afterEach(() => {
     __resetDefaultFileAccessServiceForTests();
+    __resetRecentFilesStoreForTests();
   });
 
   it("registers all file tools", () => {
@@ -63,6 +66,7 @@ describe("file.* builtin tools", () => {
         "file.list",
         "file.walk",
         "file.metadata",
+        "file.recent",
       ]),
     );
   });
@@ -252,5 +256,32 @@ describe("file.* builtin tools", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.status).toBe("failed");
+  });
+
+  it("lists recent files via injected store", () => {
+    setRecentFilesStore({
+      list: () => [
+        {
+          path: `${ROOT}/hello.txt`,
+          lastAction: "read",
+          lastAccessedAt: "2026-01-01T12:00:00.000Z",
+          accessCount: 2,
+        },
+      ],
+    });
+
+    const result = executeTool({
+      name: "file.recent",
+      input: { limit: 5, sort: "recent" },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.output?.data?.files).toEqual([
+      {
+        path: `${ROOT}/hello.txt`,
+        lastAction: "read",
+        lastAccessedAt: "2026-01-01T12:00:00.000Z",
+        accessCount: 2,
+      },
+    ]);
   });
 });

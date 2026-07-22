@@ -49,6 +49,8 @@ export function usage(): string {
     '  atlas ai ask "hello"',
     "  atlas history",
     "  atlas history --status failed --limit 5",
+    "  atlas recent",
+    "  atlas recent --sort frequent --limit 10",
     '  atlas memory add --type semantic "Prefers TypeScript"',
     '  atlas memory search "TypeScript"',
     "  atlas knowledge entity add --type project --name Atlas",

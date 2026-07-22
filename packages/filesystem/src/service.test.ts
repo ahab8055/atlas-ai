@@ -457,6 +457,54 @@ describe("FileAccessService", () => {
     expect(() => svc.readFile("/etc/passwd")).toThrow(PlatformError);
   });
 
+  it("invokes onAccess after successful read/write and skips on authorize failure", () => {
+    const accessEvents: Array<{ path: string; action: "read" | "write" }> = [];
+    const gone: string[] = [];
+    const permissions = new PermissionManager({
+      grantedCapabilities: ["filesystem.read"],
+    });
+    const files = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/a.txt`]: "hi",
+    });
+    const svc = createFileAccessService({
+      files,
+      roots: [ROOT],
+      permissions,
+      onAccess: (e) => {
+        accessEvents.push({ path: e.path, action: e.action });
+      },
+      onPathGone: (p) => {
+        gone.push(p);
+      },
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    expect(svc.readFile("a.txt").content).toBe("hi");
+    expect(accessEvents).toEqual([{ path: `${ROOT}/a.txt`, action: "read" }]);
+
+    expect(() => svc.writeFile("b.txt", "x")).toThrow(PlatformError);
+    expect(accessEvents).toHaveLength(1);
+
+    permissions.grant("filesystem.write");
+    permissions.grant("filesystem.delete");
+    svc.writeFile("b.txt", "x");
+    expect(accessEvents.at(-1)).toEqual({
+      path: `${ROOT}/b.txt`,
+      action: "write",
+    });
+
+    svc.deletePath("b.txt", { trash: false });
+    expect(gone).toContain(`${ROOT}/b.txt`);
+  });
+
   it("one-shot approve allows destructive overwrite with trash backup", () => {
     const permissions = new PermissionManager({
       grantedCapabilities: ["filesystem.read"],

@@ -84,6 +84,8 @@ export function bootstrapFileAccessFromRegistry(
     defaultLimit: options.defaultLimit,
     permissions: options.permissions,
     logger: options.logger,
+    onAccess: options.onAccess,
+    onPathGone: options.onPathGone,
   });
   setDefaultFileAccessService(service);
   return service;

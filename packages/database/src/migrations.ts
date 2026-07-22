@@ -257,6 +257,24 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     );
   }
 
+  if (version < 11) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS recent_files (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'local',
+        path TEXT NOT NULL,
+        last_action TEXT NOT NULL,
+        last_accessed_at TEXT NOT NULL,
+        access_count INTEGER NOT NULL DEFAULT 1,
+        UNIQUE (user_id, path)
+      );
+      CREATE INDEX IF NOT EXISTS idx_recent_files_accessed
+        ON recent_files(user_id, last_accessed_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_recent_files_count
+        ON recent_files(user_id, access_count DESC);
+    `);
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

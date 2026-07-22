@@ -57,6 +57,14 @@ export {
   type ProjectUpsertInput,
 } from "./repositories/projects.js";
 export {
+  RecentFilesRepository,
+  type RecentFileAction,
+  type RecentFileRow,
+  type RecentFileTouchInput,
+  type RecentFilesListQuery,
+  type RecentFilesSort,
+} from "./repositories/recent-files.js";
+export {
   PreferenceObservationsRepository,
   type PreferenceObservationIncrementInput,
   type PreferenceObservationRow,

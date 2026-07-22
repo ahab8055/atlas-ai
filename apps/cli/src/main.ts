@@ -12,6 +12,7 @@ import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import { tryHandleProfileCommand } from "./profile-command.js";
 import { tryHandleProjectCommand } from "./project-command.js";
+import { tryHandleRecentCommand } from "./recent-command.js";
 import { usage } from "./options.js";
 import { parseCliArgs } from "./parse-args.js";
 import { runRepl } from "./repl.js";
@@ -71,6 +72,7 @@ async function main(): Promise<void> {
           // continue into REPL
         } else if (
           tryHandleHistoryCommand(runtime, initial) ||
+          tryHandleRecentCommand(runtime, initial) ||
           tryHandleMemoryCommand(runtime, initial) ||
           tryHandleKnowledgeCommand(runtime, initial) ||
           tryHandleProfileCommand(runtime, initial) ||
@@ -88,6 +90,7 @@ async function main(): Promise<void> {
     const rawInput = options.commandArgs.join(" ");
     if (
       tryHandleHistoryCommand(runtime, rawInput) ||
+      tryHandleRecentCommand(runtime, rawInput) ||
       tryHandleMemoryCommand(runtime, rawInput) ||
       tryHandleKnowledgeCommand(runtime, rawInput) ||
       tryHandleProfileCommand(runtime, rawInput) ||

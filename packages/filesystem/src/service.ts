@@ -81,6 +81,14 @@ export interface FileAccessServiceOptions {
   permissions?: PermissionManager;
   /** Optional security/application logger. */
   logger?: Logger;
+  /** Fired after successful read/write (ADR-0085 recent files). */
+  onAccess?: (event: {
+    path: string;
+    action: "read" | "write";
+    at: string;
+  }) => void;
+  /** Fired after successful delete/trash or move-away of a path. */
+  onPathGone?: (path: string) => void;
 }
 
 function parentDir(filePath: string): string {
@@ -114,6 +122,8 @@ export function createFileAccessService(
   const files = options.files;
   const permissions = options.permissions;
   const logger = options.logger;
+  const onAccess = options.onAccess;
+  const onPathGone = options.onPathGone;
   const join =
     options.paths?.join.bind(options.paths) ??
     ((...parts: string[]) => path.join(...parts));
@@ -125,6 +135,26 @@ export function createFileAccessService(
   const maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
   const denyPatterns = options.denyPatterns ?? [...DEFAULT_DENY_PATTERNS];
   const defaultLimit = options.defaultLimit ?? DEFAULT_LIMIT;
+
+  function noteAccess(absolutePath: string, action: "read" | "write"): void {
+    try {
+      onAccess?.({
+        path: absolutePath,
+        action,
+        at: new Date().toISOString(),
+      });
+    } catch {
+      // best-effort; never fail the FS op
+    }
+  }
+
+  function notePathGone(absolutePath: string): void {
+    try {
+      onPathGone?.(absolutePath);
+    } catch {
+      // best-effort
+    }
+  }
 
   function assertAllowed(absolutePath: string): void {
     if (!isPathInsideRoots(absolutePath, roots)) {
@@ -903,6 +933,7 @@ export function createFileAccessService(
         result.parseError = "parse skipped: content truncated";
       }
 
+      noteAccess(absolute, "read");
       return result;
     },
 
@@ -994,6 +1025,7 @@ export function createFileAccessService(
         } else {
           files.appendBytes(absolute, payload);
         }
+        noteAccess(absolute, "write");
         return {
           path: absolute,
           bytesWritten: payload.length,
@@ -1011,6 +1043,7 @@ export function createFileAccessService(
         files.writeBytes(absolute, payload);
       }
 
+      noteAccess(absolute, "write");
       return {
         path: absolute,
         bytesWritten: payload.length,
@@ -1128,6 +1161,7 @@ export function createFileAccessService(
 
       if (!useTrash) {
         files.remove(absolute);
+        notePathGone(absolute);
         return {
           path: absolute,
           kind,
@@ -1137,6 +1171,7 @@ export function createFileAccessService(
       }
 
       const trashId = backupToTrash(absolute);
+      notePathGone(absolute);
       return {
         path: absolute,
         kind,
@@ -1320,6 +1355,10 @@ export function createFileAccessService(
       const cleared = ensureDestClear(to, overwrite);
       ensureParent(to, createDirs);
       files.rename(from, to);
+      if (from !== to) {
+        notePathGone(from);
+        noteAccess(to, "write");
+      }
       return {
         from,
         to,

@@ -99,3 +99,15 @@ export {
   type WatchDirectoryOptions,
   type WatchHandle,
 } from "./watcher.js";
+
+export {
+  __resetRecentFilesStoreForTests,
+  getRecentFilesStore,
+  listRecentFiles,
+  setRecentFilesStore,
+  type RecentFileAccessAction,
+  type RecentFileEntry,
+  type RecentFilesListOptions,
+  type RecentFilesSort,
+  type RecentFilesStore,
+} from "./recent.js";

@@ -1,5 +1,5 @@
 /** Current embedded schema version applied by `migrate`. */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 /**
  * Core runtime tables (Architecture/20) for MVP persistence.
@@ -254,4 +254,19 @@ CREATE INDEX IF NOT EXISTS idx_relationships_from ON relationships(from_entity_i
 CREATE INDEX IF NOT EXISTS idx_relationships_to ON relationships(to_entity_id);
 CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(type);
 CREATE INDEX IF NOT EXISTS idx_relationships_user ON relationships(user_id);
+
+CREATE TABLE IF NOT EXISTS recent_files (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'local',
+  path TEXT NOT NULL,
+  last_action TEXT NOT NULL,
+  last_accessed_at TEXT NOT NULL,
+  access_count INTEGER NOT NULL DEFAULT 1,
+  UNIQUE (user_id, path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recent_files_accessed
+  ON recent_files(user_id, last_accessed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_recent_files_count
+  ON recent_files(user_id, access_count DESC);
 `;

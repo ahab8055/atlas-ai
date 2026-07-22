@@ -12,6 +12,7 @@ import { ModelsRepository } from "./repositories/models.js";
 import { PreferenceObservationsRepository } from "./repositories/preference-observations.js";
 import { PreferenceSuggestionsRepository } from "./repositories/preference-suggestions.js";
 import { ProjectsRepository } from "./repositories/projects.js";
+import { RecentFilesRepository } from "./repositories/recent-files.js";
 import { RelationshipsRepository } from "./repositories/relationships.js";
 import { SystemConfigRepository } from "./repositories/system-config.js";
 import { ToolsRepository } from "./repositories/tools.js";
@@ -32,6 +33,7 @@ export class AtlasDatabase {
   readonly embeddings: EmbeddingsRepository;
   readonly memories: MemoriesRepository;
   readonly projects: ProjectsRepository;
+  readonly recentFiles: RecentFilesRepository;
   readonly entities: EntitiesRepository;
   readonly relationships: RelationshipsRepository;
   readonly executionHistory: ExecutionHistoryRepository;
@@ -51,6 +53,7 @@ export class AtlasDatabase {
     this.embeddings = new EmbeddingsRepository(db);
     this.memories = new MemoriesRepository(db);
     this.projects = new ProjectsRepository(db);
+    this.recentFiles = new RecentFilesRepository(db);
     this.entities = new EntitiesRepository(db);
     this.relationships = new RelationshipsRepository(db);
     this.executionHistory = new ExecutionHistoryRepository(db);

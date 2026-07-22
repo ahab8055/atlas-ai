@@ -47,6 +47,7 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 | `preference_observations` | Preference learning sighting counts (ADR-0052)                                                            |
 | `preference_suggestions`  | Pending/approved/rejected preference suggestions (see [Preference-Learning.md](./Preference-Learning.md)) |
 | `projects`                | Workspace projects (path, repo, metadata; see [Workspace-Awareness.md](./Workspace-Awareness.md))         |
+| `recent_files`            | MRU path access index (`last_accessed_at`, `access_count`; ADR-0085)                                      |
 | `tools`                   | Tool registry persistence                                                                                 |
 | `models`                  | AI model registry (name, format, caps, requirements, …)                                                   |
 | `embeddings`              | Embedding vectors for search/memory                                                                       |
@@ -84,6 +85,9 @@ db.models.list({ status: "available" });
 
 db.executionHistory.record({ taskId: "…", status: "completed", steps: […] });
 db.executionHistory.listRecent(20);
+
+db.recentFiles.touch({ path: "/abs/path.ts", action: "read" });
+db.recentFiles.list({ sort: "frequent", limit: 20 });
 
 // Preferred for UI / review:
 db.taskHistory.query({ status: "completed", limit: 20 });
