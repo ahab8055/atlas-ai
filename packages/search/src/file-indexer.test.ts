@@ -85,4 +85,40 @@ describe("FileIndexingService", () => {
 
     db.close();
   });
+
+  it("indexes mislabeled JSON and skips mislabeled PNG via detection", () => {
+    const db = openAtlasDatabase({ path: ":memory:" });
+    const mem = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/data.txt`]: '{"keyword":"detectme"}',
+      [`${ROOT}/fake.txt`]: "",
+    });
+    mem.writeBytes(
+      `${ROOT}/fake.txt`,
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+    const files = createFileAccessService({
+      files: mem,
+      roots: [ROOT],
+      paths: {
+        homeDir: () => "/home",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/.atlas",
+        cacheDir: () => "/home/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+    const indexer = createFileIndexingService({ database: db, files });
+
+    expect(indexer.indexPath(`${ROOT}/data.txt`)).toBe("indexed");
+    expect(indexer.indexPath(`${ROOT}/fake.txt`)).toBe("skipped");
+    expect(
+      indexer
+        .search({ query: "detectme" })
+        .some((h) => h.path.endsWith("data.txt")),
+    ).toBe(true);
+
+    db.close();
+  });
 });

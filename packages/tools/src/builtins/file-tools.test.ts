@@ -67,6 +67,7 @@ describe("file.* builtin tools", () => {
         "file.list",
         "file.walk",
         "file.metadata",
+        "file.detect",
         "file.recent",
         "file.index.search",
       ]),
@@ -293,6 +294,36 @@ describe("file.* builtin tools", () => {
     expect(chunks).toHaveLength(2);
     expect(chunks[0]?.content).toBe("abcdefgh");
     expect(chunks[1]?.content).toBe("ijklmnop");
+  });
+
+  it("detects file type via file.detect", () => {
+    const mem = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/data.txt`]: '{"a":1}',
+    });
+    setDefaultFileAccessService(
+      createFileAccessService({
+        files: mem,
+        roots: [ROOT],
+        paths: {
+          homeDir: () => "/home",
+          tempDir: () => "/tmp",
+          userDataDir: () => "/home/.atlas",
+          cacheDir: () => "/home/.cache",
+          cwd: () => ROOT,
+          join: (...parts: string[]) => path.posix.join(...parts),
+        },
+      }),
+    );
+
+    const result = executeTool({
+      name: "file.detect",
+      input: { path: "data.txt" },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.output?.data?.format).toBe("json");
+    expect(result.output?.data?.processor).toBe("read.json");
+    expect(result.output?.data?.extensionMismatch).toBe(true);
   });
 
   it("lists recent files via injected store", () => {

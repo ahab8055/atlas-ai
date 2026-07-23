@@ -58,6 +58,10 @@ export interface FileContent {
   truncated: boolean;
   data?: unknown;
   parseError?: string;
+  /** How format/MIME were resolved (ADR-0089). */
+  detectionSource?: DetectionSource;
+  /** True when extension disagreed with content/signature. */
+  extensionMismatch?: boolean;
 }
 
 export type FileFormat =
@@ -70,6 +74,11 @@ export type FileFormat =
   | "source"
   | "binary"
   | "unknown";
+
+/** How file type was resolved (ADR-0089). */
+export type DetectionSource = "extension" | "signature" | "content" | "mixed";
+
+export type DetectionConfidence = "high" | "medium" | "low";
 
 export interface ReadFileOptions {
   /** Byte offset into the file (default 0). */
@@ -293,6 +302,22 @@ export interface FileAccessService {
   walkDirectory(path?: string, opts?: WalkDirectoryOptions): DirEntry[];
   /** Unified file / directory metadata (ADR-0077). */
   getFileMetadata(path: string, opts?: GetFileMetadataOptions): FileMetadata;
+  /** Detect MIME/format via extension + content signatures (ADR-0089). */
+  detectFileType(path: string): DetectedFileTypeResult;
+}
+
+export interface DetectedFileTypeResult {
+  path: string;
+  mimeType: string;
+  format: FileFormat;
+  extensionMime: string;
+  extensionFormat: FileFormat;
+  source: DetectionSource;
+  confidence: DetectionConfidence;
+  signatureId?: string;
+  extensionMismatch: boolean;
+  processor: import("./processors.js").FileProcessorId;
+  indexable: boolean;
 }
 
 export interface GetFileMetadataOptions {
@@ -302,6 +327,11 @@ export interface GetFileMetadataOptions {
   includeChecksum?: boolean;
   /** Max bytes to hash (default 16 MiB). */
   maxChecksumBytes?: number;
+  /**
+   * Sniff type from a head window (default true for regular files).
+   * ADR-0089.
+   */
+  includeTypeDetection?: boolean;
 }
 
 export interface FileMetadataOwner {
@@ -330,6 +360,10 @@ export interface FileMetadata {
   permissions: string;
   owner: FileMetadataOwner;
   mimeType: string;
+  /** Logical format when type detection ran (ADR-0089). */
+  format?: FileFormat;
+  detectionSource?: DetectionSource;
+  extensionMismatch?: boolean;
   checksum?: FileMetadataChecksum;
   checksumSkipped?: string;
 }

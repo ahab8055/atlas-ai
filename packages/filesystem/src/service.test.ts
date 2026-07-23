@@ -337,6 +337,56 @@ describe("FileAccessService", () => {
     expect(() => svc.readFile("photo.png")).toThrow(PlatformError);
   });
 
+  it("detects type from content when extension is wrong", () => {
+    const mem = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/secret.txt`]: '{"hello":"world"}',
+      [`${ROOT}/ok.png`]: "",
+      [`${ROOT}/plain.txt`]: "",
+    });
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00,
+    ]);
+    mem.writeBytes(`${ROOT}/plain.txt`, png);
+    mem.writeBytes(`${ROOT}/ok.png`, png);
+
+    const svc = createFileAccessService({
+      files: mem,
+      roots: [ROOT],
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    const json = svc.readFile("secret.txt");
+    expect(json.format).toBe("json");
+    expect(json.mimeType).toBe("application/json");
+    expect(json.extensionMismatch).toBe(true);
+    expect(json.data).toEqual({ hello: "world" });
+
+    expect(() => svc.readFile("plain.txt")).toThrow(PlatformError);
+
+    const detected = svc.detectFileType("plain.txt");
+    expect(detected.format).toBe("binary");
+    expect(detected.mimeType).toBe("image/png");
+    expect(detected.processor).toBe("reject.binary");
+    expect(detected.extensionMismatch).toBe(true);
+
+    const matched = svc.detectFileType("ok.png");
+    expect(matched.mimeType).toBe("image/png");
+    expect(matched.extensionMismatch).toBe(false);
+
+    const meta = svc.getFileMetadata("plain.txt", { includeChecksum: false });
+    expect(meta.mimeType).toBe("image/png");
+    expect(meta.format).toBe("binary");
+    expect(meta.extensionMismatch).toBe(true);
+  });
+
   it("windows large files with offset/maxBytes and truncated flag", () => {
     const body = "abcdefghijklmnopqrstuvwxyz";
     const svc = buildService({

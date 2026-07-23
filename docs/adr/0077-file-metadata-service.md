@@ -38,7 +38,7 @@ and optional checksum — without inventing per-tool shapes.
 
 ### Negative / trade-offs
 
-- Extension MIME only — no content sniffing.
+- Extension MIME only originally; content sniffing added in [ADR-0089](./0089-file-type-detection.md).
 - No Windows SID / ACL owner resolution; large-file hashing capped.
 
 ## Related
@@ -47,3 +47,4 @@ and optional checksum — without inventing per-tool shapes.
 - [ADR-0074](./0074-file-system-access-service.md)
 - [ADR-0075](./0075-directory-navigation.md)
 - [ADR-0076](./0076-file-search-engine.md)
+- [ADR-0089](./0089-file-type-detection.md)

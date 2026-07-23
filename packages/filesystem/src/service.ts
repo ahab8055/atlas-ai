@@ -18,9 +18,14 @@ import type {
 } from "@atlas-ai/security";
 
 import { createIgnoreRulesEngine, type IgnoreRulesEngine } from "./ignore.js";
-import { mimeForEntry, mimeFromExtension } from "./mime.js";
+import { mimeForEntry } from "./mime.js";
 import { decodeBytes, encodeBytes } from "./encoding.js";
-import { formatFromExtension, isUnsupportedBinaryFormat } from "./format.js";
+import {
+  DEFAULT_DETECT_BYTES,
+  detectFileType as detectFileTypeFromBytes,
+} from "./detect.js";
+import { isUnsupportedBinaryFormat } from "./format.js";
+import { isIndexableFormat, processorForFormat } from "./processors.js";
 import { parseCsvSafe } from "./parsers/csv.js";
 import { parseJsonSafe } from "./parsers/json.js";
 import { parseYamlLite } from "./parsers/yaml-lite.js";
@@ -35,6 +40,7 @@ import {
 } from "./paths.js";
 import { modeToPermissions } from "./permissions-format.js";
 import type {
+  DetectedFileTypeResult,
   FileAccessService,
   FileContent,
   FileHit,
@@ -910,17 +916,6 @@ export function createFileAccessService(
 
       const name = path.basename(absolute);
       const extension = fileExtension(name);
-      const mimeType = mimeFromExtension(extension);
-      const format = formatFromExtension(extension);
-
-      if (isUnsupportedBinaryFormat(format)) {
-        throw new PlatformError(
-          "invalid_input",
-          `Unsupported binary file type (${mimeType}): ${absolute}`,
-          { detail: { path: absolute } },
-        );
-      }
-
       const offset = opts.offset ?? 0;
       const window = opts.maxBytes ?? maxReadBytes;
       const doParse = opts.parse !== false;
@@ -944,6 +939,28 @@ export function createFileAccessService(
         offset,
         length: window,
       });
+      const sniffBytes =
+        offset === 0
+          ? bytes.subarray(0, Math.min(bytes.length, DEFAULT_DETECT_BYTES))
+          : files.readBytes(absolute, {
+              offset: 0,
+              length: Math.min(st.size, DEFAULT_DETECT_BYTES),
+            });
+      const detected = detectFileTypeFromBytes({
+        extension,
+        bytes: sniffBytes,
+      });
+      const format = detected.format;
+      const mimeType = detected.mimeType;
+
+      if (isUnsupportedBinaryFormat(format)) {
+        throw new PlatformError(
+          "invalid_input",
+          `Unsupported binary file type (${mimeType}): ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
       const truncated = st.size > offset + bytes.length;
       const decoded = decodeBytes(bytes);
 
@@ -955,20 +972,42 @@ export function createFileAccessService(
         );
       }
 
+      // Re-run text heuristics with decoded sample when sniff was extension-only
+      const refined =
+        detected.source === "extension" || detected.source === "content"
+          ? detectFileTypeFromBytes({
+              extension,
+              bytes: sniffBytes,
+              sampleText: decoded.text.slice(0, DEFAULT_DETECT_BYTES),
+            })
+          : detected;
+      const finalFormat = refined.format;
+      const finalMime = refined.mimeType;
+
+      if (isUnsupportedBinaryFormat(finalFormat)) {
+        throw new PlatformError(
+          "invalid_input",
+          `Unsupported binary file type (${finalMime}): ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
       const result: FileContent = {
         path: absolute,
         content: decoded.text,
         size: st.size,
-        format,
-        mimeType,
+        format: finalFormat,
+        mimeType: finalMime,
         encoding: decoded.encoding,
         byteOffset: offset,
         byteLength: bytes.length,
         truncated,
+        detectionSource: refined.source,
+        extensionMismatch: refined.extensionMismatch,
       };
 
       if (doParse && !truncated) {
-        if (format === "json") {
+        if (finalFormat === "json") {
           const parsed = parseJsonSafe(decoded.text);
           if (parsed.data !== undefined) {
             result.data = parsed.data;
@@ -976,7 +1015,7 @@ export function createFileAccessService(
           if (parsed.parseError) {
             result.parseError = parsed.parseError;
           }
-        } else if (format === "yaml") {
+        } else if (finalFormat === "yaml") {
           const parsed = parseYamlLite(decoded.text);
           if (parsed.data !== undefined) {
             result.data = parsed.data;
@@ -984,7 +1023,7 @@ export function createFileAccessService(
           if (parsed.parseError) {
             result.parseError = parsed.parseError;
           }
-        } else if (format === "csv") {
+        } else if (finalFormat === "csv") {
           const parsed = parseCsvSafe(decoded.text);
           if (parsed.data !== undefined) {
             result.data = parsed.data;
@@ -1025,11 +1064,15 @@ export function createFileAccessService(
 
       const name = path.basename(absolute);
       const extension = fileExtension(name);
-      const format = formatFromExtension(extension);
-      if (isUnsupportedBinaryFormat(format)) {
+      const head = files.readBytes(absolute, {
+        offset: 0,
+        length: Math.min(st.size, DEFAULT_DETECT_BYTES),
+      });
+      const detected = detectFileTypeFromBytes({ extension, bytes: head });
+      if (isUnsupportedBinaryFormat(detected.format)) {
         throw new PlatformError(
           "invalid_input",
-          `Unsupported binary file type (${mimeFromExtension(extension)}): ${absolute}`,
+          `Unsupported binary file type (${detected.mimeType}): ${absolute}`,
           { detail: { path: absolute } },
         );
       }
@@ -1632,6 +1675,7 @@ export function createFileAccessService(
 
       const followSymlinks = opts.followSymlinks !== false;
       const includeChecksum = opts.includeChecksum !== false;
+      const includeTypeDetection = opts.includeTypeDetection !== false;
       const maxChecksumBytes =
         opts.maxChecksumBytes ?? DEFAULT_MAX_CHECKSUM_BYTES;
 
@@ -1674,6 +1718,30 @@ export function createFileAccessService(
         }),
       };
 
+      if (
+        includeTypeDetection &&
+        st.isFile &&
+        !st.isDirectory &&
+        !st.isSymbolicLink
+      ) {
+        try {
+          const head = files.readBytes(absolute, {
+            offset: 0,
+            length: Math.min(st.size, DEFAULT_DETECT_BYTES),
+          });
+          const detected = detectFileTypeFromBytes({
+            extension,
+            bytes: head,
+          });
+          meta.mimeType = detected.mimeType;
+          meta.format = detected.format;
+          meta.detectionSource = detected.source;
+          meta.extensionMismatch = detected.extensionMismatch;
+        } catch {
+          // keep extension MIME on sniff failure
+        }
+      }
+
       if (!includeChecksum) {
         meta.checksumSkipped = "checksum disabled";
         return meta;
@@ -1699,6 +1767,60 @@ export function createFileAccessService(
       }
 
       return meta;
+    },
+
+    detectFileType(inputPath: string): DetectedFileTypeResult {
+      authorize("filesystem.read", "detectFileType", inputPath, false);
+      const absolute = resolve(inputPath);
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `Path not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const st = files.stat(absolute);
+      if (st.isDirectory) {
+        throw new PlatformError(
+          "invalid_input",
+          `Cannot detect type of a directory: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const extension = fileExtension(path.basename(absolute));
+      const head = files.readBytes(absolute, {
+        offset: 0,
+        length: Math.min(st.size, DEFAULT_DETECT_BYTES),
+      });
+      let detected = detectFileTypeFromBytes({ extension, bytes: head });
+      if (
+        !isUnsupportedBinaryFormat(detected.format) &&
+        (detected.source === "extension" || detected.source === "content")
+      ) {
+        const decoded = decodeBytes(head);
+        if (!decoded.binaryLike) {
+          detected = detectFileTypeFromBytes({
+            extension,
+            bytes: head,
+            sampleText: decoded.text.slice(0, DEFAULT_DETECT_BYTES),
+          });
+        }
+      }
+      return {
+        path: absolute,
+        mimeType: detected.mimeType,
+        format: detected.format,
+        extensionMime: detected.extensionMime,
+        extensionFormat: detected.extensionFormat,
+        source: detected.source,
+        confidence: detected.confidence,
+        ...(detected.signatureId !== undefined
+          ? { signatureId: detected.signatureId }
+          : {}),
+        extensionMismatch: detected.extensionMismatch,
+        processor: processorForFormat(detected.format),
+        indexable: isIndexableFormat(detected.format),
+      };
     },
   };
 }

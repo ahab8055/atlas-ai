@@ -139,8 +139,8 @@ export const fileRead = defineTool(
   {
     name: "file.read",
     description:
-      "Read a local file with format detection, encoding, and optional structured parse",
-    version: "1.1.0",
+      "Read a local file with format/MIME detection (extension + content), encoding, and optional structured parse",
+    version: "1.2.0",
     permissions: ["filesystem.read"],
     risk: "medium",
     tags: ["filesystem", "mvp", "reading"],
@@ -170,6 +170,8 @@ export const fileRead = defineTool(
         truncated: { type: "boolean" },
         data: {},
         parseError: { type: "string" },
+        detectionSource: { type: "string" },
+        extensionMismatch: { type: "boolean" },
       },
     },
   },
@@ -200,6 +202,8 @@ export const fileRead = defineTool(
           truncated: result.truncated,
           data: result.data,
           parseError: result.parseError,
+          detectionSource: result.detectionSource,
+          extensionMismatch: result.extensionMismatch,
         },
       };
     } catch (error) {
@@ -1022,8 +1026,8 @@ export const fileMetadata = defineTool(
   {
     name: "file.metadata",
     description:
-      "Retrieve unified metadata for a file or directory (size, dates, MIME, checksum)",
-    version: "1.0.0",
+      "Retrieve unified metadata for a file or directory (size, dates, MIME, format, checksum)",
+    version: "1.1.0",
     permissions: ["filesystem.read"],
     risk: "medium",
     tags: ["filesystem", "mvp", "metadata"],
@@ -1035,6 +1039,7 @@ export const fileMetadata = defineTool(
         followSymlinks: { type: "boolean" },
         includeChecksum: { type: "boolean" },
         maxChecksumBytes: { type: "number" },
+        includeTypeDetection: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -1063,6 +1068,10 @@ export const fileMetadata = defineTool(
             typeof input.maxChecksumBytes === "number"
               ? input.maxChecksumBytes
               : undefined,
+          includeTypeDetection:
+            input.includeTypeDetection === undefined
+              ? undefined
+              : Boolean(input.includeTypeDetection),
         }),
       );
       const message = `Metadata for ${metadata.path} (${metadata.mimeType})`;
@@ -1085,9 +1094,77 @@ export const fileMetadata = defineTool(
             permissions: metadata.permissions,
             owner: metadata.owner,
             mimeType: metadata.mimeType,
+            format: metadata.format,
+            detectionSource: metadata.detectionSource,
+            extensionMismatch: metadata.extensionMismatch,
             checksum: metadata.checksum,
             checksumSkipped: metadata.checksumSkipped,
           },
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileDetect = defineTool(
+  {
+    name: "file.detect",
+    description:
+      "Detect file MIME/format via extension and content signatures; map to processing module",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "low",
+    tags: ["filesystem", "mvp", "detection"],
+    inputSchema: {
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: { type: "string" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "path", "mimeType", "format", "processor"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+        mimeType: { type: "string" },
+        format: { type: "string" },
+        extensionMime: { type: "string" },
+        extensionFormat: { type: "string" },
+        source: { type: "string" },
+        confidence: { type: "string" },
+        signatureId: { type: "string" },
+        extensionMismatch: { type: "boolean" },
+        processor: { type: "string" },
+        indexable: { type: "boolean" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const result = callFs((fs) =>
+        fs.detectFileType(String(input.path ?? "")),
+      );
+      const message = `Detected ${result.path} as ${result.mimeType} (${result.format} → ${result.processor})`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: result.path,
+          mimeType: result.mimeType,
+          format: result.format,
+          extensionMime: result.extensionMime,
+          extensionFormat: result.extensionFormat,
+          source: result.source,
+          confidence: result.confidence,
+          signatureId: result.signatureId,
+          extensionMismatch: result.extensionMismatch,
+          processor: result.processor,
+          indexable: result.indexable,
         },
       };
     } catch (error) {

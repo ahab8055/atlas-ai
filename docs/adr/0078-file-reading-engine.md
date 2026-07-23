@@ -37,7 +37,7 @@ without new npm dependencies.
 ### Negative / trade-offs
 
 - YAML/CSV are subset parsers, not full language support.
-- No content sniffing / libmagic; format from extension.
+- Format originally from extension; content signatures in [ADR-0089](./0089-file-type-detection.md).
 - Search content-scan still uses `readText` + existing cap (unchanged).
 
 ## Related
@@ -45,3 +45,4 @@ without new npm dependencies.
 - [File-System-Access.md](../guides/File-System-Access.md)
 - [ADR-0074](./0074-file-system-access-service.md)
 - [ADR-0077](./0077-file-metadata-service.md)
+- [ADR-0089](./0089-file-type-detection.md)

@@ -12,25 +12,14 @@ import type {
 import type { Logger } from "@atlas-ai/logging";
 import {
   fileExtension,
-  formatFromExtension,
+  isIndexableFormat,
   isUnsupportedBinaryFormat,
   type FileAccessService,
-  type FileFormat,
   type FileSystemEventPayloadMap,
   type FileSystemEventType,
 } from "@atlas-ai/filesystem";
 
 const DEFAULT_MAX_CONTENT_BYTES = 256 * 1024;
-
-const INDEXABLE_FORMATS = new Set<FileFormat>([
-  "text",
-  "markdown",
-  "json",
-  "yaml",
-  "csv",
-  "source",
-  "xml",
-]);
 
 export interface SemanticIndexSink {
   onFileIndexed(input: {
@@ -135,9 +124,9 @@ export function createFileIndexingService(
 
       const meta = files.getFileMetadata(absolute);
       const ext = meta.extension || fileExtension(meta.name);
-      const format = formatFromExtension(ext);
+      const format = meta.format ?? files.detectFileType(absolute).format;
 
-      if (isUnsupportedBinaryFormat(format) || !INDEXABLE_FORMATS.has(format)) {
+      if (isUnsupportedBinaryFormat(format) || !isIndexableFormat(format)) {
         database.indexedFiles.upsertWithContent({
           path: absolute,
           name: meta.name,

@@ -3,6 +3,9 @@ export type {
   FileAccessService,
   FileContent,
   FileFormat,
+  DetectionSource,
+  DetectionConfidence,
+  DetectedFileTypeResult,
   FileHit,
   FileMetadata,
   FileMetadataChecksum,
@@ -73,6 +76,20 @@ export {
   isBinaryMime,
   isUnsupportedBinaryFormat,
 } from "./format.js";
+export {
+  DEFAULT_DETECT_BYTES,
+  detectFileType,
+  sniffSignature,
+  type DetectedFileType,
+  type DetectFileTypeOptions,
+  type SignatureMatch,
+} from "./detect.js";
+export {
+  indexProcessorForFormat,
+  isIndexableFormat,
+  processorForFormat,
+  type FileProcessorId,
+} from "./processors.js";
 
 export {
   createMemoryFileSystemService,

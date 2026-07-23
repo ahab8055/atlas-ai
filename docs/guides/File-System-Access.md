@@ -21,6 +21,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0086](../adr/0086-ignore-rules-engine.md),
 [ADR-0087](../adr/0087-file-indexing-service.md),
 [ADR-0088](../adr/0088-large-file-processing.md),
+[ADR-0089](../adr/0089-file-type-detection.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -114,6 +115,7 @@ Atomic writes use temp `writeBytes` + `rename`. Atomic append rewrites under
   byteOffset, byteLength, truncated,
   data?,                         // JSON / YAML / CSV when parse succeeds
   parseError?,
+  detectionSource?, extensionMismatch?,  // ADR-0089
 }
 ```
 
@@ -122,7 +124,32 @@ Options: `offset` (default 0), `maxBytes` (default service maxReadBytes /
 (`truncated: true`); known binary types and binary-like content are rejected.
 JSON / YAML / CSV are parsed safely (no new deps); Markdown / XML / source
 return text + format only. Prefer chunk APIs below when walking multi-window
-files.
+files. Format/MIME come from content-aware detection (ADR-0089), not extension
+alone.
+
+### File type detection (ADR-0089)
+
+`detectFileType(path)` and helpers `detectFileType({ extension, bytes, sampleText })`
+/ `sniffSignature(bytes)` merge:
+
+1. Extension MIME/format maps
+2. Magic-byte signatures (PNG, JPEG, GIF, WEBP, PDF, ZIP, GZIP) — always win
+3. Light text heuristics (JSON / YAML / CSV / XML) when no binary magic
+
+Binary signatures override wrong extensions. Text heuristics override only
+mismatch-friendly extensions (e.g. `.txt` / `.md` / unknown). Peak sniff
+window: **4 KiB**.
+
+Processor registry maps format → existing pipelines:
+
+| Format                                   | Processor                                 |
+| ---------------------------------------- | ----------------------------------------- |
+| json / yaml / csv                        | `read.json` / `read.yaml` / `read.csv`    |
+| text / markdown / source / xml / unknown | `read.text`                               |
+| binary                                   | `reject.binary`                           |
+| indexable formats                        | also `index.text` via `isIndexableFormat` |
+
+No libmagic; no PDF/DOCX extractors in this slice.
 
 ### Large file processing (ADR-0088)
 
@@ -199,17 +226,20 @@ Defaults: max depth **8**, max read **256 KiB**, hit/walk limit **50**.
   createdAtMs, modifiedAtMs,
   mode, permissions,              // e.g. "rw-r--r--"
   owner: { uid, gid, name? },
-  mimeType,                       // extension map
+  mimeType,                       // detection or extension map
+  format?, detectionSource?, extensionMismatch?,  // ADR-0089
   checksum?: { algorithm: "sha256"; hex },
   checksumSkipped?: string,
 }
 ```
 
 Options: `followSymlinks` (default true → `stat`), `includeChecksum`
-(default true for regular files), `maxChecksumBytes` (default 16 MiB).
+(default true for regular files), `maxChecksumBytes` (default 16 MiB),
+`includeTypeDetection` (default true for regular files).
 
-MIME is extension-based; directories → `inode/directory`; unfollowed symlinks →
-`inode/symlink`. Checksum uses platform `readBytes` (binary-safe).
+MIME uses content-aware detection when enabled; directories → `inode/directory`;
+unfollowed symlinks → `inode/symlink`. Checksum uses platform `readBytes`
+(binary-safe).
 
 ---
 
@@ -220,6 +250,7 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 | `file.search`      | `filesystem.read`             | `findFiles`       |
 | `file.read`        | `filesystem.read`             | `readFile`        |
 | `file.read.chunks` | `filesystem.read`             | `readFileChunks`  |
+| `file.detect`      | `filesystem.read`             | `detectFileType`  |
 | `file.write`       | `filesystem.write`            | `writeFile`       |
 | `file.mkdir`       | `filesystem.write`            | `createDirectory` |
 | `file.delete`      | `filesystem.delete`           | `deletePath`      |
@@ -239,11 +270,16 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 `truncated` / `scannedEntries` / `durationMs`.
 
 `file.metadata` accepts `path` plus optional `followSymlinks`,
-`includeChecksum`, `maxChecksumBytes`.
+`includeChecksum`, `maxChecksumBytes`, `includeTypeDetection` and returns
+MIME / format / detection fields when sniffing ran.
 
 `file.read` accepts `path` plus optional `offset`, `maxBytes`, `parse` and
-returns format / encoding / truncation / optional structured `data`. Prefer
-`file.read.chunks` for large files.
+returns format / encoding / truncation / optional structured `data` plus
+`detectionSource` / `extensionMismatch`. Prefer `file.read.chunks` for large
+files.
+
+`file.detect` accepts `path` and returns MIME / format / processor /
+`indexable` / mismatch flags (ADR-0089).
 
 `file.read.chunks` accepts `path` plus optional `chunkSize`, `maxBytes`,
 `offset`, `maxChunks` (default **32**) and returns an array of chunk summaries
@@ -274,12 +310,12 @@ Order for each public `FileAccessService` method:
 2. **Path sandbox** — roots + deny patterns → `PlatformError` `permission_denied`.
 3. **IO** — injected `os.files` (broker still checks caps on brokered hosts).
 
-| Methods                                            | Capability                               |
-| -------------------------------------------------- | ---------------------------------------- |
-| find/read/list/walk/resolve/exists/metadata/chunks | `filesystem.read`                        |
-| write/mkdir/copy                                   | `filesystem.write`                       |
-| delete (file/dir/path)                             | `filesystem.delete`                      |
-| move / rename / restore                            | `filesystem.write` + `filesystem.delete` |
+| Methods                                                   | Capability                               |
+| --------------------------------------------------------- | ---------------------------------------- |
+| find/read/list/walk/resolve/exists/metadata/chunks/detect | `filesystem.read`                        |
+| write/mkdir/copy                                          | `filesystem.write`                       |
+| delete (file/dir/path)                                    | `filesystem.delete`                      |
+| move / rename / restore                                   | `filesystem.write` + `filesystem.delete` |
 
 Security logs: **warn** on capability or path deny; **info** when a mutating
 op is allowed. File contents are never logged. The OS Permission Broker remains
@@ -398,5 +434,5 @@ pnpm packages:build
 - Trash TTL / auto-purge
 - Tauri native FS plugins / chokidar
 - Changing `deleteDirectory` empty-only semantics
-- Content-based MIME sniffing / Windows ACL owner resolution
+- libmagic / full HTML5 mimesniff / PDF-DOCX extractors / Windows ACL owner resolution
 - Full YAML 1.2 / XML DOM / Markdown AST / Node ReadableStream / multi-GB without windows
