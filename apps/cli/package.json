@@ -27,6 +27,7 @@
     "@atlas-ai/platform": "workspace:*",
     "@atlas-ai/profile": "workspace:*",
     "@atlas-ai/security": "workspace:*",
+    "@atlas-ai/search": "workspace:*",
     "@atlas-ai/workspace": "workspace:*"
   },
   "devDependencies": {

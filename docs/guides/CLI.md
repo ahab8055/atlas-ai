@@ -80,6 +80,9 @@ When the database is enabled, successful `file.read` / `file.write` update the
 recent-files MRU ([ADR-0085](../adr/0085-recent-files-index.md)).
 Search/list/walk/watch honor ignore rules from config, `.gitignore`, and
 built-ins ([ADR-0086](../adr/0086-ignore-rules-engine.md)).
+With the database enabled, FS change events incrementally update the file
+content index; run `atlas index build` for a full catch-up
+([ADR-0087](../adr/0087-file-indexing-service.md)).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status
@@ -87,6 +90,9 @@ pnpm atlas history
 pnpm atlas history --status blocked --limit 5
 pnpm atlas recent
 pnpm atlas recent --sort frequent --limit 10
+pnpm atlas index build
+pnpm atlas index status
+pnpm atlas index search "hello"
 
 # Long-term memory (requires DB; classify does not)
 pnpm atlas memory classify "I like dark mode interfaces."

@@ -1,8 +1,8 @@
 {
-  "name": "@atlas-ai/tools",
+  "name": "@atlas-ai/search",
   "version": "0.1.0",
   "private": true,
-  "description": "Atlas AI tool registry: metadata, discovery, versioning",
+  "description": "Atlas AI file indexing and keyword search (Architecture/24)",
   "type": "module",
   "exports": {
     ".": {
@@ -20,12 +20,12 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@atlas-ai/database": "workspace:*",
     "@atlas-ai/filesystem": "workspace:*",
-    "@atlas-ai/platform": "workspace:*",
-    "@atlas-ai/search": "workspace:*",
-    "@atlas-ai/security": "workspace:*"
+    "@atlas-ai/logging": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "22",
     "typescript": "~5.8.3"
   }
 }

@@ -19,6 +19,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0084](../adr/0084-file-watcher-service.md),
 [ADR-0085](../adr/0085-recent-files-index.md),
 [ADR-0086](../adr/0086-ignore-rules-engine.md),
+[ADR-0087](../adr/0087-file-indexing-service.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -326,6 +327,24 @@ engine.
 
 ---
 
+## File indexing (ADR-0087)
+
+Persistent metadata + SQLite FTS5 content index (`@atlas-ai/search`). Bulk build
+via `atlas index build`; incremental updates from watcher/EventBus. Always
+respects ignore rules. Semantic/hybrid retrieval remains deferred
+(Architecture/24) via `SemanticIndexSink`.
+
+| Surface             | Role                                       |
+| ------------------- | ------------------------------------------ |
+| `indexed_files`     | path, name, ext, size, mtime, hash, status |
+| `indexed_files_fts` | Keyword search over path/name/content      |
+| `atlas index *`     | `build` / `status` / `search`              |
+| `file.index.search` | Tool façade over the FTS index             |
+
+Distinct from `recent_files` MRU (ADR-0085).
+
+---
+
 ## Commands
 
 ```bash
@@ -338,7 +357,8 @@ pnpm packages:build
 
 ## Out of scope (this slice)
 
-- Persistent file index / hybrid search (Architecture/24)
+- Hybrid retrieval / ranking / context builder (Architecture/24 remainder)
+- Embedding generation / sqlite-vss / ANN
 - Driving MRU from watcher FileCreated/Updated
 - Full gitignore parity (`git check-ignore` identical)
 - Migrating all remaining `node:fs` usage in ai/logging/database

@@ -16,6 +16,7 @@ import {
   fileSearch,
   fileWalk,
   fileWrite,
+  fileIndexSearch,
 } from "./file-tools.js";
 
 export { defineTool, registerBuiltin } from "./define.js";
@@ -229,6 +230,7 @@ export const BUILTIN_TOOLS = [
   fileWalk,
   fileMetadata,
   fileRecent,
+  fileIndexSearch,
   codeAnalyze,
   projectOpen,
   processStart,

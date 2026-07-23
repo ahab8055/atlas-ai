@@ -4,6 +4,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { tryHandleAiCommand } from "./ai-command.js";
 import { exitCodeForResult } from "./display.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
+import { tryHandleIndexCommand } from "./index-command.js";
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import { tryHandleProfileCommand } from "./profile-command.js";
@@ -73,6 +74,14 @@ export async function runRepl(
       }
 
       if (tryHandleRecentCommand(runtime, trimmed)) {
+        lastCode =
+          process.exitCode === 1 || process.exitCode === 2
+            ? process.exitCode
+            : 0;
+        continue;
+      }
+
+      if (tryHandleIndexCommand(runtime, trimmed)) {
         lastCode =
           process.exitCode === 1 || process.exitCode === 2
             ? process.exitCode

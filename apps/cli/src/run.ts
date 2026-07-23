@@ -17,8 +17,16 @@ import { openAtlasDatabase, type AtlasDatabase } from "@atlas-ai/database";
 import {
   bootstrapFileAccessFromRegistry,
   bootstrapFileWatcherFromRegistry,
+  getDefaultFileAccessService,
   setRecentFilesStore,
+  FILE_SYSTEM_EVENTS,
+  type FileSystemEventType,
 } from "@atlas-ai/filesystem";
+import {
+  createFileIndexingService,
+  setFileIndexSearchStore,
+  type FileIndexingService,
+} from "@atlas-ai/search";
 import {
   createKnowledgeGraph,
   createSqliteGraphStore,
@@ -85,6 +93,7 @@ export interface CliRuntime {
   knowledgeGraph?: KnowledgeGraphManager;
   profile?: ProfileManager;
   workspace?: WorkspaceManager;
+  fileIndexer?: FileIndexingService;
   permissions: PermissionManager;
   memoryAccessLog: MemoryAccessLog;
 }
@@ -188,6 +197,33 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
   });
   installCliFsConfirmHost(permissions);
 
+  let fileIndexer: FileIndexingService | undefined;
+  if (database) {
+    fileIndexer = createFileIndexingService({
+      database,
+      files: getDefaultFileAccessService(),
+      logger: logger.child("search"),
+      projectId: undefined,
+    });
+    setFileIndexSearchStore({
+      search: (opts) => fileIndexer!.search(opts),
+    });
+    for (const type of FILE_SYSTEM_EVENTS) {
+      eventBus.subscribe(type, (event) => {
+        try {
+          fileIndexer?.applyFsEvent(
+            event.type as FileSystemEventType,
+            event.payload as never,
+          );
+        } catch {
+          // incremental indexing must not break the CLI
+        }
+      });
+    }
+  } else {
+    setFileIndexSearchStore(undefined);
+  }
+
   const memoryAccessLog = new MemoryAccessLog();
   const memoryAnalytics = createMemoryAnalyticsMonitor();
   const longTermMemory = database
@@ -287,6 +323,7 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     knowledgeGraph,
     profile,
     workspace,
+    fileIndexer,
     permissions,
     memoryAccessLog,
   };
@@ -416,6 +453,7 @@ function maybeLearnProfile(
 }
 
 export function closeCliRuntime(runtime: CliRuntime): void {
+  setFileIndexSearchStore(undefined);
   runtime.database?.close();
 }
 

@@ -67,6 +67,7 @@ describe("file.* builtin tools", () => {
         "file.walk",
         "file.metadata",
         "file.recent",
+        "file.index.search",
       ]),
     );
   });

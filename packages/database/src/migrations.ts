@@ -275,6 +275,40 @@ export function applyIncrementalMigrations(db: SqliteDatabase): void {
     `);
   }
 
+  if (version < 12) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS indexed_files (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'local',
+        path TEXT NOT NULL,
+        name TEXT NOT NULL,
+        extension TEXT,
+        size INTEGER,
+        mtime_ms INTEGER,
+        content_hash TEXT,
+        project_id TEXT,
+        status TEXT NOT NULL DEFAULT 'indexed'
+          CHECK (status IN ('pending','indexed','skipped','error')),
+        error_message TEXT,
+        indexed_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (user_id, path)
+      );
+      CREATE INDEX IF NOT EXISTS idx_indexed_files_updated
+        ON indexed_files(user_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_indexed_files_hash
+        ON indexed_files(user_id, content_hash);
+      CREATE INDEX IF NOT EXISTS idx_indexed_files_status
+        ON indexed_files(user_id, status);
+      CREATE VIRTUAL TABLE IF NOT EXISTS indexed_files_fts USING fts5(
+        path,
+        name,
+        content,
+        tokenize = 'porter unicode61'
+      );
+    `);
+  }
+
   if (version < SCHEMA_VERSION) {
     db.prepare(
       "INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)",

@@ -7,6 +7,7 @@ import {
   withFsConfirmRetry,
   type FileAccessService,
 } from "@atlas-ai/filesystem";
+import { searchIndexedFiles } from "@atlas-ai/search";
 import { isPlatformError } from "@atlas-ai/platform";
 
 import { defineTool } from "./define.js";
@@ -1061,6 +1062,62 @@ export const fileRecent = defineTool(
             lastAction: f.lastAction,
             lastAccessedAt: f.lastAccessedAt,
             accessCount: f.accessCount,
+          })),
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
+export const fileIndexSearch = defineTool(
+  {
+    name: "file.index.search",
+    description:
+      "Search the persistent file content index (FTS). Run atlas index build first.",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "low",
+    tags: ["filesystem", "mvp", "index", "search"],
+    inputSchema: {
+      type: "object",
+      required: ["query"],
+      properties: {
+        query: { type: "string" },
+        limit: { type: "number" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "hits"],
+      properties: {
+        message: { type: "string" },
+        hits: { type: "array" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const query = String(input.query ?? "");
+      const hits = searchIndexedFiles({
+        query,
+        limit: typeof input.limit === "number" ? input.limit : undefined,
+      });
+      const message =
+        hits.length === 0
+          ? `No index hits for "${query}"`
+          : `Found ${hits.length} index hit(s) for "${query}"`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          hits: hits.map((h) => ({
+            path: h.path,
+            name: h.name,
+            rank: h.rank,
+            snippet: h.snippet,
           })),
         },
       };

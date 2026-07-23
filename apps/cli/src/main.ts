@@ -8,6 +8,7 @@
 import { exitCodeForResult } from "./display.js";
 import { tryHandleAiCommand } from "./ai-command.js";
 import { tryHandleHistoryCommand } from "./history-command.js";
+import { tryHandleIndexCommand } from "./index-command.js";
 import { tryHandleKnowledgeCommand } from "./knowledge-command.js";
 import { tryHandleMemoryCommand } from "./memory-command.js";
 import { tryHandleProfileCommand } from "./profile-command.js";
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
         } else if (
           tryHandleHistoryCommand(runtime, initial) ||
           tryHandleRecentCommand(runtime, initial) ||
+          tryHandleIndexCommand(runtime, initial) ||
           tryHandleMemoryCommand(runtime, initial) ||
           tryHandleKnowledgeCommand(runtime, initial) ||
           tryHandleProfileCommand(runtime, initial) ||
@@ -91,6 +93,7 @@ async function main(): Promise<void> {
     if (
       tryHandleHistoryCommand(runtime, rawInput) ||
       tryHandleRecentCommand(runtime, rawInput) ||
+      tryHandleIndexCommand(runtime, rawInput) ||
       tryHandleMemoryCommand(runtime, rawInput) ||
       tryHandleKnowledgeCommand(runtime, rawInput) ||
       tryHandleProfileCommand(runtime, rawInput) ||

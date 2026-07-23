@@ -65,6 +65,16 @@ export {
   type RecentFilesSort,
 } from "./repositories/recent-files.js";
 export {
+  IndexedFilesRepository,
+  type IndexedFileRow,
+  type IndexedFileSearchHit,
+  type IndexedFileStatus,
+  type IndexedFileUpsertInput,
+  type IndexedFilesFtsQuery,
+  type IndexedFilesListQuery,
+  type IndexedFilesStatusSummary,
+} from "./repositories/indexed-files.js";
+export {
   PreferenceObservationsRepository,
   type PreferenceObservationIncrementInput,
   type PreferenceObservationRow,

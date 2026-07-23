@@ -48,6 +48,8 @@ CLI opens the DB on every run unless `--no-db` / `ATLAS_DB_DISABLED=1`.
 | `preference_suggestions`  | Pending/approved/rejected preference suggestions (see [Preference-Learning.md](./Preference-Learning.md)) |
 | `projects`                | Workspace projects (path, repo, metadata; see [Workspace-Awareness.md](./Workspace-Awareness.md))         |
 | `recent_files`            | MRU path access index (`last_accessed_at`, `access_count`; ADR-0085)                                      |
+| `indexed_files`           | File content index metadata (hash, status; ADR-0087)                                                      |
+| `indexed_files_fts`       | FTS5 keyword index over path/name/content (ADR-0087)                                                      |
 | `tools`                   | Tool registry persistence                                                                                 |
 | `models`                  | AI model registry (name, format, caps, requirements, …)                                                   |
 | `embeddings`              | Embedding vectors for search/memory                                                                       |
@@ -88,6 +90,14 @@ db.executionHistory.listRecent(20);
 
 db.recentFiles.touch({ path: "/abs/path.ts", action: "read" });
 db.recentFiles.list({ sort: "frequent", limit: 20 });
+
+db.indexedFiles.upsertWithContent({
+  path: "/abs/path.ts",
+  name: "path.ts",
+  content: "…",
+  contentHash: "…",
+});
+db.indexedFiles.searchFts({ query: "hello", limit: 20 });
 
 // Preferred for UI / review:
 db.taskHistory.query({ status: "completed", limit: 20 });
