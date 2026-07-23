@@ -109,6 +109,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0083](./0083-safe-file-operations.md)                    | Safe file operations                    | Accepted |
 | [0084](./0084-file-watcher-service.md)                    | File watcher service                    | Accepted |
 | [0085](./0085-recent-files-index.md)                      | Recent files index (MRU)                | Accepted |
+| [0086](./0086-ignore-rules-engine.md)                     | Ignore rules engine                     | Accepted |
 
 ## Naming
 

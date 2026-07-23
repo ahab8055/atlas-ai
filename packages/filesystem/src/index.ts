@@ -101,6 +101,16 @@ export {
 } from "./watcher.js";
 
 export {
+  BUILTIN_IGNORE_PATTERNS,
+  compileGitignorePattern,
+  createIgnoreRulesEngine,
+  parseIgnoreFileContent,
+  type IgnoreRulesEngine,
+  type IgnoreRulesEngineOptions,
+  type ShouldIgnoreOptions,
+} from "./ignore.js";
+
+export {
   __resetRecentFilesStoreForTests,
   getRecentFilesStore,
   listRecentFiles,

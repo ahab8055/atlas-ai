@@ -196,6 +196,17 @@ export interface AtlasWorkspaceConfig {
   rememberOnDetect: boolean;
 }
 
+export interface AtlasFilesystemConfig {
+  /** Extra ignore patterns (gitignore syntax subset). */
+  ignorePatterns: string[];
+  /** Honor cascading `.gitignore` files (default true). */
+  respectGitignore: boolean;
+  /** Honor `.atlasignore` at roots (default true). */
+  respectAtlasignore: boolean;
+  /** Apply built-in node_modules/temp/build ignores (default true). */
+  useBuiltinIgnoreDefaults: boolean;
+}
+
 export interface AtlasContextBuilderConfig {
   /** Max characters in the packaged context text (default 4000). */
   maxChars: number;
@@ -241,6 +252,7 @@ export interface AtlasAppConfig {
   knowledge: AtlasKnowledgeConfig;
   profile: AtlasProfileConfig;
   workspace: AtlasWorkspaceConfig;
+  filesystem: AtlasFilesystemConfig;
   context: AtlasContextConfig;
 }
 

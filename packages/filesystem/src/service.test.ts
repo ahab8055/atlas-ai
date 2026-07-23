@@ -79,6 +79,54 @@ describe("FileAccessService", () => {
     expect(byContent.hits.some((h) => h.name === "util.ts")).toBe(true);
   });
 
+  it("skips ignored paths in search/walk and still allows explicit read", () => {
+    const files = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/.gitignore`]: "secret.txt\n",
+      [`${ROOT}/app.ts`]: "export {}",
+      [`${ROOT}/secret.txt`]: "nope",
+      [`${ROOT}/node_modules`]: null,
+      [`${ROOT}/node_modules/pkg`]: null,
+      [`${ROOT}/node_modules/pkg/index.js`]: "module.exports=1",
+      [`${ROOT}/scratch.tmp`]: "tmp",
+    });
+    const svc = createFileAccessService({
+      files,
+      roots: [ROOT],
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    const found = svc.findFiles({ pattern: "*" });
+    expect(found.hits.map((h) => h.name).sort()).toEqual(["app.ts"]);
+    expect(found.hits.some((h) => h.name === "index.js")).toBe(false);
+    expect(found.hits.some((h) => h.name === "secret.txt")).toBe(false);
+    expect(found.hits.some((h) => h.name === "scratch.tmp")).toBe(false);
+
+    const withRespectOff = svc.findFiles({
+      pattern: "*",
+      respectIgnore: false,
+      includeHidden: true,
+    });
+    expect(withRespectOff.hits.some((h) => h.name === "index.js")).toBe(true);
+    expect(withRespectOff.hits.some((h) => h.name === "secret.txt")).toBe(true);
+
+    const walked = svc.walkDirectory(".", { maxDepth: 4 });
+    expect(walked.some((e) => e.name === "node_modules")).toBe(false);
+    expect(walked.some((e) => e.name === "app.ts")).toBe(true);
+
+    expect(svc.readFile("secret.txt").content).toBe("nope");
+    expect(svc.readFile("node_modules/pkg/index.js").content).toContain(
+      "module.exports",
+    );
+  });
+
   it("supports extension filters, ? wildcards, hidden, depth, and truncate", () => {
     const svc = buildService({
       [ROOT]: null,

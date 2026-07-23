@@ -22,6 +22,7 @@ export type {
   AtlasProfileConfig,
   AtlasProfileLearningConfig,
   AtlasWorkspaceConfig,
+  AtlasFilesystemConfig,
   AtlasContextConfig,
   AtlasContextBuilderConfig,
   AtlasContextCompressionConfig,

@@ -33,6 +33,8 @@ export interface FindFilesQuery {
   extensions?: string[];
   /** When true (default), directories are excluded from hits. */
   filesOnly?: boolean;
+  /** Apply ignore rules engine (default true). */
+  respectIgnore?: boolean;
 }
 
 export interface FileSearchResult {
@@ -130,6 +132,8 @@ export interface DirEntry {
 export interface ListDirectoryOptions {
   /** Include names starting with `.` (default false). */
   includeHidden?: boolean;
+  /** Apply ignore rules engine (default true). */
+  respectIgnore?: boolean;
 }
 
 export interface WalkDirectoryOptions {
@@ -138,6 +142,8 @@ export interface WalkDirectoryOptions {
   followSymlinks?: boolean;
   includeHidden?: boolean;
   limit?: number;
+  /** Apply ignore rules engine (default true). */
+  respectIgnore?: boolean;
 }
 
 export interface CreateDirectoryOptions {

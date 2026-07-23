@@ -101,6 +101,21 @@ Serializable OS behaviour (ADR-0070). Path layout stays on `paths` / `ATLAS_DATA
 Hosts map with `toPlatformManagerOptions(config.platform, extras)` then
 `bootstrapPlatformServices`. See [Platform-Abstraction.md](./Platform-Abstraction.md).
 
+### Filesystem ignore (ADR-0086)
+
+| Field / env                           | Default | Maps to                             |
+| ------------------------------------- | ------- | ----------------------------------- |
+| `filesystem.ignorePatterns`           | `[]`    | Extra gitignore-style patterns      |
+| `ATLAS_FS_IGNORE_PATTERNS`            | —       | Comma-separated `ignorePatterns`    |
+| `filesystem.respectGitignore`         | `true`  | Cascade `.gitignore`                |
+| `ATLAS_FS_RESPECT_GITIGNORE`          | —       | `true`/`false`                      |
+| `filesystem.respectAtlasignore`       | `true`  | Honor `.atlasignore` at roots       |
+| `ATLAS_FS_RESPECT_ATLASIGNORE`        | —       | `true`/`false`                      |
+| `filesystem.useBuiltinIgnoreDefaults` | `true`  | `node_modules`/temps/build defaults |
+| `ATLAS_FS_BUILTIN_IGNORE`             | —       | `true`/`false`                      |
+
+See [File-System-Access.md](./File-System-Access.md).
+
 ---
 
 ## Secrets

@@ -101,6 +101,12 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
     autoDetect: true,
     rememberOnDetect: true,
   },
+  filesystem: {
+    ignorePatterns: [],
+    respectGitignore: true,
+    respectAtlasignore: true,
+    useBuiltinIgnoreDefaults: true,
+  },
   context: {
     builder: {
       maxChars: 4000,

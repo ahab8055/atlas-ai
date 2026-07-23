@@ -16,6 +16,7 @@ import type {
   AtlasProfileConfig,
   AtlasProfileLearningConfig,
   AtlasWorkspaceConfig,
+  AtlasFilesystemConfig,
   AtlasContextConfig,
   AtlasContextBuilderConfig,
   AtlasContextCompressionConfig,
@@ -475,6 +476,16 @@ function mergeProfile(
   };
 }
 
+function asStringArray(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) {
+    return [...fallback];
+  }
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function mergeWorkspace(
   base: AtlasWorkspaceConfig,
   patch: unknown,
@@ -485,6 +496,30 @@ function mergeWorkspace(
   return {
     autoDetect: asBoolean(patch.autoDetect, base.autoDetect),
     rememberOnDetect: asBoolean(patch.rememberOnDetect, base.rememberOnDetect),
+  };
+}
+
+function mergeFilesystem(
+  base: AtlasFilesystemConfig,
+  patch: unknown,
+): AtlasFilesystemConfig {
+  if (!isRecord(patch)) {
+    return {
+      ...base,
+      ignorePatterns: [...base.ignorePatterns],
+    };
+  }
+  return {
+    ignorePatterns: asStringArray(patch.ignorePatterns, base.ignorePatterns),
+    respectGitignore: asBoolean(patch.respectGitignore, base.respectGitignore),
+    respectAtlasignore: asBoolean(
+      patch.respectAtlasignore,
+      base.respectAtlasignore,
+    ),
+    useBuiltinIgnoreDefaults: asBoolean(
+      patch.useBuiltinIgnoreDefaults,
+      base.useBuiltinIgnoreDefaults,
+    ),
   };
 }
 
@@ -579,6 +614,7 @@ export function mergeAppConfig(
       knowledge: mergeKnowledge(base.knowledge, undefined),
       profile: mergeProfile(base.profile, undefined),
       workspace: mergeWorkspace(base.workspace, undefined),
+      filesystem: mergeFilesystem(base.filesystem, undefined),
       context: mergeContext(base.context, undefined),
     };
   }
@@ -595,6 +631,7 @@ export function mergeAppConfig(
     knowledge: mergeKnowledge(base.knowledge, patch.knowledge),
     profile: mergeProfile(base.profile, patch.profile),
     workspace: mergeWorkspace(base.workspace, patch.workspace),
+    filesystem: mergeFilesystem(base.filesystem, patch.filesystem),
     context: mergeContext(base.context, patch.context),
   };
 }
@@ -845,6 +882,26 @@ export function applyEnvOverrides(
         envVars.ATLAS_WORKSPACE_REMEMBER_ON_DETECT !== undefined
           ? envVars.ATLAS_WORKSPACE_REMEMBER_ON_DETECT === "true"
           : config.workspace.rememberOnDetect,
+    },
+    filesystem: {
+      ignorePatterns:
+        envVars.ATLAS_FS_IGNORE_PATTERNS !== undefined
+          ? envVars.ATLAS_FS_IGNORE_PATTERNS.split(",")
+              .map((p) => p.trim())
+              .filter(Boolean)
+          : config.filesystem.ignorePatterns,
+      respectGitignore:
+        envVars.ATLAS_FS_RESPECT_GITIGNORE !== undefined
+          ? envVars.ATLAS_FS_RESPECT_GITIGNORE === "true"
+          : config.filesystem.respectGitignore,
+      respectAtlasignore:
+        envVars.ATLAS_FS_RESPECT_ATLASIGNORE !== undefined
+          ? envVars.ATLAS_FS_RESPECT_ATLASIGNORE === "true"
+          : config.filesystem.respectAtlasignore,
+      useBuiltinIgnoreDefaults:
+        envVars.ATLAS_FS_BUILTIN_IGNORE !== undefined
+          ? envVars.ATLAS_FS_BUILTIN_IGNORE === "true"
+          : config.filesystem.useBuiltinIgnoreDefaults,
     },
     context: {
       builder: {

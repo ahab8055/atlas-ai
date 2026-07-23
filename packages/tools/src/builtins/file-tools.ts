@@ -57,6 +57,7 @@ export const fileSearch = defineTool(
         includeHidden: { type: "boolean" },
         extensions: { type: "array", items: { type: "string" } },
         filesOnly: { type: "boolean" },
+        respectIgnore: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -95,6 +96,10 @@ export const fileSearch = defineTool(
             input.filesOnly === undefined
               ? undefined
               : Boolean(input.filesOnly),
+          respectIgnore:
+            input.respectIgnore === undefined
+              ? undefined
+              : Boolean(input.respectIgnore),
         }),
       );
       const message =
@@ -791,6 +796,7 @@ export const fileList = defineTool(
       properties: {
         path: { type: "string" },
         includeHidden: { type: "boolean" },
+        respectIgnore: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -812,6 +818,10 @@ export const fileList = defineTool(
             input.includeHidden === undefined
               ? undefined
               : Boolean(input.includeHidden),
+          respectIgnore:
+            input.respectIgnore === undefined
+              ? undefined
+              : Boolean(input.respectIgnore),
         }),
       );
       const message = `Listed ${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;
@@ -855,6 +865,7 @@ export const fileWalk = defineTool(
         followSymlinks: { type: "boolean" },
         includeHidden: { type: "boolean" },
         limit: { type: "number" },
+        respectIgnore: { type: "boolean" },
       },
     },
     outputSchema: {
@@ -883,6 +894,10 @@ export const fileWalk = defineTool(
               ? undefined
               : Boolean(input.includeHidden),
           limit: typeof input.limit === "number" ? input.limit : undefined,
+          respectIgnore:
+            input.respectIgnore === undefined
+              ? undefined
+              : Boolean(input.respectIgnore),
         }),
       );
       const message = `Walked ${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;

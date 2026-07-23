@@ -144,6 +144,10 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     roots: [process.cwd()],
     permissions,
     logger: logger.child("filesystem"),
+    ignorePatterns: config.filesystem?.ignorePatterns,
+    respectGitignore: config.filesystem?.respectGitignore,
+    respectAtlasignore: config.filesystem?.respectAtlasignore,
+    useBuiltinIgnoreDefaults: config.filesystem?.useBuiltinIgnoreDefaults,
     ...(database
       ? {
           onAccess: (event) => {
@@ -177,6 +181,10 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     permissions,
     logger: logger.child("filesystem"),
     onFileEvent: createFileSystemEventPublisher(eventBus),
+    ignorePatterns: config.filesystem?.ignorePatterns,
+    respectGitignore: config.filesystem?.respectGitignore,
+    respectAtlasignore: config.filesystem?.respectAtlasignore,
+    useBuiltinIgnoreDefaults: config.filesystem?.useBuiltinIgnoreDefaults,
   });
   installCliFsConfirmHost(permissions);
 

@@ -86,6 +86,11 @@ export function bootstrapFileAccessFromRegistry(
     logger: options.logger,
     onAccess: options.onAccess,
     onPathGone: options.onPathGone,
+    ignorePatterns: options.ignorePatterns,
+    respectGitignore: options.respectGitignore,
+    respectAtlasignore: options.respectAtlasignore,
+    useBuiltinIgnoreDefaults: options.useBuiltinIgnoreDefaults,
+    ignore: options.ignore,
   });
   setDefaultFileAccessService(service);
   return service;
@@ -118,6 +123,11 @@ export function bootstrapFileWatcherFromRegistry(
     permissions: options.permissions,
     logger: options.logger,
     onFileEvent: options.onFileEvent,
+    ignorePatterns: options.ignorePatterns,
+    respectGitignore: options.respectGitignore,
+    respectAtlasignore: options.respectAtlasignore,
+    useBuiltinIgnoreDefaults: options.useBuiltinIgnoreDefaults,
+    ignore: options.ignore,
   });
   setDefaultFileWatcherService(service);
   return service;

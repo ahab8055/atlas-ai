@@ -116,6 +116,47 @@ describe("FileWatcherService", () => {
     svc.stopAll();
   });
 
+  it("drops events under builtin ignore paths", () => {
+    vi.useFakeTimers();
+    const files = createMemoryFileSystemService({
+      [ROOT]: null,
+      [`${ROOT}/node_modules`]: null,
+      [`${ROOT}/ok.txt`]: "x",
+    });
+    const published: { type: string; path: string }[] = [];
+    const svc = createFileWatcherService({
+      files,
+      roots: [ROOT],
+      onFileEvent: {
+        publish(type, payload) {
+          published.push({ type, path: payload.path });
+        },
+      },
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    svc.watchDirectory(".", { debounceMs: 20 });
+    files.writeText(`${ROOT}/node_modules/x.js`, "1");
+    files.emitWatchEvent({
+      type: "rename",
+      path: `${ROOT}/node_modules/x.js`,
+    });
+    files.writeText(`${ROOT}/ok2.txt`, "2");
+    files.emitWatchEvent({ type: "rename", path: `${ROOT}/ok2.txt` });
+    vi.advanceTimersByTime(25);
+
+    expect(published.some((e) => e.path.includes("node_modules"))).toBe(false);
+    expect(published.some((e) => e.path.endsWith("ok2.txt"))).toBe(true);
+    svc.stopAll();
+  });
+
   it("blocks watch outside roots and without filesystem.read", () => {
     const files = createMemoryFileSystemService({ [ROOT]: null });
     const permissions = new PermissionManager({ grantedCapabilities: [] });

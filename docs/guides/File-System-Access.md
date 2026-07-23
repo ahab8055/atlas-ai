@@ -18,6 +18,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0083](../adr/0083-safe-file-operations.md),
 [ADR-0084](../adr/0084-file-watcher-service.md),
 [ADR-0085](../adr/0085-recent-files-index.md),
+[ADR-0086](../adr/0086-ignore-rules-engine.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -307,6 +308,24 @@ This is **not** Architecture/24 content indexing.
 
 ---
 
+## Ignore rules (ADR-0086)
+
+Discovery (`list` / `walk` / `findFiles` / watch) soft-skips paths via a shared
+`IgnoreRulesEngine`. Security deny remains a hard gate. Explicit read/write of
+an ignored path still works.
+
+| Layer    | Source                                                                                                         |
+| -------- | -------------------------------------------------------------------------------------------------------------- |
+| Built-in | `node_modules/`, `dist/`, `build/`, `target/`, `__pycache__/`, `.venv/`, temps (`*.tmp`, `*~`, `.DS_Store`, …) |
+| Config   | `filesystem.ignorePatterns` (+ env `ATLAS_FS_IGNORE_PATTERNS`)                                                 |
+| Project  | Cascading `.gitignore`; `.atlasignore` at roots                                                                |
+| Hidden   | `includeHidden` default false (unchanged)                                                                      |
+
+Per-call override: `respectIgnore: false`. Future content index must reuse this
+engine.
+
+---
+
 ## Commands
 
 ```bash
@@ -321,6 +340,7 @@ pnpm packages:build
 
 - Persistent file index / hybrid search (Architecture/24)
 - Driving MRU from watcher FileCreated/Updated
+- Full gitignore parity (`git check-ignore` identical)
 - Migrating all remaining `node:fs` usage in ai/logging/database
 - Cross-volume rename fallbacks (`EXDEV`) / OS Trash / Recycle Bin
 - Trash TTL / auto-purge

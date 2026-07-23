@@ -78,6 +78,8 @@ one-shot approvals ([ADR-0083](../adr/0083-safe-file-operations.md)).
 events; watches start only via `watchDirectory` ([ADR-0084](../adr/0084-file-watcher-service.md)).
 When the database is enabled, successful `file.read` / `file.write` update the
 recent-files MRU ([ADR-0085](../adr/0085-recent-files-index.md)).
+Search/list/walk/watch honor ignore rules from config, `.gitignore`, and
+built-ins ([ADR-0086](../adr/0086-ignore-rules-engine.md)).
 
 ```bash
 pnpm atlas --db /tmp/atlas.sqlite status

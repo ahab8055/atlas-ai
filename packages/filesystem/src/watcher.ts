@@ -20,6 +20,7 @@ import {
   type FileSystemEventPublisher,
   type FileSystemEventType,
 } from "./events.js";
+import { createIgnoreRulesEngine, type IgnoreRulesEngine } from "./ignore.js";
 import {
   DEFAULT_DENY_PATTERNS,
   isPathInsideRoots,
@@ -58,6 +59,11 @@ export interface FileWatcherServiceOptions {
   permissions?: PermissionManager;
   logger?: Logger;
   onFileEvent?: FileSystemEventPublisher;
+  ignorePatterns?: string[];
+  respectGitignore?: boolean;
+  respectAtlasignore?: boolean;
+  useBuiltinIgnoreDefaults?: boolean;
+  ignore?: IgnoreRulesEngine;
 }
 
 interface PendingSlot {
@@ -94,6 +100,25 @@ export function createFileWatcherService(
     path.resolve(r),
   );
   const denyPatterns = options.denyPatterns ?? [...DEFAULT_DENY_PATTERNS];
+  const ignoreEngine: IgnoreRulesEngine =
+    options.ignore ??
+    createIgnoreRulesEngine({
+      roots,
+      patterns: options.ignorePatterns,
+      respectGitignore: options.respectGitignore,
+      respectAtlasignore: options.respectAtlasignore,
+      useBuiltinDefaults: options.useBuiltinIgnoreDefaults,
+      readFile: (absolutePath) => {
+        try {
+          if (!files.exists(absolutePath)) {
+            return undefined;
+          }
+          return files.readText(absolutePath);
+        } catch {
+          return undefined;
+        }
+      },
+    });
 
   const active = new Map<
     string,
@@ -101,7 +126,7 @@ export function createFileWatcherService(
       root: string;
       handle: FileWatchHandle;
       debounceMs: number;
-      ignore: RegExp[];
+      ignoreGlobs: RegExp[];
       known: Set<string>;
       pending: Map<string, PendingSlot>;
       timer: ReturnType<typeof setTimeout> | undefined;
@@ -160,12 +185,19 @@ export function createFileWatcherService(
     }
   }
 
-  function shouldIgnore(absolute: string, ignore: RegExp[]): boolean {
-    const base = path.basename(absolute);
+  function shouldIgnore(
+    absolute: string,
+    ignoreGlobs: RegExp[],
+    isDirectory?: boolean,
+  ): boolean {
     if (matchesDeny(absolute, denyPatterns)) {
       return true;
     }
-    return ignore.some((re) => re.test(base) || re.test(absolute));
+    const base = path.basename(absolute);
+    if (ignoreGlobs.some((re) => re.test(base) || re.test(absolute))) {
+      return true;
+    }
+    return ignoreEngine.shouldIgnore(absolute, { isDirectory });
   }
 
   function publish(
@@ -312,7 +344,7 @@ export function createFileWatcherService(
     if (!isPathInsideRoots(absolute, roots)) {
       return;
     }
-    if (shouldIgnore(absolute, state.ignore)) {
+    if (shouldIgnore(absolute, state.ignoreGlobs)) {
       return;
     }
 
@@ -326,6 +358,16 @@ export function createFileWatcherService(
       }
     } else {
       isDirectory = state.known.has(absolute) ? false : absolute === state.root;
+    }
+
+    // Re-check with directory knowledge for dir-only patterns
+    if (shouldIgnore(absolute, state.ignoreGlobs, isDirectory)) {
+      return;
+    }
+
+    const baseName = path.basename(absolute);
+    if (baseName === ".gitignore" || baseName === ".atlasignore") {
+      ignoreEngine.invalidate(path.dirname(absolute));
     }
 
     const known = state.known.has(absolute);
@@ -378,7 +420,7 @@ export function createFileWatcherService(
       const id = randomUUID();
       const recursive = opts.recursive !== false;
       const debounceMs = opts.debounceMs ?? DEFAULT_DEBOUNCE_MS;
-      const ignore = (opts.ignoreGlobs ?? []).map(globToRegExp);
+      const ignoreGlobs = (opts.ignoreGlobs ?? []).map(globToRegExp);
 
       const handle = files.watch(target, (event) => onRaw(id, event), {
         recursive,
@@ -388,7 +430,7 @@ export function createFileWatcherService(
         root: target,
         handle,
         debounceMs,
-        ignore,
+        ignoreGlobs,
         known: new Set(),
         pending: new Map(),
         timer: undefined,

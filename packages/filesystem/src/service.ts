@@ -17,6 +17,7 @@ import type {
   PermissionManager,
 } from "@atlas-ai/security";
 
+import { createIgnoreRulesEngine, type IgnoreRulesEngine } from "./ignore.js";
 import { mimeForEntry, mimeFromExtension } from "./mime.js";
 import { decodeBytes, encodeBytes } from "./encoding.js";
 import { formatFromExtension, isUnsupportedBinaryFormat } from "./format.js";
@@ -89,6 +90,13 @@ export interface FileAccessServiceOptions {
   }) => void;
   /** Fired after successful delete/trash or move-away of a path. */
   onPathGone?: (path: string) => void;
+  /** Extra ignore patterns (gitignore syntax subset). ADR-0086. */
+  ignorePatterns?: string[];
+  respectGitignore?: boolean;
+  respectAtlasignore?: boolean;
+  useBuiltinIgnoreDefaults?: boolean;
+  /** Injected ignore engine (tests); otherwise built from options. */
+  ignore?: IgnoreRulesEngine;
 }
 
 function parentDir(filePath: string): string {
@@ -135,6 +143,25 @@ export function createFileAccessService(
   const maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
   const denyPatterns = options.denyPatterns ?? [...DEFAULT_DENY_PATTERNS];
   const defaultLimit = options.defaultLimit ?? DEFAULT_LIMIT;
+  const ignoreEngine: IgnoreRulesEngine =
+    options.ignore ??
+    createIgnoreRulesEngine({
+      roots,
+      patterns: options.ignorePatterns,
+      respectGitignore: options.respectGitignore,
+      respectAtlasignore: options.respectAtlasignore,
+      useBuiltinDefaults: options.useBuiltinIgnoreDefaults,
+      readFile: (absolutePath) => {
+        try {
+          if (!files.exists(absolutePath)) {
+            return undefined;
+          }
+          return files.readText(absolutePath);
+        } catch {
+          return undefined;
+        }
+      },
+    });
 
   function noteAccess(absolutePath: string, action: "read" | "write"): void {
     try {
@@ -415,6 +442,17 @@ export function createFileAccessService(
     return name.startsWith(".");
   }
 
+  function isSoftIgnored(
+    absolutePath: string,
+    respectIgnore: boolean,
+    isDirectory?: boolean,
+  ): boolean {
+    if (!respectIgnore) {
+      return false;
+    }
+    return ignoreEngine.shouldIgnore(absolutePath, { isDirectory });
+  }
+
   function resolveSymlinkTarget(linkPath: string, linkTarget: string): string {
     if (path.isAbsolute(linkTarget)) {
       return path.resolve(linkTarget);
@@ -467,6 +505,7 @@ export function createFileAccessService(
       }
 
       const includeHidden = opts.includeHidden === true;
+      const respectIgnore = opts.respectIgnore !== false;
       const out: DirEntry[] = [];
       for (const name of files.listDir(absolute)) {
         if (!includeHidden && isHiddenName(name)) {
@@ -480,9 +519,13 @@ export function createFileAccessService(
           continue;
         }
         const entry = toDirEntry(full, name);
-        if (entry) {
-          out.push(entry);
+        if (!entry) {
+          continue;
         }
+        if (isSoftIgnored(full, respectIgnore, entry.isDirectory)) {
+          continue;
+        }
+        out.push(entry);
       }
       return out;
     },
@@ -502,6 +545,7 @@ export function createFileAccessService(
       const walkMaxDepth = opts.maxDepth ?? maxDepth;
       const followSymlinks = opts.followSymlinks === true;
       const includeHidden = opts.includeHidden === true;
+      const respectIgnore = opts.respectIgnore !== false;
       const limit = opts.limit ?? defaultLimit;
       const out: DirEntry[] = [];
       const visited = new Set<string>();
@@ -540,6 +584,9 @@ export function createFileAccessService(
           if (!entry) {
             continue;
           }
+          if (isSoftIgnored(full, respectIgnore, entry.isDirectory)) {
+            continue;
+          }
           out.push(entry);
 
           let descend = entry.isDirectory && !entry.isSymbolicLink;
@@ -548,6 +595,7 @@ export function createFileAccessService(
             if (
               isPathInsideRoots(target, roots) &&
               !matchesDeny(target, denyPatterns) &&
+              !isSoftIgnored(target, respectIgnore, true) &&
               !visited.has(target)
             ) {
               try {
@@ -632,6 +680,7 @@ export function createFileAccessService(
       const limit = query.limit ?? defaultLimit;
       const searchMaxDepth = query.maxDepth ?? maxDepth;
       const includeHidden = query.includeHidden === true;
+      const respectIgnore = query.respectIgnore !== false;
       const filesOnly = query.filesOnly !== false;
       const extensions = normalizeExtensions(query.extensions);
       const searchRoot = query.root ? resolve(query.root) : roots[0]!;
@@ -720,8 +769,6 @@ export function createFileAccessService(
             continue;
           }
 
-          scannedEntries += 1;
-
           let isDirectory = false;
           let isFile = false;
           let isSymbolicLink = false;
@@ -742,6 +789,12 @@ export function createFileAccessService(
           } catch {
             continue;
           }
+
+          if (isSoftIgnored(full, respectIgnore, isDirectory)) {
+            continue;
+          }
+
+          scannedEntries += 1;
 
           const nameMatched = matcher.test(name);
           if (nameMatched) {
