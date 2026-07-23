@@ -32,6 +32,9 @@ function codeFromErrno(errno: string | undefined): PlatformErrorCode {
     case "ENOTSUP":
     case "EOPNOTSUPP":
       return "unsupported";
+    case "ENOSPC":
+    case "EDQUOT":
+      return "disk_full";
     default:
       return "io_error";
   }

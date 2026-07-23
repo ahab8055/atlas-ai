@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  isFileSystemError,
+  toAtlasFileSystemError,
+} from "@atlas-ai/filesystem";
 import { isPlatformError, type PlatformError } from "@atlas-ai/platform";
 
 import { suggestRecovery } from "./recovery.js";
@@ -136,8 +140,9 @@ export function createAtlasError(
 }
 
 /**
- * Map PlatformError into AtlasErrorResponse (ADR-0068).
+ * Map PlatformError into AtlasErrorResponse (ADR-0068 / ADR-0090).
  * Preserves platform code/category/detail under context for debugging.
+ * FileSystemError / detail.fsKind prefer fs_* atlas codes.
  */
 export function fromPlatformError(
   error: PlatformError,
@@ -146,6 +151,24 @@ export function fromPlatformError(
     traceId?: string;
   } = {},
 ): AtlasErrorResponse {
+  if (
+    isFileSystemError(error) ||
+    error.detail?.fsKind ||
+    error.code === "disk_full"
+  ) {
+    const fsAtlas = toAtlasFileSystemError(error);
+    return {
+      ...fsAtlas,
+      id: fsAtlas.id || randomUUID(),
+      timestamp: fsAtlas.timestamp || new Date().toISOString(),
+      context: {
+        ...fsAtlas.context,
+        ...options.context,
+      },
+      ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
+    };
+  }
+
   let atlasCategory: ErrorCategory;
   let atlasCode: string;
 

@@ -4,7 +4,9 @@
 import {
   getDefaultFileAccessService,
   listRecentFiles,
+  toAtlasFileSystemError,
   withFsConfirmRetry,
+  isFileSystemError,
   type FileAccessService,
 } from "@atlas-ai/filesystem";
 import { searchIndexedFiles } from "@atlas-ai/search";
@@ -24,15 +26,28 @@ function callFs<T>(fn: (fs: FileAccessService) => T): T {
 function fail(error: unknown): ToolResult {
   const message =
     error instanceof Error ? error.message : "File operation failed";
-  const code = isPlatformError(error) ? error.code : "unknown";
-  const approvalId = isPlatformError(error) ? error.approvalId : undefined;
+  if (isFileSystemError(error) || isPlatformError(error)) {
+    const atlas = toAtlasFileSystemError(error);
+    return {
+      ok: false,
+      message,
+      error: message,
+      data: {
+        code: atlas.code,
+        kind: atlas.context?.fsKind,
+        atlas,
+        ...(isPlatformError(error) && error.approvalId !== undefined
+          ? { approvalId: error.approvalId }
+          : {}),
+      },
+    };
+  }
   return {
     ok: false,
     message,
     error: message,
     data: {
-      code,
-      ...(approvalId !== undefined ? { approvalId } : {}),
+      code: "unknown",
     },
   };
 }

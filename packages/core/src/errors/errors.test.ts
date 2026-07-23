@@ -122,4 +122,21 @@ describe("ErrorHandler", () => {
     expect(resource.code).toBe("not_found");
     expect(resource.context?.platformCode).toBe("resource_not_found");
   });
+
+  it("maps FileSystemError to fs_* atlas codes", async () => {
+    const { createFileSystemError } = await import("@atlas-ai/filesystem");
+    const fsErr = createFileSystemError("file_not_found", "File not found: /x");
+    const atlas = fromPlatformError(fsErr);
+    expect(atlas.code).toBe("fs_file_not_found");
+    expect(atlas.category).toBe("tool");
+    expect(atlas.context?.fsKind).toBe("file_not_found");
+
+    const disk = fromPlatformError(
+      new PlatformError("disk_full", "ENOSPC", {
+        detail: { errno: "ENOSPC" },
+      }),
+    );
+    expect(disk.code).toBe("fs_disk_full");
+    expect(disk.category).toBe("system");
+  });
 });

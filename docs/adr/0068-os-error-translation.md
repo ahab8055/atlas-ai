@@ -17,11 +17,16 @@ unknown) and preserved diagnostics for debugging across darwin/linux/win32.
 1. Expand **`PlatformError`** with `category`, optional `detail`, and `cause`.
 2. Add codes `resource_not_found` and `unknown`; map codes to categories.
 3. Add **`translateNativeError`** for Node `ErrnoException` (ENOENT → resource,
-   EACCES/EPERM → permission, etc.) and wire it into runners + Node FS.
+   EACCES/EPERM → permission, ENOSPC/EDQUOT → `disk_full`, etc.) and wire it
+   into runners + Node FS.
 4. Throw `PlatformError("unsupported")` from `detectPlatformId` for unknown
    hosts.
 5. Add **`fromPlatformError`** in core; `fromUnknown` recognizes PlatformError;
    pipeline catch preserves platform classification.
+
+> **Note (ADR-0090):** `ENOSPC` / `EDQUOT` map to platform code `disk_full`
+> (system). Product FS wraps these as `FileSystemError` kind `disk_full` →
+> Atlas `fs_disk_full`.
 
 ## Consequences
 
@@ -43,4 +48,5 @@ unknown) and preserved diagnostics for debugging across darwin/linux/win32.
 - [Error-Handling.md](../guides/Error-Handling.md)
 - [ADR-0020](./0020-error-handling-framework.md)
 - [ADR-0062](./0062-operating-system-interface.md)
+- [ADR-0090](./0090-file-system-error-handling.md)
 - [ADR-0066](./0066-os-permission-broker.md)

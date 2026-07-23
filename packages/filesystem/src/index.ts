@@ -68,6 +68,20 @@ export {
   resolveWithinRoots,
 } from "./paths.js";
 
+export {
+  createFileSystemError,
+  fromPlatformErrorForFs,
+  isFileSystemError,
+  kindFromPlatformError,
+  toAtlasFileSystemError,
+  FileSystemError,
+  type AtlasFileSystemErrorObject,
+  type AtlasFsErrorCategory,
+  type AtlasFsErrorCode,
+  type AtlasFsRecoveryAction,
+  type CreateFileSystemErrorOptions,
+  type FileSystemErrorKind,
+} from "./errors.js";
 export { mimeForEntry, mimeFromExtension } from "./mime.js";
 export { modeToPermissions } from "./permissions-format.js";
 export { decodeBytes, encodeBytes } from "./encoding.js";

@@ -113,6 +113,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0087](./0087-file-indexing-service.md)                   | File indexing service (FTS)             | Accepted |
 | [0088](./0088-large-file-processing.md)                   | Large file processing (chunks)          | Accepted |
 | [0089](./0089-file-type-detection.md)                     | File type detection (signatures)        | Accepted |
+| [0090](./0090-file-system-error-handling.md)              | File system error handling              | Accepted |
 
 ## Naming
 

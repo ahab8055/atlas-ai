@@ -2,7 +2,7 @@
 
 Central error classification, consistent response shape, logging, and recovery suggestions.
 
-Related: [Logging.md](./Logging.md), [Response-Generation.md](./Response-Generation.md), [Request-Pipeline.md](./Request-Pipeline.md), [Execution-Controller.md](./Execution-Controller.md), [Platform-Abstraction.md](./Platform-Abstraction.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (§ Failure Handling), [ADR-0020](../adr/0020-error-handling-framework.md), [ADR-0068](../adr/0068-os-error-translation.md), [`@atlas-ai/core`](../../packages/core/src/errors/).
+Related: [Logging.md](./Logging.md), [Response-Generation.md](./Response-Generation.md), [Request-Pipeline.md](./Request-Pipeline.md), [Execution-Controller.md](./Execution-Controller.md), [Platform-Abstraction.md](./Platform-Abstraction.md), [File-System-Access.md](./File-System-Access.md), [Architecture/22](../Architecture/22-AI-Orchestration-Architecture.md) (§ Failure Handling), [ADR-0020](../adr/0020-error-handling-framework.md), [ADR-0068](../adr/0068-os-error-translation.md), [ADR-0090](../adr/0090-file-system-error-handling.md), [`@atlas-ai/core`](../../packages/core/src/errors/).
 
 ---
 
@@ -31,6 +31,23 @@ Aligned with Architecture/22 failure types (permission → user, tools, model �
 `context` retains `platformCode`, `platformCategory`, `approvalId`, and `detail`
 for debugging. The request pipeline preserves PlatformError classification
 instead of overwriting with `pipeline_error`.
+
+### FileSystemError → Atlas (ADR-0090)
+
+Product FS errors use `FileSystemError.kind` / `detail.fsKind`.
+`fromPlatformError` and `toAtlasFileSystemError` map:
+
+| FS kind             | Atlas category | Atlas code             |
+| ------------------- | -------------- | ---------------------- |
+| `permission_denied` | `user`         | `fs_permission_denied` |
+| `file_not_found`    | `tool`         | `fs_file_not_found`    |
+| `invalid_path`      | `user`         | `fs_invalid_path`      |
+| `unsupported_type`  | `tool`         | `fs_unsupported_type`  |
+| `disk_full`         | `system`       | `fs_disk_full`         |
+| `unknown`           | `system`       | `fs_unknown`           |
+
+File tools return the same shape under `data.atlas`. See
+[File-System-Access.md](./File-System-Access.md).
 
 ---
 

@@ -6,7 +6,6 @@ import { randomUUID } from "node:crypto";
 
 import type { Logger } from "@atlas-ai/logging";
 import {
-  PlatformError,
   platformSecurityLog,
   type FileSystemService,
   type FileWatchEvent,
@@ -21,6 +20,7 @@ import {
   type FileSystemEventType,
 } from "./events.js";
 import { createIgnoreRulesEngine, type IgnoreRulesEngine } from "./ignore.js";
+import { createFileSystemError } from "./errors.js";
 import {
   DEFAULT_DENY_PATTERNS,
   isPathInsideRoots,
@@ -140,7 +140,7 @@ export function createFileWatcherService(
         reason: "outside_roots",
         path: absolutePath,
       });
-      throw new PlatformError(
+      throw createFileSystemError(
         "permission_denied",
         `Path is outside allowed roots: ${absolutePath}`,
         { detail: { path: absolutePath } },
@@ -152,7 +152,7 @@ export function createFileWatcherService(
         reason: "deny_list",
         path: absolutePath,
       });
-      throw new PlatformError(
+      throw createFileSystemError(
         "permission_denied",
         `Access to sensitive path is denied: ${absolutePath}`,
         { detail: { path: absolutePath } },
@@ -176,7 +176,7 @@ export function createFileWatcherService(
         path: resource,
         approvalId: check.approval?.id,
       });
-      throw new PlatformError(
+      throw createFileSystemError(
         "permission_denied",
         check.evaluation.message ||
           "Permission denied for filesystem.read (watchDirectory)",
@@ -402,16 +402,16 @@ export function createFileWatcherService(
       authorize(target);
 
       if (!files.exists(target)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Watch path not found: ${target}`,
           { detail: { path: target } },
         );
       }
       const st = files.stat(target);
       if (!st.isDirectory) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Watch path is not a directory: ${target}`,
           { detail: { path: target } },
         );

@@ -3,7 +3,7 @@
  */
 import path from "node:path";
 
-import { PlatformError } from "@atlas-ai/platform";
+import { createFileSystemError } from "./errors.js";
 
 /** Default deny patterns on forward-slash-normalized paths. */
 export const DEFAULT_DENY_PATTERNS: readonly RegExp[] = [
@@ -51,16 +51,16 @@ export function resolveWithinRoots(
   join: (...parts: string[]) => string,
 ): string {
   if (!roots.length) {
-    throw new PlatformError(
-      "invalid_input",
+    throw createFileSystemError(
+      "invalid_path",
       "FileAccessService requires at least one root directory",
     );
   }
 
   const trimmed = input.trim();
   if (!trimmed) {
-    throw new PlatformError(
-      "invalid_input",
+    throw createFileSystemError(
+      "invalid_path",
       "Path must be a non-empty string",
       { detail: { path: input } },
     );
@@ -72,7 +72,7 @@ export function resolveWithinRoots(
     : path.resolve(join(primary, trimmed));
 
   if (!isPathInsideRoots(absolute, roots)) {
-    throw new PlatformError(
+    throw createFileSystemError(
       "permission_denied",
       `Path is outside allowed roots: ${absolute}`,
       { detail: { path: absolute } },
@@ -108,8 +108,8 @@ export function isPathInsideRoots(
 export function patternToRegExp(pattern: string): RegExp {
   const trimmed = pattern.trim();
   if (!trimmed) {
-    throw new PlatformError(
-      "invalid_input",
+    throw createFileSystemError(
+      "invalid_path",
       "Search pattern must be a non-empty string",
     );
   }

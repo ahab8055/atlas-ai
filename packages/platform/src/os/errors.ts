@@ -11,6 +11,7 @@ export type PlatformErrorCode =
   | "unsupported"
   | "invalid_input"
   | "io_error"
+  | "disk_full"
   | "permission_denied"
   | "resource_not_found"
   | "unknown";
@@ -24,6 +25,8 @@ export interface PlatformErrorDetail {
   platform?: string;
   exitCode?: number | null;
   stderr?: string;
+  /** Product FS error kind when tagged (ADR-0090). */
+  fsKind?: string;
 }
 
 export interface PlatformErrorOptions {
@@ -43,6 +46,7 @@ export function categoryForPlatformCode(
     case "resource_not_found":
       return "resource";
     case "io_error":
+    case "disk_full":
     case "not_implemented":
     case "unsupported":
       return "system";

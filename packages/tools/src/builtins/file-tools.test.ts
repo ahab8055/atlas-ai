@@ -261,6 +261,22 @@ describe("file.* builtin tools", () => {
     expect(result.status).toBe("failed");
   });
 
+  it("returns standardized atlas error objects on file tool failure", () => {
+    const result = executeTool({
+      name: "file.read",
+      input: { path: "does-not-exist.txt" },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.output?.data?.code).toBe("fs_file_not_found");
+    expect(result.output?.data?.atlas).toMatchObject({
+      code: "fs_file_not_found",
+      category: "tool",
+      userMessage: expect.any(String),
+      recoverable: true,
+    });
+    expect(result.output?.data?.kind).toBe("file_not_found");
+  });
+
   it("reads large files in bounded chunks via file.read.chunks", () => {
     const body = "abcdefghijklmnopqrstuvwxyz0123456789";
     setDefaultFileAccessService(

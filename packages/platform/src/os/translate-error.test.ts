@@ -55,6 +55,22 @@ describe("translateNativeError", () => {
     expect(err.code).toBe("permission_denied");
   });
 
+  it("maps ENOSPC and EDQUOT to disk_full", () => {
+    const enospc = translateNativeError(
+      errnoError("ENOSPC", "no space left on device", { syscall: "write" }),
+      { operation: "files.writeBytes", path: "/full" },
+    );
+    expect(enospc.code).toBe("disk_full");
+    expect(enospc.category).toBe("system");
+    expect(enospc.detail?.errno).toBe("ENOSPC");
+
+    const edquot = translateNativeError(
+      errnoError("EDQUOT", "disk quota exceeded"),
+      { operation: "files.writeBytes" },
+    );
+    expect(edquot.code).toBe("disk_full");
+  });
+
   it("maps generic Error to io_error with system category", () => {
     const native = new Error("broken pipe");
     const err = translateNativeError(native, {

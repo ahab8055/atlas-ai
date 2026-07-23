@@ -7,7 +7,7 @@ import path from "node:path";
 
 import type { Logger } from "@atlas-ai/logging";
 import {
-  PlatformError,
+  isPlatformError,
   platformSecurityLog,
   type FileSystemService,
   type PathService,
@@ -18,6 +18,7 @@ import type {
 } from "@atlas-ai/security";
 
 import { createIgnoreRulesEngine, type IgnoreRulesEngine } from "./ignore.js";
+import { createFileSystemError, fromPlatformErrorForFs } from "./errors.js";
 import { mimeForEntry } from "./mime.js";
 import { decodeBytes, encodeBytes } from "./encoding.js";
 import {
@@ -134,7 +135,13 @@ function writeAtomic(
     } catch {
       // best-effort cleanup
     }
-    throw error;
+    if (isPlatformError(error)) {
+      throw fromPlatformErrorForFs(error);
+    }
+    throw createFileSystemError("unknown", `Atomic write failed: ${absolute}`, {
+      detail: { path: absolute },
+      cause: error,
+    });
   }
 }
 
@@ -207,7 +214,7 @@ export function createFileAccessService(
         reason: "outside_roots",
         path: absolutePath,
       });
-      throw new PlatformError(
+      throw createFileSystemError(
         "permission_denied",
         `Path is outside allowed roots: ${absolutePath}`,
         { detail: { path: absolutePath } },
@@ -219,7 +226,7 @@ export function createFileAccessService(
         reason: "deny_list",
         path: absolutePath,
       });
-      throw new PlatformError(
+      throw createFileSystemError(
         "permission_denied",
         `Access to sensitive path is denied: ${absolutePath}`,
         { detail: { path: absolutePath } },
@@ -253,7 +260,7 @@ export function createFileAccessService(
           decisionId: check.decisionId,
           approvalId: check.approval?.id,
         });
-        throw new PlatformError(
+        throw createFileSystemError(
           "permission_denied",
           check.evaluation.message ||
             `Permission denied for ${cap} (${operation})`,
@@ -299,7 +306,7 @@ export function createFileAccessService(
   /** Inside roots, skip deny (for trash internals). */
   function assertInsideRoots(absolutePath: string): void {
     if (!isPathInsideRoots(absolutePath, roots)) {
-      throw new PlatformError(
+      throw createFileSystemError(
         "permission_denied",
         `Path is outside allowed roots: ${absolutePath}`,
         { detail: { path: absolutePath } },
@@ -321,15 +328,15 @@ export function createFileAccessService(
   function backupToTrash(absolute: string): string {
     assertAllowed(absolute);
     if (isUnderAtlasMeta(absolute)) {
-      throw new PlatformError(
-        "invalid_input",
+      throw createFileSystemError(
+        "invalid_path",
         `Cannot backup Atlas metadata path: ${absolute}`,
         { detail: { path: absolute } },
       );
     }
     if (!files.exists(absolute)) {
-      throw new PlatformError(
-        "resource_not_found",
+      throw createFileSystemError(
+        "file_not_found",
         `Path not found: ${absolute}`,
         { detail: { path: absolute } },
       );
@@ -367,8 +374,8 @@ export function createFileAccessService(
     assertAllowed(to);
     const toStat = files.stat(to);
     if (!overwrite) {
-      throw new PlatformError(
-        "invalid_input",
+      throw createFileSystemError(
+        "invalid_path",
         `Destination already exists: ${to}`,
         { detail: { path: to } },
       );
@@ -376,8 +383,8 @@ export function createFileAccessService(
     if (toStat.isDirectory) {
       const children = files.listDir(to);
       if (children.length > 0) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Destination directory is not empty: ${to}`,
           { detail: { path: to } },
         );
@@ -391,8 +398,8 @@ export function createFileAccessService(
     const parent = parentDir(to);
     if (parent && parent !== to && !files.exists(parent)) {
       if (!createDirs) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Parent directory does not exist: ${parent}`,
           { detail: { path: parent } },
         );
@@ -407,8 +414,8 @@ export function createFileAccessService(
     }
     const fromPrefix = from.endsWith(path.sep) ? from : `${from}${path.sep}`;
     if (to === from || to.startsWith(fromPrefix)) {
-      throw new PlatformError(
-        "invalid_input",
+      throw createFileSystemError(
+        "invalid_path",
         `Cannot place a directory inside itself: ${from} → ${to}`,
         { detail: { path: from } },
       );
@@ -496,8 +503,8 @@ export function createFileAccessService(
       const absolute = inputPath !== undefined ? resolve(inputPath) : roots[0]!;
       assertAllowed(absolute);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Directory not found: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -507,15 +514,15 @@ export function createFileAccessService(
         // Listing a symlink path: follow for "is this a dir?" via stat
         const followed = files.stat(absolute);
         if (!followed.isDirectory) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Not a directory: ${absolute}`,
             { detail: { path: absolute } },
           );
         }
       } else if (!st.isDirectory) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Not a directory: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -634,8 +641,8 @@ export function createFileAccessService(
       };
 
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Directory not found: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -652,34 +659,34 @@ export function createFileAccessService(
           assertAllowed(target);
           startDir = target;
         } else if (!rootLstat.isDirectory && !rootLstat.isSymbolicLink) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Not a directory: ${absolute}`,
             { detail: { path: absolute } },
           );
         } else if (rootLstat.isSymbolicLink && !followSymlinks) {
           const followed = files.stat(absolute);
           if (!followed.isDirectory) {
-            throw new PlatformError(
-              "invalid_input",
+            throw createFileSystemError(
+              "invalid_path",
               `Not a directory: ${absolute}`,
               { detail: { path: absolute } },
             );
           }
           // Without followSymlinks, still list through the link path as dir
         } else if (!rootLstat.isDirectory) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Not a directory: ${absolute}`,
             { detail: { path: absolute } },
           );
         }
       } catch (error) {
-        if (error instanceof PlatformError) {
-          throw error;
+        if (isPlatformError(error)) {
+          throw fromPlatformErrorForFs(error);
         }
-        throw new PlatformError(
-          "io_error",
+        throw createFileSystemError(
+          "unknown",
           `Cannot walk directory: ${absolute}`,
           { detail: { path: absolute }, cause: error },
         );
@@ -704,8 +711,8 @@ export function createFileAccessService(
       assertAllowed(searchRoot);
 
       if (!files.exists(searchRoot)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Search root does not exist: ${searchRoot}`,
           { detail: { path: searchRoot } },
         );
@@ -899,16 +906,16 @@ export function createFileAccessService(
       authorize("filesystem.read", "readFile", inputPath, false);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `File not found: ${absolute}`,
           { detail: { path: absolute } },
         );
       }
       const st = files.stat(absolute);
       if (st.isDirectory) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Cannot read a directory as a file: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -921,15 +928,15 @@ export function createFileAccessService(
       const doParse = opts.parse !== false;
 
       if (!Number.isFinite(offset) || offset < 0) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Invalid read offset: ${offset}`,
           { detail: { path: absolute } },
         );
       }
       if (!Number.isFinite(window) || window < 0) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Invalid maxBytes: ${window}`,
           { detail: { path: absolute } },
         );
@@ -954,8 +961,8 @@ export function createFileAccessService(
       const mimeType = detected.mimeType;
 
       if (isUnsupportedBinaryFormat(format)) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "unsupported_type",
           `Unsupported binary file type (${mimeType}): ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -965,8 +972,8 @@ export function createFileAccessService(
       const decoded = decodeBytes(bytes);
 
       if (decoded.binaryLike) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "unsupported_type",
           `File content appears binary (encoding=${decoded.encoding}): ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -985,8 +992,8 @@ export function createFileAccessService(
       const finalMime = refined.mimeType;
 
       if (isUnsupportedBinaryFormat(finalFormat)) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "unsupported_type",
           `Unsupported binary file type (${finalMime}): ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1047,16 +1054,16 @@ export function createFileAccessService(
       authorize("filesystem.read", "readFileChunks", inputPath, false);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `File not found: ${absolute}`,
           { detail: { path: absolute } },
         );
       }
       const st = files.stat(absolute);
       if (st.isDirectory) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Cannot read a directory as a file: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1070,8 +1077,8 @@ export function createFileAccessService(
       });
       const detected = detectFileTypeFromBytes({ extension, bytes: head });
       if (isUnsupportedBinaryFormat(detected.format)) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "unsupported_type",
           `Unsupported binary file type (${detected.mimeType}): ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1084,22 +1091,22 @@ export function createFileAccessService(
         opts.maxBytes !== undefined ? opts.maxBytes : Number.POSITIVE_INFINITY;
 
       if (!Number.isFinite(startOffset) || startOffset < 0) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Invalid read offset: ${startOffset}`,
           { detail: { path: absolute } },
         );
       }
       if (!Number.isFinite(chunkSize) || chunkSize < 1) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Invalid chunkSize: ${chunkSize}`,
           { detail: { path: absolute } },
         );
       }
       if (chunkSize > maxChunkBytes) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `chunkSize ${chunkSize} exceeds maxChunkBytes ${maxChunkBytes}`,
           { detail: { path: absolute } },
         );
@@ -1108,8 +1115,8 @@ export function createFileAccessService(
         opts.maxBytes !== undefined &&
         (!Number.isFinite(opts.maxBytes) || opts.maxBytes < 0)
       ) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Invalid maxBytes: ${opts.maxBytes}`,
           { detail: { path: absolute } },
         );
@@ -1132,8 +1139,8 @@ export function createFileAccessService(
         }
         const decoded = decodeBytes(bytes);
         if (decoded.binaryLike) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "unsupported_type",
             `File content appears binary (encoding=${decoded.encoding}): ${absolute}`,
             { detail: { path: absolute } },
           );
@@ -1197,15 +1204,15 @@ export function createFileAccessService(
       if (existed) {
         const st = files.stat(absolute);
         if (st.isDirectory) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Cannot write file over a directory: ${absolute}`,
             { detail: { path: absolute } },
           );
         }
         if (mode === "create") {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `File already exists: ${absolute}`,
             { detail: { path: absolute } },
           );
@@ -1233,8 +1240,8 @@ export function createFileAccessService(
       const parent = parentDir(absolute);
       if (parent && parent !== absolute && !files.exists(parent)) {
         if (!createDirs) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Parent directory does not exist: ${parent}`,
             { detail: { path: parent } },
           );
@@ -1251,8 +1258,8 @@ export function createFileAccessService(
         const existing = priorBytes ?? new Uint8Array(0);
         if (useAtomic || backupId !== undefined) {
           if (existing.length > maxAtomicAppendBytes) {
-            throw new PlatformError(
-              "invalid_input",
+            throw createFileSystemError(
+              "invalid_path",
               `Atomic append rejected: file exceeds ${maxAtomicAppendBytes} bytes: ${absolute}`,
               { detail: { path: absolute } },
             );
@@ -1283,7 +1290,17 @@ export function createFileAccessService(
       if (useAtomic) {
         writeAtomic(files, absolute, payload);
       } else {
-        files.writeBytes(absolute, payload);
+        try {
+          files.writeBytes(absolute, payload);
+        } catch (error) {
+          if (isPlatformError(error)) {
+            throw fromPlatformErrorForFs(error);
+          }
+          throw createFileSystemError("unknown", `Write failed: ${absolute}`, {
+            detail: { path: absolute },
+            cause: error,
+          });
+        }
       }
 
       noteAccess(absolute, "write");
@@ -1311,8 +1328,8 @@ export function createFileAccessService(
         if (st.isDirectory) {
           return { path: absolute, created: false };
         }
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Path exists and is not a directory: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1321,8 +1338,8 @@ export function createFileAccessService(
       if (!recursive) {
         const parent = parentDir(absolute);
         if (parent && parent !== absolute && !files.exists(parent)) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Parent directory does not exist: ${parent}`,
             { detail: { path: parent } },
           );
@@ -1341,24 +1358,24 @@ export function createFileAccessService(
       authorize("filesystem.delete", "deleteDirectory", inputPath, true, true);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Path not found: ${absolute}`,
           { detail: { path: absolute } },
         );
       }
       const st = files.stat(absolute);
       if (!st.isDirectory) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Not a directory: ${absolute}`,
           { detail: { path: absolute } },
         );
       }
       const children = files.listDir(absolute);
       if (children.length > 0) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Directory is not empty: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1373,15 +1390,15 @@ export function createFileAccessService(
       authorize("filesystem.delete", "deletePath", inputPath, true, true);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Path not found: ${absolute}`,
           { detail: { path: absolute } },
         );
       }
       if (isUnderAtlasMeta(absolute)) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Cannot delete Atlas metadata path: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1394,8 +1411,8 @@ export function createFileAccessService(
       if (kind === "directory" && !useTrash && !recursive) {
         const children = files.listDir(absolute);
         if (children.length > 0) {
-          throw new PlatformError(
-            "invalid_input",
+          throw createFileSystemError(
+            "invalid_path",
             `Directory is not empty: ${absolute}`,
             { detail: { path: absolute } },
           );
@@ -1434,8 +1451,8 @@ export function createFileAccessService(
       );
       const id = trashId.trim();
       if (!id || id.includes("/") || id.includes("\\") || id.includes("..")) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Invalid trash id: ${trashId}`,
         );
       }
@@ -1443,8 +1460,8 @@ export function createFileAccessService(
       assertInsideRoots(entryDir);
       const manifestPath = path.join(entryDir, "manifest.json");
       if (!files.exists(manifestPath)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Trash entry not found: ${id}`,
           { detail: { path: entryDir } },
         );
@@ -1453,8 +1470,8 @@ export function createFileAccessService(
       try {
         manifest = JSON.parse(files.readText(manifestPath)) as TrashManifest;
       } catch (error) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Corrupt trash manifest: ${id}`,
           {
             detail: { path: manifestPath },
@@ -1464,16 +1481,16 @@ export function createFileAccessService(
       }
       assertAllowed(manifest.originalPath);
       if (files.exists(manifest.originalPath)) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Restore target already exists: ${manifest.originalPath}`,
           { detail: { path: manifest.originalPath } },
         );
       }
       const payloadPath = path.join(entryDir, "payload", manifest.payloadName);
       if (!files.exists(payloadPath)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Trash payload missing: ${id}`,
           { detail: { path: payloadPath } },
         );
@@ -1509,8 +1526,8 @@ export function createFileAccessService(
       );
 
       if (!files.exists(from)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Source not found: ${from}`,
           { detail: { path: from } },
         );
@@ -1522,8 +1539,8 @@ export function createFileAccessService(
       rejectSelfNest(from, to, kind);
 
       if (kind === "directory" && !recursive) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Directory copy requires recursive: true: ${from}`,
           { detail: { path: from } },
         );
@@ -1578,8 +1595,8 @@ export function createFileAccessService(
       );
 
       if (!files.exists(from)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Source not found: ${from}`,
           { detail: { path: from } },
         );
@@ -1666,8 +1683,8 @@ export function createFileAccessService(
       authorize("filesystem.read", "getFileMetadata", inputPath, false);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Path not found: ${absolute}`,
           { detail: { path: absolute } },
         );
@@ -1773,16 +1790,16 @@ export function createFileAccessService(
       authorize("filesystem.read", "detectFileType", inputPath, false);
       const absolute = resolve(inputPath);
       if (!files.exists(absolute)) {
-        throw new PlatformError(
-          "resource_not_found",
+        throw createFileSystemError(
+          "file_not_found",
           `Path not found: ${absolute}`,
           { detail: { path: absolute } },
         );
       }
       const st = files.stat(absolute);
       if (st.isDirectory) {
-        throw new PlatformError(
-          "invalid_input",
+        throw createFileSystemError(
+          "invalid_path",
           `Cannot detect type of a directory: ${absolute}`,
           { detail: { path: absolute } },
         );

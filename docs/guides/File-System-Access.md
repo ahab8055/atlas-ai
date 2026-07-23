@@ -22,6 +22,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0087](../adr/0087-file-indexing-service.md),
 [ADR-0088](../adr/0088-large-file-processing.md),
 [ADR-0089](../adr/0089-file-type-detection.md),
+[ADR-0090](../adr/0090-file-system-error-handling.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -307,7 +308,8 @@ Order for each public `FileAccessService` method:
 
 1. **Capability** — `PermissionManager.requestPermission` when `permissions` is
    injected (skipped in memory-FS unit tests without a manager).
-2. **Path sandbox** — roots + deny patterns → `PlatformError` `permission_denied`.
+2. **Path sandbox** — roots + deny patterns → `FileSystemError`
+   `permission_denied`.
 3. **IO** — injected `os.files` (broker still checks caps on brokered hosts).
 
 | Methods                                                   | Capability                               |
@@ -320,6 +322,27 @@ Order for each public `FileAccessService` method:
 Security logs: **warn** on capability or path deny; **info** when a mutating
 op is allowed. File contents are never logged. The OS Permission Broker remains
 defense-in-depth (ADR-0066).
+
+---
+
+## Error handling (ADR-0090)
+
+Product FS throws `FileSystemError` (extends `PlatformError`) with a stable
+`kind`:
+
+| Kind                | Platform code        | Atlas code             | Typical cause                                |
+| ------------------- | -------------------- | ---------------------- | -------------------------------------------- |
+| `permission_denied` | `permission_denied`  | `fs_permission_denied` | Outside roots, deny list, missing capability |
+| `file_not_found`    | `resource_not_found` | `fs_file_not_found`    | Missing path                                 |
+| `invalid_path`      | `invalid_input`      | `fs_invalid_path`      | Empty/bad path, wrong entry type for op      |
+| `unsupported_type`  | `unsupported`        | `fs_unsupported_type`  | Binary / unsupported format                  |
+| `disk_full`         | `disk_full`          | `fs_disk_full`         | `ENOSPC` / `EDQUOT`                          |
+| `unknown`           | `unknown`            | `fs_unknown`           | Unexpected failure                           |
+
+`toAtlasFileSystemError` builds AtlasErrorResponse-compatible objects. File
+tools attach them as `data.atlas` (plus `data.code` / `data.kind`). Core
+`fromPlatformError` prefers these `fs_*` codes when `FileSystemError` /
+`detail.fsKind` / `disk_full` is present.
 
 ---
 

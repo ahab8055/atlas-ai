@@ -10,6 +10,7 @@ import {
   createFileAccessService,
   createMemoryFileSystemService,
   getDefaultFileAccessService,
+  isFileSystemError,
   setDefaultFileAccessService,
 } from "./index.js";
 
@@ -335,6 +336,35 @@ describe("FileAccessService", () => {
     expect(md.data).toBeUndefined();
 
     expect(() => svc.readFile("photo.png")).toThrow(PlatformError);
+  });
+
+  it("returns standardized FileSystemError kinds for missing and unsupported", () => {
+    const svc = buildService({
+      [ROOT]: null,
+      [`${ROOT}/photo.png`]: "not-really-png",
+    });
+
+    try {
+      svc.readFile("missing.txt");
+      expect.unreachable();
+    } catch (error) {
+      expect(isFileSystemError(error)).toBe(true);
+      if (isFileSystemError(error)) {
+        expect(error.kind).toBe("file_not_found");
+        expect(error.code).toBe("resource_not_found");
+      }
+    }
+
+    try {
+      svc.readFile("photo.png");
+      expect.unreachable();
+    } catch (error) {
+      expect(isFileSystemError(error)).toBe(true);
+      if (isFileSystemError(error)) {
+        expect(error.kind).toBe("unsupported_type");
+        expect(error.code).toBe("unsupported");
+      }
+    }
   });
 
   it("detects type from content when extension is wrong", () => {
