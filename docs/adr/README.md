@@ -111,6 +111,7 @@ Skip ADRs for trivial or easily reversible changes (typos, small refactors, depe
 | [0085](./0085-recent-files-index.md)                      | Recent files index (MRU)                | Accepted |
 | [0086](./0086-ignore-rules-engine.md)                     | Ignore rules engine                     | Accepted |
 | [0087](./0087-file-indexing-service.md)                   | File indexing service (FTS)             | Accepted |
+| [0088](./0088-large-file-processing.md)                   | Large file processing (chunks)          | Accepted |
 
 ## Naming
 

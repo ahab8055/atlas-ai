@@ -352,6 +352,52 @@ describe("FileAccessService", () => {
     expect(part.parseError).toBe("parse skipped: content truncated");
   });
 
+  it("streams large files via readFileChunks without loading whole file", () => {
+    const body = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const svc = createFileAccessService({
+      files: createMemoryFileSystemService({
+        [ROOT]: null,
+        [`${ROOT}/huge.txt`]: body,
+      }),
+      roots: [ROOT],
+      maxChunkBytes: 8,
+      maxReadBytes: 8,
+      paths: {
+        homeDir: () => "/home/test",
+        tempDir: () => "/tmp",
+        userDataDir: () => "/home/test/.atlas",
+        cacheDir: () => "/home/test/.cache",
+        cwd: () => ROOT,
+        join: (...parts: string[]) => path.posix.join(...parts),
+      },
+    });
+
+    const chunks = [...svc.readFileChunks("huge.txt", { chunkSize: 8 })];
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.map((c) => c.content).join("")).toBe(body);
+    expect(chunks[0]?.byteOffset).toBe(0);
+    expect(chunks[1]?.byteOffset).toBe(8);
+    expect(chunks.at(-1)?.eof).toBe(true);
+    expect(chunks.slice(0, -1).every((c) => c.truncated && !c.eof)).toBe(true);
+
+    const budgeted = [
+      ...svc.readFileChunks("huge.txt", { chunkSize: 8, maxBytes: 16 }),
+    ];
+    expect(budgeted).toHaveLength(2);
+    expect(budgeted.at(-1)?.truncated).toBe(true);
+    expect(budgeted.at(-1)?.eof).toBe(false);
+
+    expect(() => [
+      ...svc.readFileChunks("huge.txt", { chunkSize: 64 }),
+    ]).toThrow(PlatformError);
+
+    const walked = svc.forEachFileChunk("huge.txt", () => {}, {
+      chunkSize: 8,
+    });
+    expect(walked.chunks).toBe(5);
+    expect(walked.bytesRead).toBe(body.length);
+  });
+
   it("writes with create, overwrite, append, and atomic modes", () => {
     const svc = buildService({ [ROOT]: null });
 

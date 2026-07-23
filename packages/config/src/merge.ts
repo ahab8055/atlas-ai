@@ -520,6 +520,20 @@ function mergeFilesystem(
       patch.useBuiltinIgnoreDefaults,
       base.useBuiltinIgnoreDefaults,
     ),
+    maxReadBytes: Math.max(
+      1,
+      Math.floor(asNumber(patch.maxReadBytes, base.maxReadBytes)),
+    ),
+    maxChunkBytes: Math.max(
+      1,
+      Math.floor(asNumber(patch.maxChunkBytes, base.maxChunkBytes)),
+    ),
+    maxAtomicAppendBytes: Math.max(
+      1,
+      Math.floor(
+        asNumber(patch.maxAtomicAppendBytes, base.maxAtomicAppendBytes),
+      ),
+    ),
   };
 }
 
@@ -902,6 +916,18 @@ export function applyEnvOverrides(
         envVars.ATLAS_FS_BUILTIN_IGNORE !== undefined
           ? envVars.ATLAS_FS_BUILTIN_IGNORE === "true"
           : config.filesystem.useBuiltinIgnoreDefaults,
+      maxReadBytes:
+        envVars.ATLAS_FS_MAX_READ_BYTES !== undefined
+          ? Number(envVars.ATLAS_FS_MAX_READ_BYTES)
+          : config.filesystem.maxReadBytes,
+      maxChunkBytes:
+        envVars.ATLAS_FS_MAX_CHUNK_BYTES !== undefined
+          ? Number(envVars.ATLAS_FS_MAX_CHUNK_BYTES)
+          : config.filesystem.maxChunkBytes,
+      maxAtomicAppendBytes:
+        envVars.ATLAS_FS_MAX_ATOMIC_APPEND_BYTES !== undefined
+          ? Number(envVars.ATLAS_FS_MAX_ATOMIC_APPEND_BYTES)
+          : config.filesystem.maxAtomicAppendBytes,
     },
     context: {
       builder: {

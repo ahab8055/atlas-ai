@@ -208,6 +208,99 @@ export const fileRead = defineTool(
   },
 );
 
+export const fileReadChunks = defineTool(
+  {
+    name: "file.read.chunks",
+    description:
+      "Read a local file in sequential byte windows (memory-safe for large files)",
+    version: "1.0.0",
+    permissions: ["filesystem.read"],
+    risk: "medium",
+    tags: ["filesystem", "mvp", "reading", "chunks"],
+    inputSchema: {
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: { type: "string" },
+        chunkSize: { type: "number" },
+        maxBytes: { type: "number" },
+        offset: { type: "number" },
+        maxChunks: { type: "number" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      required: ["message", "path", "chunks", "chunksReturned", "truncated"],
+      properties: {
+        message: { type: "string" },
+        path: { type: "string" },
+        chunks: { type: "array" },
+        chunksReturned: { type: "number" },
+        truncated: { type: "boolean" },
+      },
+    },
+  },
+  (input) => {
+    try {
+      const maxChunks =
+        typeof input.maxChunks === "number" &&
+        Number.isFinite(input.maxChunks) &&
+        input.maxChunks >= 1
+          ? Math.floor(input.maxChunks)
+          : 32;
+      const result = callFs((fs) => {
+        const chunks: Array<{
+          index: number;
+          byteOffset: number;
+          byteLength: number;
+          content: string;
+          eof: boolean;
+        }> = [];
+        let truncated = false;
+        let lastPath = String(input.path ?? "");
+        for (const chunk of fs.readFileChunks(String(input.path ?? ""), {
+          chunkSize:
+            typeof input.chunkSize === "number" ? input.chunkSize : undefined,
+          maxBytes:
+            typeof input.maxBytes === "number" ? input.maxBytes : undefined,
+          offset: typeof input.offset === "number" ? input.offset : undefined,
+        })) {
+          lastPath = chunk.path;
+          if (chunks.length >= maxChunks) {
+            truncated = true;
+            break;
+          }
+          chunks.push({
+            index: chunk.index,
+            byteOffset: chunk.byteOffset,
+            byteLength: chunk.byteLength,
+            content: chunk.content,
+            eof: chunk.eof,
+          });
+          if (chunk.truncated && !chunk.eof) {
+            truncated = true;
+          }
+        }
+        return { path: lastPath, chunks, truncated };
+      });
+      const message = `Read ${result.chunks.length} chunk(s) from ${result.path}${result.truncated ? " (truncated)" : ""}`;
+      return {
+        ok: true,
+        message,
+        data: {
+          message,
+          path: result.path,
+          chunks: result.chunks,
+          chunksReturned: result.chunks.length,
+          truncated: result.truncated,
+        },
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  },
+);
+
 export const fileWrite = defineTool(
   {
     name: "file.write",

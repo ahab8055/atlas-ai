@@ -80,6 +80,34 @@ export interface ReadFileOptions {
   parse?: boolean;
 }
 
+/** Options for sequential chunked reads (ADR-0088). */
+export interface ReadFileChunksOptions {
+  /** Bytes per chunk (default min(maxReadBytes, maxChunkBytes)). */
+  chunkSize?: number;
+  /** Optional total byte budget across all chunks. */
+  maxBytes?: number;
+  /** Start offset (default 0). */
+  offset?: number;
+  /** Text decoding only in this slice. */
+  encoding?: "utf-8";
+}
+
+export interface FileChunk {
+  path: string;
+  index: number;
+  byteOffset: number;
+  byteLength: number;
+  content: string;
+  /** True when more file data remains after this chunk (or budget stopped early). */
+  truncated: boolean;
+  eof: boolean;
+}
+
+export interface ForEachFileChunkResult {
+  chunks: number;
+  bytesRead: number;
+}
+
 export interface WriteFileOptions {
   /** Create parent directories when missing (default true). */
   createDirs?: boolean;
@@ -219,6 +247,18 @@ export interface PathExistsResult {
 export interface FileAccessService {
   findFiles(query: FindFilesQuery): FileSearchResult;
   readFile(path: string, opts?: ReadFileOptions): FileContent;
+  /**
+   * Sequential windowed reads — peak memory ≈ one chunk (ADR-0088).
+   */
+  readFileChunks(
+    path: string,
+    opts?: ReadFileChunksOptions,
+  ): IterableIterator<FileChunk>;
+  forEachFileChunk(
+    path: string,
+    fn: (chunk: FileChunk) => void,
+    opts?: ReadFileChunksOptions,
+  ): ForEachFileChunkResult;
   writeFile(
     path: string,
     content: string,

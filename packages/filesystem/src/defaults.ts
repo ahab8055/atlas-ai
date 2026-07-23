@@ -80,6 +80,8 @@ export function bootstrapFileAccessFromRegistry(
     roots: options.roots ?? [paths.cwd()],
     maxDepth: options.maxDepth,
     maxReadBytes: options.maxReadBytes,
+    maxChunkBytes: options.maxChunkBytes,
+    maxAtomicAppendBytes: options.maxAtomicAppendBytes,
     denyPatterns: options.denyPatterns,
     defaultLimit: options.defaultLimit,
     permissions: options.permissions,

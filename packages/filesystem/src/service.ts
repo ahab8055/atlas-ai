@@ -54,6 +54,9 @@ import type {
   MovePathResult,
   PathExistsResult,
   ReadFileOptions,
+  ReadFileChunksOptions,
+  FileChunk,
+  ForEachFileChunkResult,
   RestorePathResult,
   WalkDirectoryOptions,
   WriteEncoding,
@@ -63,10 +66,11 @@ import type {
 } from "./types.js";
 
 const DEFAULT_MAX_DEPTH = 8;
-const DEFAULT_MAX_READ_BYTES = 256 * 1024;
+export const DEFAULT_MAX_READ_BYTES = 256 * 1024;
+export const DEFAULT_MAX_CHUNK_BYTES = 256 * 1024;
 const DEFAULT_LIMIT = 50;
 const DEFAULT_MAX_CHECKSUM_BYTES = 16 * 1024 * 1024;
-const DEFAULT_MAX_ATOMIC_APPEND_BYTES = 16 * 1024 * 1024;
+export const DEFAULT_MAX_ATOMIC_APPEND_BYTES = 16 * 1024 * 1024;
 
 export interface FileAccessServiceOptions {
   files: FileSystemService;
@@ -75,6 +79,10 @@ export interface FileAccessServiceOptions {
   roots?: string[];
   maxDepth?: number;
   maxReadBytes?: number;
+  /** Cap for readFileChunks chunkSize (ADR-0088). */
+  maxChunkBytes?: number;
+  /** Atomic append rewrite size cap (ADR-0079 / 0088). */
+  maxAtomicAppendBytes?: number;
   denyPatterns?: RegExp[];
   /** Max search hits (overridable per findFiles call). */
   defaultLimit?: number;
@@ -141,6 +149,9 @@ export function createFileAccessService(
   );
   const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
   const maxReadBytes = options.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
+  const maxChunkBytes = options.maxChunkBytes ?? DEFAULT_MAX_CHUNK_BYTES;
+  const maxAtomicAppendBytes =
+    options.maxAtomicAppendBytes ?? DEFAULT_MAX_ATOMIC_APPEND_BYTES;
   const denyPatterns = options.denyPatterns ?? [...DEFAULT_DENY_PATTERNS];
   const defaultLimit = options.defaultLimit ?? DEFAULT_LIMIT;
   const ignoreEngine: IgnoreRulesEngine =
@@ -990,6 +1001,142 @@ export function createFileAccessService(
       return result;
     },
 
+    *readFileChunks(
+      inputPath: string,
+      opts: ReadFileChunksOptions = {},
+    ): IterableIterator<FileChunk> {
+      authorize("filesystem.read", "readFileChunks", inputPath, false);
+      const absolute = resolve(inputPath);
+      if (!files.exists(absolute)) {
+        throw new PlatformError(
+          "resource_not_found",
+          `File not found: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+      const st = files.stat(absolute);
+      if (st.isDirectory) {
+        throw new PlatformError(
+          "invalid_input",
+          `Cannot read a directory as a file: ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      const name = path.basename(absolute);
+      const extension = fileExtension(name);
+      const format = formatFromExtension(extension);
+      if (isUnsupportedBinaryFormat(format)) {
+        throw new PlatformError(
+          "invalid_input",
+          `Unsupported binary file type (${mimeFromExtension(extension)}): ${absolute}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      const startOffset = opts.offset ?? 0;
+      const defaultChunk = Math.min(maxReadBytes, maxChunkBytes);
+      const chunkSize = opts.chunkSize ?? defaultChunk;
+      const budget =
+        opts.maxBytes !== undefined ? opts.maxBytes : Number.POSITIVE_INFINITY;
+
+      if (!Number.isFinite(startOffset) || startOffset < 0) {
+        throw new PlatformError(
+          "invalid_input",
+          `Invalid read offset: ${startOffset}`,
+          { detail: { path: absolute } },
+        );
+      }
+      if (!Number.isFinite(chunkSize) || chunkSize < 1) {
+        throw new PlatformError(
+          "invalid_input",
+          `Invalid chunkSize: ${chunkSize}`,
+          { detail: { path: absolute } },
+        );
+      }
+      if (chunkSize > maxChunkBytes) {
+        throw new PlatformError(
+          "invalid_input",
+          `chunkSize ${chunkSize} exceeds maxChunkBytes ${maxChunkBytes}`,
+          { detail: { path: absolute } },
+        );
+      }
+      if (
+        opts.maxBytes !== undefined &&
+        (!Number.isFinite(opts.maxBytes) || opts.maxBytes < 0)
+      ) {
+        throw new PlatformError(
+          "invalid_input",
+          `Invalid maxBytes: ${opts.maxBytes}`,
+          { detail: { path: absolute } },
+        );
+      }
+
+      let offset = startOffset;
+      let index = 0;
+      let bytesRead = 0;
+      let accessed = false;
+
+      while (offset < st.size && bytesRead < budget) {
+        const remainingBudget = budget - bytesRead;
+        const length = Math.min(chunkSize, remainingBudget);
+        if (length < 1) {
+          break;
+        }
+        const bytes = files.readBytes(absolute, { offset, length });
+        if (bytes.length === 0) {
+          break;
+        }
+        const decoded = decodeBytes(bytes);
+        if (decoded.binaryLike) {
+          throw new PlatformError(
+            "invalid_input",
+            `File content appears binary (encoding=${decoded.encoding}): ${absolute}`,
+            { detail: { path: absolute } },
+          );
+        }
+        if (!accessed) {
+          noteAccess(absolute, "read");
+          accessed = true;
+        }
+        const nextOffset = offset + bytes.length;
+        const moreInFile = nextOffset < st.size;
+        const budgetExhausted =
+          bytesRead + bytes.length >= budget && moreInFile;
+        const eof = !moreInFile;
+        yield {
+          path: absolute,
+          index,
+          byteOffset: offset,
+          byteLength: bytes.length,
+          content: decoded.text,
+          truncated: moreInFile || budgetExhausted,
+          eof,
+        };
+        bytesRead += bytes.length;
+        offset = nextOffset;
+        index += 1;
+        if (bytes.length < length) {
+          break;
+        }
+      }
+    },
+
+    forEachFileChunk(
+      inputPath: string,
+      fn: (chunk: FileChunk) => void,
+      opts: ReadFileChunksOptions = {},
+    ): ForEachFileChunkResult {
+      let chunks = 0;
+      let bytesRead = 0;
+      for (const chunk of this.readFileChunks(inputPath, opts)) {
+        fn(chunk);
+        chunks += 1;
+        bytesRead += chunk.byteLength;
+      }
+      return { chunks, bytesRead };
+    },
+
     writeFile(
       inputPath: string,
       content: string,
@@ -1060,10 +1207,10 @@ export function createFileAccessService(
       if (mode === "append") {
         const existing = priorBytes ?? new Uint8Array(0);
         if (useAtomic || backupId !== undefined) {
-          if (existing.length > DEFAULT_MAX_ATOMIC_APPEND_BYTES) {
+          if (existing.length > maxAtomicAppendBytes) {
             throw new PlatformError(
               "invalid_input",
-              `Atomic append rejected: file exceeds ${DEFAULT_MAX_ATOMIC_APPEND_BYTES} bytes: ${absolute}`,
+              `Atomic append rejected: file exceeds ${maxAtomicAppendBytes} bytes: ${absolute}`,
               { detail: { path: absolute } },
             );
           }

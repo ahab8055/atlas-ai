@@ -157,6 +157,9 @@ export function createCliRuntime(options: CliOptions): CliRuntime {
     respectGitignore: config.filesystem?.respectGitignore,
     respectAtlasignore: config.filesystem?.respectAtlasignore,
     useBuiltinIgnoreDefaults: config.filesystem?.useBuiltinIgnoreDefaults,
+    maxReadBytes: config.filesystem?.maxReadBytes,
+    maxChunkBytes: config.filesystem?.maxChunkBytes,
+    maxAtomicAppendBytes: config.filesystem?.maxAtomicAppendBytes,
     ...(database
       ? {
           onAccess: (event) => {

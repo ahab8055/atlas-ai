@@ -106,6 +106,9 @@ export const DEFAULT_APP_CONFIG: AtlasAppConfig = {
     respectGitignore: true,
     respectAtlasignore: true,
     useBuiltinIgnoreDefaults: true,
+    maxReadBytes: 262_144,
+    maxChunkBytes: 262_144,
+    maxAtomicAppendBytes: 16_777_216,
   },
   context: {
     builder: {

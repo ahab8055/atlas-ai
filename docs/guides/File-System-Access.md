@@ -20,6 +20,7 @@ Related: [Platform-Abstraction.md](./Platform-Abstraction.md),
 [ADR-0085](../adr/0085-recent-files-index.md),
 [ADR-0086](../adr/0086-ignore-rules-engine.md),
 [ADR-0087](../adr/0087-file-indexing-service.md),
+[ADR-0088](../adr/0088-large-file-processing.md),
 [`@atlas-ai/filesystem`](../../packages/filesystem/).
 
 ---
@@ -100,7 +101,7 @@ Options: `createDirs` (default true), `mode` (`create` | `overwrite` |
 create/overwrite; false for append), `bom` (UTF-8 only; UTF-16 always BOM).
 
 Atomic writes use temp `writeBytes` + `rename`. Atomic append rewrites under
-16 MiB; otherwise `appendBytes`.
+`maxAtomicAppendBytes` (default 16 MiB); otherwise `appendBytes`.
 
 ### Reading engine (ADR-0078)
 
@@ -120,7 +121,32 @@ Options: `offset` (default 0), `maxBytes` (default service maxReadBytes /
 256 KiB), `parse` (default true). Large files use a byte window
 (`truncated: true`); known binary types and binary-like content are rejected.
 JSON / YAML / CSV are parsed safely (no new deps); Markdown / XML / source
-return text + format only.
+return text + format only. Prefer chunk APIs below when walking multi-window
+files.
+
+### Large file processing (ADR-0088)
+
+Sequential windowed reads built on `os.files.readBytes` — peak memory ≈ one
+chunk (no Node `ReadableStream` / full-file buffer).
+
+```ts
+readFileChunks(path, opts?): IterableIterator<FileChunk>;
+forEachFileChunk(path, fn, opts?): { chunks: number; bytesRead: number };
+```
+
+`FileChunk`: `{ path, index, byteOffset, byteLength, content, truncated, eof }`.
+
+Options: `chunkSize` (default `min(maxReadBytes, maxChunkBytes)`), `maxBytes`
+(optional total budget), `offset` (default 0). `chunkSize > maxChunkBytes`
+throws `invalid_input`. Does not parse JSON/YAML/CSV across chunks.
+
+| Limit                  | Default | Role                          |
+| ---------------------- | ------- | ----------------------------- |
+| `maxReadBytes`         | 256 KiB | Single `readFile` window      |
+| `maxChunkBytes`        | 256 KiB | Cap for `readFileChunks` size |
+| `maxAtomicAppendBytes` | 16 MiB  | Atomic-append rewrite cap     |
+
+Config/env: see [Configuration.md](./Configuration.md).
 
 ### Search engine (ADR-0076)
 
@@ -189,23 +215,24 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 
 ## Tools
 
-| Tool            | Capability                    | Maps to           |
-| --------------- | ----------------------------- | ----------------- |
-| `file.search`   | `filesystem.read`             | `findFiles`       |
-| `file.read`     | `filesystem.read`             | `readFile`        |
-| `file.write`    | `filesystem.write`            | `writeFile`       |
-| `file.mkdir`    | `filesystem.write`            | `createDirectory` |
-| `file.delete`   | `filesystem.delete`           | `deletePath`      |
-| `file.move`     | `filesystem.write` + `delete` | `movePath`        |
-| `file.copy`     | `filesystem.write`            | `copyPath`        |
-| `file.rename`   | `filesystem.write` + `delete` | `renamePath`      |
-| `file.restore`  | `filesystem.write` + `delete` | `restorePath`     |
-| `file.rmdir`    | `filesystem.delete`           | `deleteDirectory` |
-| `file.exists`   | `filesystem.read`             | `pathExists`      |
-| `file.resolve`  | `filesystem.read`             | `resolvePath`     |
-| `file.list`     | `filesystem.read`             | `listDirectory`   |
-| `file.walk`     | `filesystem.read`             | `walkDirectory`   |
-| `file.metadata` | `filesystem.read`             | `getFileMetadata` |
+| Tool               | Capability                    | Maps to           |
+| ------------------ | ----------------------------- | ----------------- |
+| `file.search`      | `filesystem.read`             | `findFiles`       |
+| `file.read`        | `filesystem.read`             | `readFile`        |
+| `file.read.chunks` | `filesystem.read`             | `readFileChunks`  |
+| `file.write`       | `filesystem.write`            | `writeFile`       |
+| `file.mkdir`       | `filesystem.write`            | `createDirectory` |
+| `file.delete`      | `filesystem.delete`           | `deletePath`      |
+| `file.move`        | `filesystem.write` + `delete` | `movePath`        |
+| `file.copy`        | `filesystem.write`            | `copyPath`        |
+| `file.rename`      | `filesystem.write` + `delete` | `renamePath`      |
+| `file.restore`     | `filesystem.write` + `delete` | `restorePath`     |
+| `file.rmdir`       | `filesystem.delete`           | `deleteDirectory` |
+| `file.exists`      | `filesystem.read`             | `pathExists`      |
+| `file.resolve`     | `filesystem.read`             | `resolvePath`     |
+| `file.list`        | `filesystem.read`             | `listDirectory`   |
+| `file.walk`        | `filesystem.read`             | `walkDirectory`   |
+| `file.metadata`    | `filesystem.read`             | `getFileMetadata` |
 
 `file.search` accepts `query`, `root`, `content`, `limit`, `maxDepth`,
 `includeHidden`, `extensions`, `filesOnly` and returns hit metadata plus
@@ -215,7 +242,12 @@ MIME is extension-based; directories → `inode/directory`; unfollowed symlinks 
 `includeChecksum`, `maxChecksumBytes`.
 
 `file.read` accepts `path` plus optional `offset`, `maxBytes`, `parse` and
-returns format / encoding / truncation / optional structured `data`.
+returns format / encoding / truncation / optional structured `data`. Prefer
+`file.read.chunks` for large files.
+
+`file.read.chunks` accepts `path` plus optional `chunkSize`, `maxBytes`,
+`offset`, `maxChunks` (default **32**) and returns an array of chunk summaries
+plus `chunksReturned` / `truncated` (stops early when `maxChunks` is hit).
 
 `file.write` accepts `path`, `content`, plus optional `mode`, `overwrite`,
 `encoding`, `atomic`, `bom`, `createDirs` and returns write result fields.
@@ -242,12 +274,12 @@ Order for each public `FileAccessService` method:
 2. **Path sandbox** — roots + deny patterns → `PlatformError` `permission_denied`.
 3. **IO** — injected `os.files` (broker still checks caps on brokered hosts).
 
-| Methods                                     | Capability                               |
-| ------------------------------------------- | ---------------------------------------- |
-| find/read/list/walk/resolve/exists/metadata | `filesystem.read`                        |
-| write/mkdir/copy                            | `filesystem.write`                       |
-| delete (file/dir/path)                      | `filesystem.delete`                      |
-| move / rename / restore                     | `filesystem.write` + `filesystem.delete` |
+| Methods                                            | Capability                               |
+| -------------------------------------------------- | ---------------------------------------- |
+| find/read/list/walk/resolve/exists/metadata/chunks | `filesystem.read`                        |
+| write/mkdir/copy                                   | `filesystem.write`                       |
+| delete (file/dir/path)                             | `filesystem.delete`                      |
+| move / rename / restore                            | `filesystem.write` + `filesystem.delete` |
 
 Security logs: **warn** on capability or path deny; **info** when a mutating
 op is allowed. File contents are never logged. The OS Permission Broker remains
@@ -367,4 +399,4 @@ pnpm packages:build
 - Tauri native FS plugins / chokidar
 - Changing `deleteDirectory` empty-only semantics
 - Content-based MIME sniffing / Windows ACL owner resolution
-- Full YAML 1.2 / XML DOM / Markdown AST / streaming multi-GB without a window
+- Full YAML 1.2 / XML DOM / Markdown AST / Node ReadableStream / multi-GB without windows

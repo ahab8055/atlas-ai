@@ -205,6 +205,12 @@ export interface AtlasFilesystemConfig {
   respectAtlasignore: boolean;
   /** Apply built-in node_modules/temp/build ignores (default true). */
   useBuiltinIgnoreDefaults: boolean;
+  /** Single `readFile` window cap in bytes (default 262144). */
+  maxReadBytes: number;
+  /** Cap for `readFileChunks` chunkSize in bytes (default 262144). */
+  maxChunkBytes: number;
+  /** Atomic-append rewrite cap in bytes (default 16777216). */
+  maxAtomicAppendBytes: number;
 }
 
 export interface AtlasContextBuilderConfig {

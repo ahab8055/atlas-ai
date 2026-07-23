@@ -53,6 +53,7 @@ describe("file.* builtin tools", () => {
       expect.arrayContaining([
         "file.search",
         "file.read",
+        "file.read.chunks",
         "file.write",
         "file.mkdir",
         "file.delete",
@@ -257,6 +258,41 @@ describe("file.* builtin tools", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.status).toBe("failed");
+  });
+
+  it("reads large files in bounded chunks via file.read.chunks", () => {
+    const body = "abcdefghijklmnopqrstuvwxyz0123456789";
+    setDefaultFileAccessService(
+      createFileAccessService({
+        files: createMemoryFileSystemService({
+          [ROOT]: null,
+          [`${ROOT}/huge.txt`]: body,
+        }),
+        roots: [ROOT],
+        maxChunkBytes: 8,
+        maxReadBytes: 8,
+        paths: {
+          homeDir: () => "/home",
+          tempDir: () => "/tmp",
+          userDataDir: () => "/home/.atlas",
+          cacheDir: () => "/home/.cache",
+          cwd: () => ROOT,
+          join: (...parts: string[]) => path.posix.join(...parts),
+        },
+      }),
+    );
+
+    const result = executeTool({
+      name: "file.read.chunks",
+      input: { path: "huge.txt", chunkSize: 8, maxChunks: 2 },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.output?.data?.chunksReturned).toBe(2);
+    expect(result.output?.data?.truncated).toBe(true);
+    const chunks = result.output?.data?.chunks as Array<{ content: string }>;
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0]?.content).toBe("abcdefgh");
+    expect(chunks[1]?.content).toBe("ijklmnop");
   });
 
   it("lists recent files via injected store", () => {

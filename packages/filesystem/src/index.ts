@@ -21,6 +21,9 @@ export type {
   MovePathResult,
   PathExistsResult,
   ReadFileOptions,
+  ReadFileChunksOptions,
+  FileChunk,
+  ForEachFileChunkResult,
   RestorePathResult,
   WalkDirectoryOptions,
   WriteEncoding,
@@ -31,6 +34,9 @@ export type {
 
 export {
   createFileAccessService,
+  DEFAULT_MAX_READ_BYTES,
+  DEFAULT_MAX_CHUNK_BYTES,
+  DEFAULT_MAX_ATOMIC_APPEND_BYTES,
   type FileAccessServiceOptions,
 } from "./service.js";
 

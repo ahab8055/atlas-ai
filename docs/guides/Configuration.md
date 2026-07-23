@@ -114,6 +114,17 @@ Hosts map with `toPlatformManagerOptions(config.platform, extras)` then
 | `filesystem.useBuiltinIgnoreDefaults` | `true`  | `node_modules`/temps/build defaults |
 | `ATLAS_FS_BUILTIN_IGNORE`             | —       | `true`/`false`                      |
 
+### Filesystem size limits (ADR-0088)
+
+| Field / env                        | Default    | Maps to                         |
+| ---------------------------------- | ---------- | ------------------------------- |
+| `filesystem.maxReadBytes`          | `262144`   | Single `readFile` window        |
+| `ATLAS_FS_MAX_READ_BYTES`          | —          | Override `maxReadBytes`         |
+| `filesystem.maxChunkBytes`         | `262144`   | Cap for `readFileChunks` size   |
+| `ATLAS_FS_MAX_CHUNK_BYTES`         | —          | Override `maxChunkBytes`        |
+| `filesystem.maxAtomicAppendBytes`  | `16777216` | Atomic-append rewrite cap       |
+| `ATLAS_FS_MAX_ATOMIC_APPEND_BYTES` | —          | Override `maxAtomicAppendBytes` |
+
 See [File-System-Access.md](./File-System-Access.md).
 
 ---
